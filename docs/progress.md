@@ -35,11 +35,12 @@
   - Test hygiene: the full-flow E2E now waits for the month to really close (it could pass without closing), and the M2 close test reopens a month it closed.
 
 - 2026-11-08 · **M4 Payroll export** (D-023) — Løn page for Finance: monthly preview per employee and salary code with warnings, CSV file, lock; late changes become corrections next month; salary codes and absence mapping; payroll numbers on employees. Tested against spec AC1–AC4 and AC7 inside a rolled-back transaction.
+- 2026-11-08 · **M4 Data import** (D-024) — Import page for customers, projects and employees from Excel CSV with templates, dry run and all-or-nothing import; tested in a rolled-back transaction and with a Windows-1252 file in E2E.
 
 ## Next — M4 (prioritised with the product owner, 2026-11-08)
 
 1. ~~Payroll export~~ (done as generic CSV; provider adapters later).
-2. Data import (customers, projects, employees from CSV/Excel, with a dry-run preview).
+2. ~~Data import~~ (done).
 3. Later, if needed: multi-entity and multi-currency, PWA, project templates, Gantt, CRM pipeline, API tokens.
 
 ## Waiting on product owner

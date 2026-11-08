@@ -3,7 +3,7 @@
 Time tracking, projects, budgets, resource planning, approvals, invoicing, expenses, absence/flex, payroll export and
 reporting for ARCnordic. Built in-house as a clean-room implementation.
 
-Status: **M3 Operations done** — next: payroll export and data import (M4). See [`docs/progress.md`](docs/progress.md).
+Status: **M3 Operations done; M4 payroll export and data import done** — next: remaining M4 items as needed. See [`docs/progress.md`](docs/progress.md).
 
 **Ny udvikler? Start med [`docs/architecture.md`](docs/architecture.md)** — kodekort, GRASP-roller og "sådan tilføjer du en funktion".
 

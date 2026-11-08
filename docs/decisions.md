@@ -142,3 +142,12 @@ warning. Re-exporting an unlocked month replaces its file; locking is final, and
 delivered as delta lines with `original_period` in the next export. Finance only. Overtime, per diem, pay groups and
 provider APIs (Danløn/DataLøn/Zenegy) are later, behind adapters, sandbox only. Seed salary/provider codes are
 illustrative — Finance must replace them with the real payroll system's codes. · accepted
+
+**D-024 · 2026-11-08 · Data import** — Customers, projects and employees can be imported from CSV saved in Excel
+(`;`, `,` or tab; UTF-8 or Windows-1252; Danish or English column names; Danish numbers and dates). Every import is
+a dry run first (create / update / errors per row); the import itself is all rows or none and refused while any row
+has an error. Matching: customers and projects by number (old numbers are kept), employees by e-mail. Imported
+employees have no password and sign in with Microsoft; they get the employee role plus any listed roles, the
+full-time norm unless another pattern is named, and departments are created when missing. New projects get one task
+"Generelt" so hours can be registered at once. Customers/projects: Admin or Finance; employees: Admin. Max 2.000
+rows per file. Time entries and invoices are not imported (opening balances for flex and vacation are). · accepted
