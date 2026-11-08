@@ -4,16 +4,18 @@ Release: V2 (M2) for periods, locking, WIP report and fixed-price recognition; j
 value-based completion and correction strategies V3. Tags: [Observed] / [Assumed] / [Brief].
 
 ## 1. Purpose & roles
+
 Keep reported numbers stable once a month is done: lock registrations and invoices in closed months, and produce the month-end
 figures (WIP, recognised revenue on fixed price, deferred revenue on retainers). [Brief] [Observed: periods exist to keep figures stable when booking back in time]
 
-| Role | What they do |
-|---|---|
-| Finance | Creates/closes/reopens periods, runs pre-close checklist and month-end report, exports journal. [Brief] |
-| Management | Reads month-end report. [Assumed] |
-| Everyone else | Blocked from changes dated in closed periods; sees a lock icon. [Brief] |
+| Role          | What they do                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------- |
+| Finance       | Creates/closes/reopens periods, runs pre-close checklist and month-end report, exports journal. [Brief] |
+| Management    | Reads month-end report. [Assumed]                                                                       |
+| Everyone else | Blocked from changes dated in closed periods; sees a lock icon. [Brief]                                 |
 
 ## 2. Screens / views
+
 1. **Period list** per legal entity: month, status, closed by/at, reopen history; next 24 months visible. [Observed: next two years shown]
 2. **Pre-close checklist** for a selected period: counts + drill-down of (a) timesheets not submitted, (b) submitted not approved,
    (c) expenses not approved, (d) invoice drafts dated in period, (e) payment-plan items due but not invoiced, (f) fixed-price
@@ -27,6 +29,7 @@ figures (WIP, recognised revenue on fixed price, deferred revenue on retainers).
    date, recognised this period. [Brief]
 
 ## 3. Data
+
 - **AccountingPeriod**: id, tenantId, legalEntityId, startDate, endDate (calendar month), status (`open|closed`), closedBy/At, comment. [Brief]
 - **PeriodReopen**: periodId, scope (`all|employee`), employeeId (nullable), reopenedBy/At, reason, reclosedAt. [Observed: reopen for one employee] [Assumed: structure]
 - **RevenueRecognition**: contractId, periodId, completionPct, overridePct, overrideReason, recognisedToDate (øre), recognisedThisPeriod (øre), computedAt, frozen (bool at close). [Assumed]
@@ -34,18 +37,20 @@ figures (WIP, recognised revenue on fixed price, deferred revenue on retainers).
 - Tenant setting: period creation `automatic monthly` (default) or `manual`. [Observed]
 
 ## 4. User actions & state transitions
+
 `open → closed` (Finance). `closed → open` (Finance, mandatory reason, audited). Partial reopen: `closed` + active PeriodReopen(scope=employee) lets one employee register/edit in that month until re-closed. [Brief + Observed]
 
-| Action | Effect |
-|---|---|
-| Close | Locks: time entries, absences, expenses, mileage dated in the period; invoices/credits with invoice date in the period. Freezes RevenueRecognition and MonthEndSnapshot. Auto-creates the next period if automatic mode and it doesn't exist. Emits `period.closed` (webhook, journal export). |
-| Reopen (all) | Unlocks; snapshot marked `superseded`; on re-close a new snapshot is taken and the delta is shown. |
-| Reopen (one employee) | Only that employee's own registrations unlock; approvals still apply. |
+| Action                | Effect                                                                                                                                                                                                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Close                 | Locks: time entries, absences, expenses, mileage dated in the period; invoices/credits with invoice date in the period. Freezes RevenueRecognition and MonthEndSnapshot. Auto-creates the next period if automatic mode and it doesn't exist. Emits `period.closed` (webhook, journal export). |
+| Reopen (all)          | Unlocks; snapshot marked `superseded`; on re-close a new snapshot is taken and the delta is shown.                                                                                                                                                                                             |
+| Reopen (one employee) | Only that employee's own registrations unlock; approvals still apply.                                                                                                                                                                                                                          |
 
 Periods must be closed in order: a period can be closed only if all earlier periods of that legal entity are closed; reopening an
 earlier period does not reopen later ones (but re-close shows impact on later snapshots). [Assumed]
 
 ## 5. Business rules & calculations
+
 - **R1 Lock rule**: any create/update/delete of a time entry, absence, expense or mileage with `date` in a closed period is refused
   for every role, including Finance and Admin; the only way is to reopen. Same for booking/crediting an invoice whose invoice date is in a closed period. [Brief]
 - **R2 Status changes in closed periods**: approval of a submitted entry dated in a closed period is allowed (status change only, no value
@@ -65,6 +70,7 @@ earlier period does not reopen later ones (but re-close shows impact on later sn
 - **R12 Time zone**: period boundaries are local dates Europe/Copenhagen; entries are date-only, so no time-of-day ambiguity. [Brief]
 
 ## 6. Edge cases
+
 - Employee leaves; their unsubmitted March hours block nothing but appear in checklist. [Assumed]
 - Reopening February after March is closed: allowed; March snapshot is shown with "affected by reopen" badge until re-close of Feb; March stays closed. [Assumed]
 - Fixed-price with 0 budget hours → completion only by override; checklist flags it. [Assumed]
@@ -74,6 +80,7 @@ earlier period does not reopen later ones (but re-close shows impact on later sn
 - A legal entity created mid-year: first period = month of first registration or chosen start month. [Assumed]
 
 ## 7. Acceptance criteria
+
 - **AC1** Given March 2027 is closed for entity A, When an employee, Finance or Admin edits/creates/deletes an entry dated 15-03-2027, Then the API returns 423/409 "Perioden er lukket" and nothing changes. [Brief §9]
 - **AC2** Given period closed, When Finance reopens with reason, Then the edit is allowed and the audit log has reopen + edit. [Brief]
 - **AC3** Given March reopened for employee X only, When employee Y edits a March entry, Then refused; X allowed. [Observed]
@@ -87,6 +94,7 @@ earlier period does not reopen later ones (but re-close shows impact on later sn
 - **AC11** Given an invoice draft dated 31-03, When closing March, Then close is blocked with the draft listed. [Assumed]
 
 ## 8. Open points
+
 - Close order: does ARCnordic close the month around the 5th working day? Who closes (one named Finance person)?
 - Should late approvals in closed periods be allowed (R2 default yes)?
 - Should fixed-price used hours count submitted (not yet approved) hours?

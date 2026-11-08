@@ -5,21 +5,23 @@ Time-phased allocations, capacity heatmap, find by competence and free capacity 
 Drag to reassign, Outlook-fed bookings — **V3**.
 
 ## 1. Purpose & roles
+
 Plan who works on what and when, compare planned load with each person's real capacity, and spot over- and
 under-booking early. [Brief]
 
-| Role | Uses this module to |
-|---|---|
-| Project Manager | Allocate members to tasks on own projects, see their availability |
-| Line Manager | See and adjust load for own department; resolve over-booking |
-| Employee | See own plan for coming weeks (read-only) |
-| Finance / Management | Read: planned revenue, utilisation forecast |
-| Admin | Settings (planning unit, colour bands, absence codes that reduce capacity) |
+| Role                 | Uses this module to                                                        |
+| -------------------- | -------------------------------------------------------------------------- |
+| Project Manager      | Allocate members to tasks on own projects, see their availability          |
+| Line Manager         | See and adjust load for own department; resolve over-booking               |
+| Employee             | See own plan for coming weeks (read-only)                                  |
+| Finance / Management | Read: planned revenue, utilisation forecast                                |
+| Admin                | Settings (planning unit, colour bands, absence codes that reduce capacity) |
 
 ## 2. Screens / views
+
 - **S1 Heatmap** [Brief] — rows = employees (grouped by department, collapsible), columns = ISO weeks (default: this week
-  + 11). Cell = booked hours / capacity and utilisation %, coloured by band (R5). Click a cell → drill-down to S3.
-  Filters: department, competency, project, PM, employee. Toggle unit hours / days (R7). Saved filters. [Observed filters + man-day setting]
+  - 11). Cell = booked hours / capacity and utilisation %, coloured by band (R5). Click a cell → drill-down to S3.
+    Filters: department, competency, project, PM, employee. Toggle unit hours / days (R7). Saved filters. [Observed filters + man-day setting]
 - **S2 Project view** — rows = project tasks → members, columns = weeks; cell = allocated hours for that member/task/week,
   with registered hours shown beside it for past weeks (planned vs actual). Totals per task vs task budget. [Observed: allocation vs registered]
 - **S3 Employee week drill-down** — for one employee and week: capacity breakdown (norm, holidays, absence by code),
@@ -31,6 +33,7 @@ under-booking early. [Brief]
   remaining hours × resolved rate (T&M), or fixed-price average remaining rate (R9).
 
 ## 3. Data
+
 ```
 Allocation(id, tenantId, employeeId, projectId, taskId, periodStart, periodEnd, hours numeric(8,2),
            mode: total|per_week|per_day, createdBy, updatedAt)
@@ -42,6 +45,7 @@ Settings: planningUnit hours|days, hoursPerDay for display (default 7.4), bands 
 ```
 
 ## 4. User actions & state transitions
+
 - **Create / edit allocation** (PM on own projects; Line Manager for own reports): choose employee, task, period, hours
   and mode. Allocations have no approval lifecycle — they are plans. Every change is logged (who/when/old/new). [Assumed]
 - **Copy allocation forward** — repeat the same weekly hours for the next N weeks. [Assumed]
@@ -51,19 +55,20 @@ Settings: planningUnit hours|days, hoursPerDay for display (default 7.4), bands 
   that is completed are deleted automatically with a log entry. [Assumed]
 
 ## 5. Business rules & calculations
+
 - **R1 Capacity per employee per day** [Brief]: `capacity(d) = norm(d) − absenceReducing(d)`, floored at 0, where
   `norm(d)` already excludes public holidays (organisation.md R2) and `absenceReducing(d)` = Σ hours of absence entries
   (draft excluded; submitted and approved included) whose code has `reducesCapacity = true`.
   Weekly capacity = Σ over Mon–Sun.
-  *Example*: default 37 h pattern, week with a Thursday holiday and one approved vacation day Monday:
+  _Example_: default 37 h pattern, week with a Thursday holiday and one approved vacation day Monday:
   norm = 37 − 7,5 = 29,5; capacity = 29,5 − 7,5 = **22,0 h**.
 - **R2 Booked hours per week** [Assumed]: Σ allocation hours falling in the week (after spreading, R3).
-  For past and current weeks the heatmap can switch to *registered* hours (approved + submitted + draft).
+  For past and current weeks the heatmap can switch to _registered_ hours (approved + submitted + draft).
 - **R3 Spreading of a total allocation** [Observed: unregistered allocation spread evenly over task duration; Assumed refinement]:
   `remaining = max(0, allocation.hours − registeredHours(employee, task, periodStart..today))`.
   Remaining hours are spread evenly over the employee's **working days with capacity > 0** from max(today, periodStart)
   to periodEnd. Past days show registered hours, not planned.
-  *Example*: allocation 60 h on task "Projektforslag" 02-11-2026 → 27-11-2026 (20 working days). On 09-11 (Monday,
+  _Example_: allocation 60 h on task "Projektforslag" 02-11-2026 → 27-11-2026 (20 working days). On 09-11 (Monday,
   start of day) 12 h are registered → remaining 48 h over 15 remaining working days = **3,2 h/day** = 16 h/week for
   weeks 46–48. If the employee has a vacation day in week 47, that day gets 0 and the 48 h spread over 14 days (3,43 h/day).
 - **R4 Utilisation (planning)** [Brief]: `utilisation = booked / capacity`. If capacity = 0 and booked > 0 → shown as
@@ -79,11 +84,12 @@ Settings: planningUnit hours|days, hoursPerDay for display (default 7.4), bands 
   - T&M: Σ remaining allocated hours × provisional resolved rate (rates.md) on the allocation's task.
   - Fixed price: remaining hours × average remaining rate, where
     `avgRate = (price − recognised) / (budgetHours − usedHours)` (0 if denominator ≤ 0).
-    *Example*: price 240 000 kr, recognised 117 600 kr, budget 200 h, used 98 h → avgRate = 122 400 / 102 = **1 200 kr/h**.
+    _Example_: price 240 000 kr, recognised 117 600 kr, budget 200 h, used 98 h → avgRate = 122 400 / 102 = **1 200 kr/h**.
 - **R10 Allocation vs budget** [Assumed]: Σ allocations of a task + registered hours outside allocations compared with
   the task budget; > budget shows a warning in S2.
 
 ## 6. Edge cases
+
 - Allocation period partly before employment start or after end → hours spread only within employment; the form warns.
 - Employee changes norm pattern in future → capacity uses the pattern valid on each day.
 - Half-day holiday → capacity counts the remaining half (R1 via norm).
@@ -94,6 +100,7 @@ Settings: planningUnit hours|days, hoursPerDay for display (default 7.4), bands 
   day/task, use the higher of the two, not the sum.
 
 ## 7. Acceptance criteria
+
 - **AC1** Given a 37 h employee with a Thursday holiday and one approved vacation day, Then the week capacity is 22,0 t.
 - **AC2** Given capacity 30 h and booked 20 h, Then utilisation 66,7 % in the under-booked colour; booked 21 h → 70 % green;
   booked 31 h → 103,3 % over-booked colour.
@@ -108,6 +115,7 @@ Settings: planningUnit hours|days, hoursPerDay for display (default 7.4), bands 
 - **AC8** Every heatmap cell exposes its number and band as text to screen readers.
 
 ## 8. Open points
+
 - Planning granularity ARCnordic prefers: weekly hours (assumed default) or daily?
 - Should utilisation in the planner count only billable allocations (matching the KPI "utilisation = billable ÷ norm")
   or all allocations (assumed: all, with a toggle for billable only)?

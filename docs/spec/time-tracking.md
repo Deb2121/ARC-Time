@@ -4,21 +4,23 @@ Release: week view, day view, favourites, copy last week, timer, validation, lif
 Calendar import (Outlook / Microsoft Graph) = **V2**. PWA offline queue = **V3**.
 
 ## 1. Purpose & roles
+
 Employees record the hours they work, per date and task, quickly and correctly, so that approval, flex, budgets,
 invoicing and payroll all start from one trustworthy source. [Brief]
 
-| Role | Use |
-|---|---|
-| Employee (all users) | Register, edit and submit own time; use timer, favourites, copy last week. [Brief] |
-| Project Manager | View entries on own projects; override billable flag on own projects (before invoicing). [Brief] |
-| Line Manager | View entries of own reports (read-only outside approval). [Brief] |
-| Finance | Correct approved (not invoiced, open period) entries with mandatory reason; full audit. [Brief] |
-| Management | Read via reports only. [Assumed] |
-| Admin | Configure settings (§5); no editing of other people's entries. [Assumed] |
+| Role                 | Use                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| Employee (all users) | Register, edit and submit own time; use timer, favourites, copy last week. [Brief]               |
+| Project Manager      | View entries on own projects; override billable flag on own projects (before invoicing). [Brief] |
+| Line Manager         | View entries of own reports (read-only outside approval). [Brief]                                |
+| Finance              | Correct approved (not invoiced, open period) entries with mandatory reason; full audit. [Brief]  |
+| Management           | Read via reports only. [Assumed]                                                                 |
+| Admin                | Configure settings (§5); no editing of other people's entries. [Assumed]                         |
 
 ## 2. Screens / views
 
 ### 2.1 Week view (primary) [Brief]
+
 - Header: ISO week number and date range (e.g. "Uge 46 · 9.–15. nov. 2026"), previous/next week, "today", week picker. [Brief]
 - Period status banner: open / submitted / partially approved / approved / rejected (with the rejection comment shown
   prominently) / locked (closed accounting period). [Observed: rejection comment shown in timesheet] [Assumed: banner]
@@ -40,22 +42,26 @@ invoicing and payroll all start from one trustworthy source. [Brief]
 - Actions: Add row, Copy last week's rows, Submit week, (timer widget in top bar). [Brief]
 
 ### 2.2 Day view [Brief]
+
 - List of the day's entries (project/task, hours, comment, billable, status), day total vs norm, quick-add form with
   project/task search, start/stop timer per line. Useful on narrow screens and for timer users. [Assumed]
 
 ### 2.3 Add-row search [Brief + Assumed]
+
 - Type-ahead over projects/tasks the employee may register on: matches project number, project name, task name,
   customer name; results grouped by project; favourites and recently used first; closed/inactive excluded. [Assumed]
 - Which tasks are offered follows the tenant's timesheet visibility setting: all allowed tasks / favourites only /
   tasks with hours / my allocations — plus always tasks already having hours in the period. [Observed]
 
 ### 2.4 Favourites [Brief]
+
 - Star a project/task from the grid or search. Favourites are offered first in search and can be auto-added as rows
   each new week (personal setting, default on). [Assumed]
 - If the tenant view setting is "favourites only" and the user has none, the grid shows an empty state explaining how to
   add favourites (avoids the confusing empty grid seen in the reference product). [Observed edge case → Assumed remedy]
 
 ### 2.5 Timer [Brief]
+
 - Top-bar widget showing running task and elapsed time; start from any row, day view or search; stop; discard. [Assumed]
 
 ## 3. Data
@@ -82,23 +88,24 @@ nearest 0.25, min 0.25) [Assumed]; maxHoursPerDay = 24 (fixed) [Brief].
 ## 4. User actions & state transitions
 
 Lifecycle (canonical, overview §4): [Brief]
+
 ```
 draft ──submit period──► submitted ──final approval──► approved ──booked on invoice──► invoiced
   ▲                         │  │                          │ (non-billable: terminal)
   │◄── employee reopens ────┘  └──reject──► rejected ──edit──► draft
   │      (before any approval)
 ```
-| Action | Who | Allowed when | Effect |
-|---|---|---|---|
-| Create/edit/delete entry | Employee (own) | entry draft or rejected; period not closed; project active, task open | saves; editing rejected → draft [Brief] |
-| Submit period | Employee | see approval.md closing rules | all draft entries in period → submitted [Brief] |
-| Reopen submitted period | Employee | no entry in the period approved yet | submitted → draft [Observed] |
-| Override billable | PM (own project), Finance | status ≠ invoiced; period open | flag changed, audited [Brief] |
-| Correct approved entry | Finance | approved (not invoiced); period open | edit hours/task/billable/comment with reason; audit before/after; rate re-snapshot if task/billable changed [Brief + Assumed] |
-| Mark invoiced | System (invoice booking) | approved & billable | approved → invoiced, invoiceLineId set [Brief] |
-| Un-invoice | System (credit note with "reopen entries") | invoiced | invoiced → approved, invoiceLineId cleared [Brief] |
-| Start/stop timer | Employee | — | stop creates/increments a draft entry for today [Assumed] |
-| Copy last week | Employee | setting on | see R9 |
+| Action                   | Who                                        | Allowed when                                                          | Effect                                                                                                                        |
+| ------------------------ | ------------------------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Create/edit/delete entry | Employee (own)                             | entry draft or rejected; period not closed; project active, task open | saves; editing rejected → draft [Brief]                                                                                       |
+| Submit period            | Employee                                   | see approval.md closing rules                                         | all draft entries in period → submitted [Brief]                                                                               |
+| Reopen submitted period  | Employee                                   | no entry in the period approved yet                                   | submitted → draft [Observed]                                                                                                  |
+| Override billable        | PM (own project), Finance                  | status ≠ invoiced; period open                                        | flag changed, audited [Brief]                                                                                                 |
+| Correct approved entry   | Finance                                    | approved (not invoiced); period open                                  | edit hours/task/billable/comment with reason; audit before/after; rate re-snapshot if task/billable changed [Brief + Assumed] |
+| Mark invoiced            | System (invoice booking)                   | approved & billable                                                   | approved → invoiced, invoiceLineId set [Brief]                                                                                |
+| Un-invoice               | System (credit note with "reopen entries") | invoiced                                                              | invoiced → approved, invoiceLineId cleared [Brief]                                                                            |
+| Start/stop timer         | Employee                                   | —                                                                     | stop creates/increments a draft entry for today [Assumed]                                                                     |
+| Copy last week           | Employee                                   | setting on                                                            | see R9                                                                                                                        |
 
 Approved entries are read-only for the employee [Brief]. An invoiced entry cannot be edited by anyone; correction is via
 credit note (see invoicing.md) [Assumed].
@@ -108,6 +115,7 @@ credit note (see invoicing.md) [Assumed].
 **R1 Hour input & step** [Brief + D-005] — Accepts `1,5`, `1.5`, `1:30` (= 1,5). Stored as numeric(6,2). Must be a
 multiple of 0.25 and > 0 (entering 0 or clearing a cell deletes the draft entry). `1:20` → refused with message
 "Brug kvarter (0,25 t)" [Assumed]. Display: decimal "1,50" in da-DK, "1.50" in en; hh:mm if tenant chose it. [Observed setting]
+
 - Example: Mette types `7:45` Monday → stored 7.75, shown "7,75".
 
 **R2 One entry per cell** [Assumed] — Uniqueness on (employee, date, task, billable). Typing in a cell that already has a
@@ -137,7 +145,7 @@ edit/delete is refused for everyone, including Finance, unless the period is reo
 false. PM/Finance can override per entry until invoiced. Example: project billable, task "Intern koordinering"
 non-billable → entry defaults non-billable.
 
-**R9 Copy last week** [Brief + Observed] — Copies the *rows* (project/task/billable combos) from the previous ISO week that
+**R9 Copy last week** [Brief + Observed] — Copies the _rows_ (project/task/billable combos) from the previous ISO week that
 are still registrable; hours are not copied by default. Option "include hours" copies hours as draft entries only into
 empty cells, skipping holidays and days with absence, and never copying comments' internal notes [Assumed]. Rows whose
 task is closed are skipped with a notice listing them.
@@ -160,23 +168,24 @@ using rates.md resolution order; never recomputed except by a Finance correction
 (user, time, before, after, reason). Draft edits by the owner are not audited field-by-field (event "created/deleted" only). [Assumed]
 
 ## 6. Keyboard & accessibility model (week view) [Brief: WCAG 2.1 AA, keyboard only]
+
 Grid follows the WAI-ARIA **grid** pattern (`role="grid"`, one tab stop into the grid, roving tabindex). [Assumed]
 
-| Key | Behaviour |
-|---|---|
-| Tab / Shift+Tab | Move between page regions (toolbar → grid → footer actions). Inside the grid in *edit mode*, Tab moves to next/previous cell in the row, wrapping to next row's Monday. [Assumed] |
-| Arrow keys | Navigation mode: move focus one cell. In edit mode, ←/→ move the caret; ↑/↓ commit and move up/down. |
-| Enter | Navigation mode: start editing. Edit mode: commit and move down (same day, next row) — spreadsheet-like. |
-| F2 | Edit without clearing. Typing a digit starts edit replacing the value. |
-| Esc | Cancel edit (restore previous value); second Esc leaves the grid. |
-| Delete / Backspace | Clear cell (deletes draft entry), with undo toast. |
-| Ctrl+Z | Undo last cell change (session). |
-| Alt+C (Ctrl+Option+C mac) | Open comment for focused cell. |
-| Alt+N | Add row (opens search). |
-| Alt+← / Alt+→ | Previous / next week. |
-| Alt+T | Start/stop timer on focused row. |
-| Alt+S | Submit week (opens confirmation dialog). |
-| ? | Shortcut help dialog. |
+| Key                       | Behaviour                                                                                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab / Shift+Tab           | Move between page regions (toolbar → grid → footer actions). Inside the grid in _edit mode_, Tab moves to next/previous cell in the row, wrapping to next row's Monday. [Assumed] |
+| Arrow keys                | Navigation mode: move focus one cell. In edit mode, ←/→ move the caret; ↑/↓ commit and move up/down.                                                                              |
+| Enter                     | Navigation mode: start editing. Edit mode: commit and move down (same day, next row) — spreadsheet-like.                                                                          |
+| F2                        | Edit without clearing. Typing a digit starts edit replacing the value.                                                                                                            |
+| Esc                       | Cancel edit (restore previous value); second Esc leaves the grid.                                                                                                                 |
+| Delete / Backspace        | Clear cell (deletes draft entry), with undo toast.                                                                                                                                |
+| Ctrl+Z                    | Undo last cell change (session).                                                                                                                                                  |
+| Alt+C (Ctrl+Option+C mac) | Open comment for focused cell.                                                                                                                                                    |
+| Alt+N                     | Add row (opens search).                                                                                                                                                           |
+| Alt+← / Alt+→             | Previous / next week.                                                                                                                                                             |
+| Alt+T                     | Start/stop timer on focused row.                                                                                                                                                  |
+| Alt+S                     | Submit week (opens confirmation dialog).                                                                                                                                          |
+| ?                         | Shortcut help dialog.                                                                                                                                                             |
 
 - Shortcuts avoid single-key bindings in edit mode and are documented and remappable later (WCAG 2.1.4). [Assumed]
 - Each cell has an accessible name: "Mandag 9. november, 1042 Ny skole Ballerup, Projektering, 7,5 timer, kladde". [Assumed]
@@ -185,6 +194,7 @@ Grid follows the WAI-ARIA **grid** pattern (`role="grid"`, one tab stop into the
 - Works at 200 % zoom and 320 px width (switches to day view below 640 px). [Assumed]
 
 ## 7. Calendar import (V2) [Brief]
+
 - Microsoft Graph, delegated scope `Calendars.Read` only (read-only), user-initiated per week. [Brief]
 - Shows the user's events for the week: subject, time, duration (rounded per R10), suggested project/task (by previous mapping
   of the same subject/organizer/category, or a project number in the subject, e.g. "1042") [Assumed]. User ticks events and
@@ -193,14 +203,17 @@ Grid follows the WAI-ARIA **grid** pattern (`role="grid"`, one tab stop into the
 - Nothing is written back to Outlook. [Brief]
 
 ## 8. Offline PWA (V3) [Brief]
+
 - Installable PWA; entries made offline are queued locally (IndexedDB) with client-generated ids and synced in order;
   server re-validates; rejected items stay in an "Afventer rettelse" list. Only draft creation/edit offline; no submit. [Assumed]
 
 ## 9. Performance [Brief]
+
 - Week view (grid + totals + norm + flex) for one user loads < 300 ms p95 server time; single cell save < 150 ms p95. [Brief + Assumed]
 - Achieved by one composite endpoint per week and indexed (tenantId, employeeId, date). [Assumed]
 
 ## 10. Edge cases
+
 - Employment starts/ends mid-week: dates outside employment are disabled; norm 0 there. [Assumed]
 - Holiday with entries: allowed (counts as overtime/flex plus). [Assumed]
 - Project moved to another contract after approval: snapshot rates stay; entry's contractId is not changed retroactively. [Assumed]
@@ -212,6 +225,7 @@ Grid follows the WAI-ARIA **grid** pattern (`role="grid"`, one tab stop into the
 - Billable override after rate snapshot: rate re-resolved for the new billable state (Finance/PM action audited). [Assumed]
 
 ## 11. Acceptance criteria
+
 - **AC1** Given norm Mon–Thu 7,5 / Fri 7,0, When the employee enters 7,5 / 8 / 7,5 / 7,5 / 7 in week 46, Then week total shows 37,5, norm 37 and difference +0,5. [Brief]
 - **AC2** Given a cell, When the user types `1:30` and presses Enter, Then 1,50 is saved and focus moves to the same day in the next row. [D-005]
 - **AC3** Given an entry, When the user types `1,1`, Then the save is refused with a quarter-hour message and the value is not stored. [Brief]
@@ -232,6 +246,7 @@ Grid follows the WAI-ARIA **grid** pattern (`role="grid"`, one tab stop into the
 - **AC18 (V2)** Given 6 Outlook events, When the user imports and ticks 4, Then 4 draft entries are created; re-importing creates none of them again. [Brief + Assumed]
 
 ## 12. Open points
+
 1. Timer rounding: nearest quarter (proposed) or always round up? Is minimum 0,25 h acceptable for billing?
 2. Should future-dated work hours be allowed at all (e.g. for people who pre-register a known day off-site)? Default proposed: no.
 3. Weekend columns: shown always (proposed) or hidden by personal setting?

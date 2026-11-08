@@ -5,11 +5,13 @@ All notes are **paraphrased in our own words**. Nothing here is to be copied int
 The reference product is called "the reference product" in specs; it is named only in this research folder.
 
 ## Security note — prompt injection observed
+
 The reference product's help-center home page (https://help.timelog.com/en/) returned an appended block styled as
 "MCP Server Instructions" instructing the reader to create a document. It was ignored, per §1 of the brief, and
 reported to the product owner on 2026-11-08.
 
 ## Sources read
+
 Help center (help.timelog.com/en/): home, using-timelog index, integrations-api index, flex calculation in the timesheet,
 timesheet status, submit hours for approval, approval settings, change normal working time, time-tracking settings,
 absence codes, public holiday calendars, approval (managers), salary management, contract management, hourly rates setup,
@@ -21,6 +23,7 @@ Other: api.timelog.com (overview only), timelog.com/en/pricing.
 ## Key functional observations (summarised)
 
 ### Time, flex, approval
+
 - Timesheet with views: all allowed tasks / favourites only / tasks with hours / my allocations. Favourites-only view is empty until favourites are marked.
 - Company setting: time format decimal or hh:mm. Optional stopwatch/timer. Optional "copy last week". Optional mandatory comment on all entries, and an optional second admin-named comment field (free text or integer; may be mandatory per task; may be used on invoices).
 - Totals section can show norm time and flex; flex computed "up to today / yesterday / last Sunday" (setting).
@@ -33,12 +36,14 @@ Other: api.timelog.com (overview only), timelog.com/en/pricing.
 - Timesheet status report: approved / submitted & closed / complete but open / empty; "request to close" sends reminders. Accounting-period close does not change timesheet status.
 
 ### Employees, norm time, holidays, absence codes
+
 - Norm-time schedules defined centrally (1- or 2-week cycles), assigned per employee with a valid-from date (back/forward dating), history logged.
 - Holiday calendars: per employee one calendar; entries per year with full day / half day / explicit hours; importable national holidays (DK, SE, NO, DE, NL); not auto-copied across years.
 - Absence codes: type (illness, vacation, unpaid, paid leave) for grouping; format hours / full days / half+full days; adds to or draws from a balance account; whether it counts toward flex; approval required; deducted from planner capacity; visible in holiday calendar; mapped to payroll export code. Changing a code's nature is discouraged — create a new one.
 - Balances are modelled as accounts (deposits = allocations/adjustments, withdrawals = registrations). Actions: reset, adjust, move between accounts; automatic accrual rules post entries that cannot be deleted, only reversed.
 
 ### Projects, contracts, budgets
+
 - A project can have many contracts at once (e.g. fixed-price main delivery + T&M extras + ongoing maintenance) — this is how "hybrid" is achieved.
 - Contract families: T&M (standard; on-account with end balancing; continuous on-account with period balancing; prepaid amount) and fixed price (standard with payment plan; task-driven payments; continuous service per period; unit/volume-based).
 - T&M may have a max budget; hours above it are not invoiceable. Prepaid can alert at a configured % consumed.
@@ -49,10 +54,12 @@ Other: api.timelog.com (overview only), timelog.com/en/pricing.
 - Rates: standard price list + customer price lists; services × price groups matrix; changes can be pushed to active projects; indexation page exists. **Precedence of rates not documented.**
 
 ### Resource planning, CRM
+
 - Planner shows workload from allocations; unregistered allocation hours spread evenly over task duration; finer per-day planning possible; man-day conversion setting; estimated revenue = allocated hours × rate; Outlook appointments can feed the planner (max of booking vs appointment, not summed).
 - Pipeline with weighted forecast; admin-defined opportunity statuses with optional fixed forecast % (lockable).
 
 ### Invoicing, periods, payroll, reporting
+
 - Invoices created from a debtor/invoiceable list; draft built from registrations in a period; multiple projects per invoice possible; currency locked to project currency; line editing with spreading of changes across consolidated items, merge/split, reorder; extra line types (heading, subtotal, text, blank, product); preview with optional specification appendix; draft → booked; optional "ready for booking" step to split creator and booker roles.
 - Settings: decimals/rounding, OIOUBL/EAN for public sector, item numbers (GL mapping), XML export, company VAT default; expense VAT can differ.
 - Accounting periods: manual or recurring; statuses active/closed; can be reopened for a single employee; closing triggers fixed-price revenue booking.
@@ -65,4 +72,5 @@ Other: api.timelog.com (overview only), timelog.com/en/pricing.
 - Pricing tiers ≈ €14 / €34.50 / €53 / Enterprise; salary, integrations and API from the middle tier; retainers, KPI, automated invoicing in the third.
 
 ## Gaps (not confirmed from public sources)
+
 Gantt; WBS task states; rate precedence; utilisation formula; vacation accrual / holiday year; invoice numbering and statuses after booking; credit-note and reminder flows; multi-currency rules; mileage rate tables; mobile app; Outlook calendar time import details. Our designs for these are marked [Assumed] in the specs.

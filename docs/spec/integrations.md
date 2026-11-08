@@ -5,17 +5,19 @@ Graph calendar import, reporting API/OData, OAuth client credentials. V3 — Din
 (optional earlier), SharePoint/OneDrive links. Tags: [Observed] / [Assumed] / [Brief].
 
 ## 1. Purpose & roles
+
 Connect ARCnordic Tid to identity, accounting, payroll, calendar and file systems through a uniform adapter layer, and expose a
 versioned API for customers' own integrations. All external connections are optional, **disabled by default**, and developed only
 against official sandboxes/test accounts. [Brief]
 
-| Role | What they do |
-|---|---|
-| Admin | Enables/configures connections, SSO, webhooks, API clients. [Brief] |
-| Finance | Maps accounts/VAT codes, monitors sync log, retries failures. [Assumed] |
+| Role     | What they do                                                                                |
+| -------- | ------------------------------------------------------------------------------------------- |
+| Admin    | Enables/configures connections, SSO, webhooks, API clients. [Brief]                         |
+| Finance  | Maps accounts/VAT codes, monitors sync log, retries failures. [Assumed]                     |
 | Employee | Connects own Outlook calendar (consent), creates personal access tokens if allowed. [Brief] |
 
 ## 2. Screens / views
+
 1. **Integrations overview**: cards per available adapter with status (`disabled|configured|connected|error`), last sync, errors. [Assumed]
 2. **Connection setup**: credentials/consent flow, test connection, mapping tables (customers ↔ debtor no., VAT codes, accounts, products/item numbers, departments/dimensions), sync options. [Observed: item numbers mapped to GL accounts] [Assumed]
 3. **Integration log**: per event: time, adapter, direction, entity, status, attempts, error message, payload (redacted), retry button. [Observed: integration log report]
@@ -24,6 +26,7 @@ against official sandboxes/test accounts. [Brief]
 6. **API clients & tokens**: OAuth clients (client id, scopes, secret rotation); personal access tokens per user (name, scopes, expiry, last used, revoke). [Brief + Observed: PATs]
 
 ## 3. Data
+
 - **IntegrationConnection**: id, tenantId, legalEntityId (nullable), type (`economic|dinero|business_central|danloen|dataloen|zenegy|graph_calendar|sharepoint`), status, config (non-secret), secretRef (key vault reference, never stored in DB plain), enabled (default false), lastSyncAt. [Brief]
 - **ExternalRef**: tenantId, connectionId, entityType, entityId, externalId, lastSyncedHash. [Assumed]
 - **Outbox**: id, tenantId, eventType, aggregateId, payload, createdAt, status (`pending|done|failed|dead`), attempts, nextAttemptAt, lastError. Written in the same DB transaction as the business change. [Brief: outbox pattern]
@@ -32,20 +35,30 @@ against official sandboxes/test accounts. [Brief]
 - **CalendarImportCandidate**: userId, eventId, start, end, subject, organizer, suggestedProjectId/taskId, state (`new|imported|ignored`). [Assumed]
 
 ## 4. Adapter interface [Brief + Assumed]
+
 ```ts
 interface IntegrationAdapter {
   type: AdapterType;
-  capabilities: Set<'pushCustomers'|'pushInvoices'|'pullPayments'|'pushJournal'|'pushPayroll'|'readCalendar'|'linkFiles'>;
-  connect(config, secrets): Promise<ConnectResult>;     // OAuth / token exchange
+  capabilities: Set<
+    | "pushCustomers"
+    | "pushInvoices"
+    | "pullPayments"
+    | "pushJournal"
+    | "pushPayroll"
+    | "readCalendar"
+    | "linkFiles"
+  >;
+  connect(config, secrets): Promise<ConnectResult>; // OAuth / token exchange
   test(): Promise<HealthResult>;
-  sync(event: OutboxEvent): Promise<SyncResult>;          // idempotent per event id
-  pull?(since: Date): Promise<PullResult>;                // e.g. payment status
-  mappings(): MappingSpec[];                              // drives the mapping UI
+  sync(event: OutboxEvent): Promise<SyncResult>; // idempotent per event id
+  pull?(since: Date): Promise<PullResult>; // e.g. payment status
+  mappings(): MappingSpec[]; // drives the mapping UI
 }
 ```
 Adapters live in `packages/integrations`; long-running pulls and payroll/PDF jobs may be Python workers (D-002) using the same contract over the job queue.
 
 ## 5. Business rules
+
 - **R1 Disabled by default**; enabling requires Admin and a successful `test()`. Production credentials can only be entered by the tenant's Admin; dev/staging uses sandbox credentials from env/secret store. [Brief]
 - **R2 Outbox delivery**: worker polls pending events, calls adapters/webhooks, exponential backoff (1 min, 5, 15, 60, 6 h, then `dead` after 8 attempts), alerts Admin on dead events; manual retry from log. Idempotency key = outbox event id. [Brief + Assumed]
 - **R3 e-conomic (first)** [Brief]:
@@ -65,6 +78,7 @@ Adapters live in `packages/integrations`; long-running pulls and payroll/PDF job
 - **R13 Secrets** in env/secret store (Azure Key Vault in prod), never logged; payloads in integration log redacted. [Brief]
 
 ## 6. Edge cases
+
 - Customer deleted/merged in accounting system → push fails with "not found"; Finance remaps via ExternalRef. [Assumed]
 - Token expiry/revoked consent → connection `error`, Admin notified, events stay pending (not lost). [Assumed]
 - User's Entra account disabled → login refused; employee record remains (history). [Assumed]
@@ -73,6 +87,7 @@ Adapters live in `packages/integrations`; long-running pulls and payroll/PDF job
 - Webhook receiver slow → timeout counts as failure; retries keep order not guaranteed — consumers must use event id + occurredAt. [Assumed]
 
 ## 7. Acceptance criteria
+
 - **AC1** Given a new tenant, Then all integrations are disabled. [Brief]
 - **AC2** Given e-conomic connected (sandbox), When invoice 1042 is booked, Then an outbox event is stored in the same transaction and the invoice appears in the sandbox with number 1042; on failure the log shows the error and retry works without duplicates. [Brief]
 - **AC3** Given Entra SSO with JIT off, When an unknown user logs in, Then access is refused with a clear message. [Brief]
@@ -83,6 +98,7 @@ Adapters live in `packages/integrations`; long-running pulls and payroll/PDF job
 - **AC8** OpenAPI document at `/api/v1/openapi.json` validates and covers every public endpoint (CI check). [Brief]
 
 ## 8. Open points
+
 - Which accounting system does ARCnordic use today (e-conomic assumed)? Sandbox/developer agreement access?
 - Entra ID: allow JIT provisioning, and map Entra groups to roles?
 - SharePoint: are project folders already structured per project number (for auto-linking)?

@@ -3,17 +3,19 @@
 Release: V2 (M2) unless stated. Multi-currency, reverse charge, EAN/OIOUBL, reminders: V3. Tags: [Observed] / [Assumed] / [Brief].
 
 ## 1. Purpose & roles
+
 Turn approved, billable work and agreed contract amounts into correct, gap-free, immutable invoices, and keep a trace from every
 invoice line back to its sources (time entries, expenses, payment-plan items, retainer fees). [Brief]
 
-| Role | What they do |
-|---|---|
-| Finance | Builds suggestions, edits drafts, books, credits, sends, follows debtors. Only role that books. [Brief] |
+| Role            | What they do                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Finance         | Builds suggestions, edits drafts, books, credits, sends, follows debtors. Only role that books. [Brief]                                           |
 | Project Manager | Reviews invoiceable content on own projects, prepares drafts, marks `ready_for_booking` (if enabled). [Observed: separate ready-for-booking step] |
-| Management | Read-only: invoices, write-down analytics. [Assumed] |
-| Employee | Sees whether own entries are invoiced (status only, no amounts). [Assumed] |
+| Management      | Read-only: invoices, write-down analytics. [Assumed]                                                                                              |
+| Employee        | Sees whether own entries are invoiced (status only, no amounts). [Assumed]                                                                        |
 
 ## 2. Screens / views
+
 1. **Invoiceable overview ("Til fakturering")** — one row per project (groupable by customer) for a chosen period and legal entity:
    approved billable not-invoiced hours and value, billable expenses, due payment-plan items, due retainer fees, unapproved
    billable hours (warning column), last invoice date. Filters: legal entity, customer, PM, contract type, period end date,
@@ -33,6 +35,7 @@ invoice line back to its sources (time entries, expenses, payment-plan items, re
 7. **Write-down analytics** — per project/customer/PM/period: billable value at snapshot rate vs invoiced value, write-down kr and %. [Brief]
 
 ## 3. Data
+
 - **Invoice**: id, tenantId, legalEntityId, type (`invoice|credit`), seriesId, number (null until booked), customerId, billing
   address snapshot, contactId, currency, fxRate (to legal-entity currency, 6 dp), invoiceDate, paymentTermsDays, dueDate,
   vatMode (`standard|reverse_charge|exempt`), ean (V3), status, readyForBookingBy/At, bookedBy/At, sentAt, paidAmount (øre),
@@ -46,21 +49,23 @@ invoice line back to its sources (time entries, expenses, payment-plan items, re
 - **AccountingOutbox** (shared with integrations): eventType, payload, status, attempts. [Assumed]
 
 ## 4. User actions & state transitions
+
 Invoice: `draft → ready_for_booking (optional) → booked → sent → partially_paid | paid`. `ready_for_booking → draft` (Finance or
 creator sends back). Credit note is a separate invoice of type `credit` with the same lifecycle; booked documents are immutable. [Assumed, per overview §4]
 
-| Action | Who | From → To | Effect |
-|---|---|---|---|
-| Create draft from suggestion | Finance, PM (own projects) | — → draft | Sources reserved: `reservedInvoiceLineId` set so the same source cannot be in two drafts. [Assumed] |
-| Edit lines / header | Finance, PM (own, while draft) | draft | Audit for amount changes. |
-| Mark ready for booking | PM, Finance | draft → ready_for_booking | Only if tenant setting on. [Observed] |
-| Book | Finance | draft / ready_for_booking → booked | Number allocated, sources → `invoiced`, PDF rendered, outbox event. |
-| Delete draft | Finance, creator | draft → (deleted) | Reservations released. |
-| Send | Finance | booked → sent | Email with PDF (+appendix) to invoice contact; sending is optional (adapter may send). [Assumed] |
-| Register payment | system (accounting sync) / Finance manual | sent/booked → partially_paid / paid | [Brief: pull payment status] |
-| Create credit note | Finance | booked/sent/paid invoice → new credit draft | Full or partial; option "re-open sources". |
+| Action                       | Who                                       | From → To                                   | Effect                                                                                              |
+| ---------------------------- | ----------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Create draft from suggestion | Finance, PM (own projects)                | — → draft                                   | Sources reserved: `reservedInvoiceLineId` set so the same source cannot be in two drafts. [Assumed] |
+| Edit lines / header          | Finance, PM (own, while draft)            | draft                                       | Audit for amount changes.                                                                           |
+| Mark ready for booking       | PM, Finance                               | draft → ready_for_booking                   | Only if tenant setting on. [Observed]                                                               |
+| Book                         | Finance                                   | draft / ready_for_booking → booked          | Number allocated, sources → `invoiced`, PDF rendered, outbox event.                                 |
+| Delete draft                 | Finance, creator                          | draft → (deleted)                           | Reservations released.                                                                              |
+| Send                         | Finance                                   | booked → sent                               | Email with PDF (+appendix) to invoice contact; sending is optional (adapter may send). [Assumed]    |
+| Register payment             | system (accounting sync) / Finance manual | sent/booked → partially_paid / paid         | [Brief: pull payment status]                                                                        |
+| Create credit note           | Finance                                   | booked/sent/paid invoice → new credit draft | Full or partial; option "re-open sources".                                                          |
 
 ## 5. Business rules & calculations
+
 - **R1 Invoiceable source** = item where status `approved`, billable = true, not `invoiced`, not reserved by another draft, date ≤
   suggestion to-date, belongs to the project(s) and legal entity, and item's accounting period does not matter (invoices may cover
   closed months; the invoice date must be in an open period). [Brief + Assumed]
@@ -108,6 +113,7 @@ creator sends back). Credit note is a separate invoice of type `credit` with the
 - **R20 Locking**: a booked invoice cannot be edited or deleted; correction only by credit note. Invoices dated in a closed period cannot be booked or credited with that date. [Brief]
 
 ## 6. Edge cases
+
 - Source edited by Finance (correction) while reserved in a draft → draft line flagged "source changed", value recomputed on open; booking blocked until Finance confirms. [Assumed]
 - Entry rejected/reopened after being put in a draft: not possible — approved entries are read-only except Finance correction (above). [Brief]
 - Project currency changed after drafts exist → blocked while drafts or invoiceable sources exist. [Assumed]
@@ -120,6 +126,7 @@ creator sends back). Credit note is a separate invoice of type `credit` with the
 - Draft containing items from several months: allowed; WIP drops at booking date. [Assumed]
 
 ## 7. Acceptance criteria
+
 - **AC1** Given entry E (approved, billable) was invoiced on invoice 1001, When a new suggestion is built for the same project and any period, Then E is not included. [Brief §9]
 - **AC2** Given E is reserved in an unbooked draft D1, When another user builds a suggestion, Then E is not included and the overview shows it as "in draft". [Assumed]
 - **AC3** Given series next number 1042, When two invoices are booked concurrently, Then they receive 1042 and 1043 and the next is 1044. [Brief §9]
@@ -137,6 +144,7 @@ creator sends back). Credit note is a separate invoice of type `credit` with the
 - **AC15** E2E: register → submit → approve → suggestion → book → number assigned, PDF available, sources invoiced. [Brief §9]
 
 ## 8. Open points
+
 - Does ARCnordic want PM "ready for booking" step on by default?
 - Continue an existing invoice number series (starting number) from today's system? Separate series for credit notes?
 - Payment terms default (e.g. netto 30 / lb. md. + 30)?

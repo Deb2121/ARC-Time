@@ -4,16 +4,18 @@ Release: V3 (M4) — CSV export first; provider API adapters (Danløn, DataLøn,
 configurable from MVP so data is ready. Tags: [Observed] / [Assumed] / [Brief].
 
 ## 1. Purpose & roles
+
 Deliver, per pay period, the payroll-relevant quantities for each employee (absence, overtime, allowances, mileage, expense
 reimbursements) to the payroll provider in its expected format, without double-sending. ARCnordic Tid does not calculate salary. [Brief]
 
-| Role | What they do |
-|---|---|
+| Role              | What they do                                                                                          |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Finance (payroll) | Configures salary codes and rules, runs export, locks pay period, handles late registrations. [Brief] |
-| Admin | Maps absence codes / expense types to salary codes; sets employee payroll numbers. [Assumed] |
-| Line Manager | Must approve items before they are exportable. [Brief] |
+| Admin             | Maps absence codes / expense types to salary codes; sets employee payroll numbers. [Assumed]          |
+| Line Manager      | Must approve items before they are exportable. [Brief]                                                |
 
 ## 2. Screens / views
+
 1. **Salary codes** (admin): code, name, unit (`hours|days|km|amount`), source mapping, include in export (yes/no), provider code per provider. [Observed: include-in-export + mapping per absence code]
 2. **Pay periods**: list per legal entity and pay group (e.g. monthly salaried, hourly paid 14-day): start, end, status, exported at/by. [Observed: chained salary periods]
 3. **Payroll export run**: filters — legal entity (only if several), department, pay group, employee; period (defaults to next
@@ -22,6 +24,7 @@ reimbursements) to the payroll provider in its expected format, without double-s
 4. **Export history**: each run with file download, line count, user, provider response; integration log. [Observed: integration log]
 
 ## 3. Data
+
 - **SalaryCode**: id, tenantId, code, name, unit, kind (`absence|overtime|allowance|mileage|expense|other`), includeInExport, providerCodes {provider: code}. [Brief]
 - **SalaryCodeMapping**: sourceType (`absence_code|expense_type|mileage_rate|overtime_rule|allowance_type`), sourceId, salaryCodeId. [Assumed]
 - **OvertimeRule** (V3): pay group, threshold basis (`daily|weekly`), threshold hours over norm, factor (e.g. 150 %), salary code; only for employees flagged "overtime paid" (others go to flex). [Brief: salary codes for overtime] [Assumed: rule shape]
@@ -32,10 +35,12 @@ reimbursements) to the payroll provider in its expected format, without double-s
 - Employee: payrollNumber (medarbejdernummer in payroll system), payGroupId. [Assumed]
 
 ## 4. User actions & state transitions
+
 PayPeriod: `open → exported → locked`; `exported → open` only by Finance with reason if nothing was sent to a provider API. [Assumed]
 Next period: start = previous end + 1 day; length defaults to previous length (monthly → next calendar month). First period entered manually. [Observed]
 
 ## 5. Business rules & calculations
+
 - **R1 Eligible item** = status `approved` (or `invoiced`), date within pay period, mapped to a salary code with includeInExport, employee active in period and has payrollNumber. [Brief + Observed]
 - **R2 Line aggregation**: one line per employee × salary code × pay period; quantity = Σ in the code's unit. Absence in days: hours ÷ employee's norm hours that day, summed (full-day = 1, half = 0,5). [Assumed]
   Example: vacation 7,5 h Mon + 7,5 h Tue + 7,0 h Fri (norm 7,5/7,5/7,0) → 3,00 days, code "FERIE".
@@ -55,6 +60,7 @@ Next period: start = previous end + 1 day; length defaults to previous length (m
 - **R10 Provider adapters (V3)** implement `buildPayload(lines)` and `send()`; Danløn/DataLøn/Zenegy via sandbox only, disabled by default. [Brief]
 
 ## 6. Edge cases
+
 - Employee without payrollNumber → excluded, warning; export still possible for others. [Observed]
 - Unapproved items → warning only; they will be late items once approved. [Observed]
 - Employee changes pay group mid-period → items split by date to each group's period. [Assumed]
@@ -64,6 +70,7 @@ Next period: start = previous end + 1 day; length defaults to previous length (m
 - Opening file in Excel may break it — download offers both CSV (for import) and XLSX (for reading). [Observed: warning about opening in Excel] [Assumed: dual output]
 
 ## 7. Acceptance criteria
+
 - **AC1** Given vacation approved 3 days in March for employee 1042, When exporting March, Then one line FERIE 3,00 days. [Brief]
 - **AC2** Given an employee without payroll number, Then their row is disabled with a warning and not in the file. [Observed]
 - **AC3** Given March exported and locked, When a sick day dated 10-03 is approved on 05-04, Then the April run contains a late line for SYG with original_period 2027-03 and March's file is unchanged. [Assumed]
@@ -73,6 +80,7 @@ Next period: start = previous end + 1 day; length defaults to previous length (m
 - **AC7** Only Finance can run/lock exports; others 403. [Brief]
 
 ## 8. Open points
+
 - Which payroll provider does ARCnordic use (Danløn, DataLøn, Zenegy, other)? Monthly only, or also hourly-paid 14-day groups?
 - Is overtime paid for any employee group, or does everything go to flex/afspadsering?
 - Are mileage and expense reimbursements paid through payroll or via the accounting system (bank transfer)?

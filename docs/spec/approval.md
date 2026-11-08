@@ -5,26 +5,28 @@ bulk approve, reopen, close-on-behalf, substitutes, closing rules = **MVP**. Exp
 Email/Teams reminders and "request submission" notifications = **V2** (MVP: in-app notification only).
 
 ## 1. Purpose & roles
+
 Turn submitted time, absence and expenses into approved, trustworthy data — fast for approvers, transparent for employees. [Brief]
 
-| Role | Use |
-|---|---|
-| Employee | Submit period, reopen before approval, fix rejected entries, resubmit. [Brief + Observed] |
-| Project Manager | Approve/reject entries on own projects (when PM step enabled). [Brief + Observed] |
-| Line Manager | Approve/reject whole period of own reports; approve absence. [Brief] |
-| Substitute | Approve on behalf of another approver (role right "approve on behalf"). [Observed] |
-| Finance | No approval of time; final step for expenses; may reopen approved periods (audited). [Assumed] |
-| Admin | Configure approval mode, period length, closing rules, anomaly thresholds. [Brief] |
+| Role            | Use                                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| Employee        | Submit period, reopen before approval, fix rejected entries, resubmit. [Brief + Observed]      |
+| Project Manager | Approve/reject entries on own projects (when PM step enabled). [Brief + Observed]              |
+| Line Manager    | Approve/reject whole period of own reports; approve absence. [Brief]                           |
+| Substitute      | Approve on behalf of another approver (role right "approve on behalf"). [Observed]             |
+| Finance         | No approval of time; final step for expenses; may reopen approved periods (audited). [Assumed] |
+| Admin           | Configure approval mode, period length, closing rules, anomaly thresholds. [Brief]             |
 
 ## 2. Screens / views
+
 - **Submit dialog** (from timesheet): period summary (total, norm, flex, billable %), optional comment for approver,
-  closing-rule warnings (R7), confirm. [Observed: optional comment] 
+  closing-rule warnings (R7), confirm. [Observed: optional comment]
 - **Approver inbox** (Godkendelser) — two tabs [Observed: employee list and project list]:
-  - *Medarbejdere*: one row per employee × period: status (not submitted / submitted / partially approved / approved /
+  - _Medarbejdere_: one row per employee × period: status (not submitted / submitted / partially approved / approved /
     rejected — icon + text), total hours, norm, flex for period, billable %, anomaly flags, submitted at. Filters: legal entity,
     department, period (default: last full week; personal setting), status, "approving for" (own / on behalf of X) [Observed].
     Tick boxes for bulk approve; bulk reject requires one comment applied to all. [Brief]
-  - *Projekter* (PM step): one row per project with hours awaiting approval, by employee. [Observed]
+  - _Projekter_ (PM step): one row per project with hours awaiting approval, by employee. [Observed]
 - **Employee period detail**: totals (work, absence per code, total, norm, flex period and balance), breakdown per project
   (hours, billable/non-billable split, budget remaining on that task), daily grid with entries and comments, anomalies
   highlighted, history/comments log. Actions: approve period, reject period (comment), approve/reject single entries,
@@ -33,6 +35,7 @@ Turn submitted time, absence and expenses into approved, trustworthy data — fa
 - **Timesheet status overview** (manager/Finance): employees × weeks matrix with status; action "send reminder". [Observed]
 
 ## 3. Data
+
 **TimesheetPeriod** [Brief]: `employeeId, periodStart, periodEnd, periodType (week|month), status (open|submitted|partially_approved|approved|rejected),
 submittedAt, submittedBy (self or on-behalf), submitComment`.
 **ApprovalStep** [Assumed]: `timesheetPeriodId, stepType (project_manager|line_manager), projectId?, approverId, status (pending|approved|rejected), decidedBy, decidedAt, onBehalfOf?, comment`.
@@ -44,7 +47,9 @@ absenceApproval = line manager [Brief].
 **Employee**: lineManagerId (= approver) [Observed: approver on employee card].
 
 ## 4. User actions & state transitions
+
 TimesheetPeriod (overview §4):
+
 ```
 open ──submit──► submitted ──all steps approved──► approved
   ▲                │    └──some steps approved──► partially_approved ──rest approved──► approved
@@ -59,6 +64,7 @@ Entry statuses follow the period: submit → entries `submitted`; final approval
 affected entries `rejected` (period reject = all entries; entry reject = only those). [Brief]
 
 Mode behaviour:
+
 - **none**: submit → approved immediately (still snapshots rates, still logged). [Observed]
 - **line_manager**: one step per period. [Observed + Brief]
 - **pm_then_line_manager**: one PM step per project with entries in the period (entries on projects where the employee is
@@ -69,6 +75,7 @@ Mode behaviour:
   Admin-designated fallback approver; self-approval is not allowed. [Assumed]
 
 ## 5. Business rules & calculations
+
 **R1 Submit scope** [Brief] — Submitting covers all entries in the period in status draft; days in a closed accounting period
 are skipped. Submitting an empty period is allowed unless blocked by R7. [Assumed]
 
@@ -80,11 +87,13 @@ on project B; the period becomes partially_approved/rejected accordingly; after 
 to the step that rejected them. [Observed]
 
 **R4 Inbox metrics** [Brief]
+
 - total = Σ work + counting absence; norm per absence-flex.md R2; period flex = total − norm.
 - billable % = billable hours ÷ work hours (absence excluded). Example: 30 billable of 36 work hours → **83 %**.
 - per-project breakdown: hours, billable hours, task budget remaining (budget − approved − submitted).
 
 **R5 Anomaly flags** [Brief + Assumed]
+
 - Day over: day total > norm(d) + 3 h (e.g. 11 h on a 7,5 day) → "Mange timer".
 - Day under: norm(d) > 0 and day total < norm(d) − 3 h (e.g. 4 h on a 7,5 day, no absence) → "Få timer".
 - Missing day: norm(d) > 0 and 0 h registered → "Manglende dag".
@@ -114,6 +123,7 @@ rows with anomalies require an explicit "include flagged" confirmation. [Assumed
 configurable); approvers with items pending > N days. Channels: email, Teams (Graph). Users can't opt out of mandatory reminders; quiet hours respected. [Assumed]
 
 ## 6. Edge cases
+
 - Employee changes manager mid-period: the approver is the line manager at time of submit; pending steps can be reassigned by Admin. [Assumed]
 - PM leaves the project: pending PM steps move to the new PM. [Assumed]
 - Entry moved to another project by Finance after PM approval: audit; no re-approval needed. [Assumed]
@@ -122,6 +132,7 @@ configurable); approvers with items pending > N days. Channels: email, Teams (Gr
 - Absence request for future dates submitted ahead of its timesheet period: approved independently; the timesheet later shows it as approved. [Assumed]
 
 ## 7. Acceptance criteria
+
 - **AC1** Given mode line_manager, When Anna submits week 46 and her manager approves, Then the period and all entries are approved and each entry has resolvedRate and costRate set. [Brief]
 - **AC2** Given a submitted period, When the manager rejects without comment, Then it is refused; with comment "Mangler kommentar på 1042", Then entries are rejected and Anna sees the comment in her timesheet. [Brief]
 - **AC3** Given mode pm_then_line_manager and entries on projects A (PM Bo) and B (PM Cecilie), When Bo approves A and Cecilie rejects one entry on B, Then the period is partially approved; after Anna fixes and resubmits, only the B entry returns to Cecilie. [Observed]
@@ -136,6 +147,7 @@ configurable); approvers with items pending > N days. Channels: email, Teams (Gr
 - **AC12** A PM cannot see entries of the same employee on projects the PM does not manage (API 403/filtered). [Brief]
 
 ## 8. Open points
+
 1. Which approval mode does ARCnordic want: line manager only, or PM first then line manager?
 2. Week or month periods?
 3. Closing rule: warn or block when below norm?

@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: arc_owner
+      POSTGRES_PASSWORD: arc_owner_dev
+      POSTGRES_DB: arc_tid
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./packages/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arc_owner -d arc_tid"]
+      interval: 5s
+      retries: 10
+  mail:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+volumes:
+  dbdata:
