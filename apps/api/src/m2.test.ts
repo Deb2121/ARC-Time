@@ -258,6 +258,9 @@ describe("accounting periods", () => {
       expect(res.closed).toBe(false);
       expect(res.warnings.length).toBeGreaterThan(0);
     }
+    // With an empty checklist the month really closes — reopen it so the dev database keeps its demo state.
+    if (res.closed)
+      await send("JF", "POST", `/api/v1/periods/${first.id}/reopen`, { reason: "Testoprydning" });
   });
 
   it("month-end report shows WIP, fixed-price recognition and retainer deferral", async () => {

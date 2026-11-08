@@ -33,7 +33,8 @@
 - KPI formulas live in `packages/domain/src/kpi.ts` with the worked examples from `docs/spec/reporting.md`.
 - Python analytics service `apps/analytics` (D-021): KPI JSON, Excel workbook (Rapporter → "Nøgletal (Excel)"), Power BI datasets; read-only DB role; KPI formulas tested with the same examples as TypeScript; docs gate also checks Python docstrings.
 - Next: M3 demo script.
-- Still open: project manager approval step (tenant setting exists; UI not yet).
+- Approval modes (D-022): project manager step before the line manager (tab "Mine projekter"), or no approval; chosen under Indstillinger → Godkendelse.
+- Test hygiene: the full-flow E2E now waits for the month to really close (it could pass without closing), and the M2 close test reopens a month it closed.
 
 ## Waiting on product owner
 

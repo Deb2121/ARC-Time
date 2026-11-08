@@ -30,8 +30,11 @@ interface Settings {
     approvalRequired: boolean;
     active: boolean;
   }[];
+  approvalMode: ApprovalMode;
 }
-type Tab = "norm" | "holidays" | "absence";
+type Tab = "norm" | "holidays" | "absence" | "approval";
+type ApprovalMode = "none" | "line_manager" | "pm_then_line_manager";
+const MODES: ApprovalMode[] = ["line_manager", "pm_then_line_manager", "none"];
 
 const field = "h-9 rounded-[var(--radius-control)] border border-line bg-surface px-2 text-sm";
 const DAYS_DA = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -58,6 +61,8 @@ function SettingsView() {
   });
   const [error, setError] = useState<string | null>(null);
   const [addingPattern, setAddingPattern] = useState(false);
+  // Shown immediately on click; the server value takes over after the refetch.
+  const [modeChoice, setModeChoice] = useState<ApprovalMode | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["settings"] });
   const run = (p: Promise<unknown>) =>
     p
@@ -104,7 +109,7 @@ function SettingsView() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <h1 className="text-3xl font-normal">{t("set.title")}</h1>
       <div role="tablist" aria-label={t("set.title")} className="flex gap-1 border-b border-line">
-        {(["norm", "holidays", "absence"] as Tab[]).map((x) => (
+        {(["norm", "holidays", "absence", "approval"] as Tab[]).map((x) => (
           <button
             key={x}
             type="button"
@@ -123,6 +128,32 @@ function SettingsView() {
         </p>
       )}
       {!d && <p className="text-ink-500">{t("common.loading")}</p>}
+
+      {d && tab === "approval" && (
+        <Card>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-2 text-base font-medium">{t("adm.approvalMode")}</legend>
+            {MODES.map((m) => (
+              <label key={m} className="flex items-start gap-3 text-sm">
+                <input
+                  type="radio"
+                  name="approval-mode"
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-brand-600)]"
+                  checked={(modeChoice ?? d.approvalMode) === m}
+                  onChange={() => {
+                    setModeChoice(m);
+                    void run(
+                      api("/admin/approval-mode", { method: "PATCH", body: JSON.stringify({ mode: m }) }),
+                    ).then(() => setModeChoice(null));
+                  }}
+                />
+                <span className="text-ink-900">{t(`adm.approvalMode.${m}` as MessageKey)}</span>
+              </label>
+            ))}
+            <p className="text-xs text-ink-500">{t("adm.approvalModeHint")}</p>
+          </fieldset>
+        </Card>
+      )}
 
       {d && tab === "norm" && (
         <Card>

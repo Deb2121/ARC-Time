@@ -7,12 +7,15 @@
  *   POST /approvals/bulk-approve               approve several weeks in one transaction
  *   POST /approvals/:periodId/reject           reject with a required comment
  *   POST /approvals/:periodId/reopen           reopen an approved week with a reason (audited)
+ *   GET  /approvals/projects                   project manager inbox (mode pm_then_line_manager)
+ *   POST /approvals/projects/decide            project manager approves/rejects a week on their project
  */
 import { isoWeekday } from "@arc-tid/domain";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { AuthContext } from "../auth/plugin.ts";
 import { approvalInbox, approvePeriod, rejectPeriod, reopenApprovedPeriod } from "../services/approval.ts";
+import { pmDecide, pmInbox } from "../services/project-approval.ts";
 
 const monday = z
   .string()
@@ -22,6 +25,24 @@ const periodParams = z.object({ periodId: z.string().uuid() });
 
 /** Registers the approval endpoints under /api/v1. */
 export const approvalRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.get("/approvals/projects", async (req) => req.withTenant((tx) => pmInbox(tx, req.auth as AuthContext)));
+
+  app.post(
+    "/approvals/projects/decide",
+    {
+      schema: {
+        body: z.object({
+          userId: z.string().uuid(),
+          weekStart: monday,
+          projectId: z.string().uuid(),
+          decision: z.enum(["approve", "reject"]),
+          comment: z.string().trim().max(1000).optional(),
+        }),
+      },
+    },
+    async (req) => req.withTenant((tx) => pmDecide(tx, req.auth as AuthContext, req.body)),
+  );
+
   app.get("/approvals", { schema: { querystring: z.object({ weekStart: monday }) } }, async (req) =>
     req.withTenant((tx) => approvalInbox(tx, req.auth as AuthContext, req.query.weekStart)),
   );

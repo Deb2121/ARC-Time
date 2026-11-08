@@ -52,7 +52,7 @@ export const tenants = pgTable("tenants", {
   timeZone: text("time_zone").notNull().default("Europe/Copenhagen"),
   /** balances (flex, vacation) are opening balance at this date + registrations after it */
   goLiveDate: date("go_live_date").notNull().default(sql`current_date`),
-  /** approval mode (D-013): line manager only, or project managers first then line manager */
+  /** approval mode (D-013, D-022): none | line_manager | pm_then_line_manager */
   approvalMode: text("approval_mode").notNull().default("line_manager"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -462,6 +462,9 @@ export const timeEntries = pgTable(
     costRate: bigint("cost_rate", { mode: "number" }),
     approvedBy: uuid("approved_by").references(() => users.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
+    /** project manager step (approval mode pm_then_line_manager); cleared when the entry is edited */
+    pmApprovedBy: uuid("pm_approved_by").references(() => users.id),
+    pmApprovedAt: timestamp("pm_approved_at", { withTimezone: true }),
     invoiceLineId: uuid("invoice_line_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

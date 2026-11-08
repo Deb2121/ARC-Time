@@ -4,7 +4,7 @@
  * Expert); this module gathers their inputs, applies them and persists the result. Routes in
  * `routes/timesheet.ts` only validate input, check access and call these functions (Controller).
  */
-import { closedMonths, schema, type Tx, writeAudit } from "@arc-tid/db";
+import { closedMonths, schema, snapshotRates, type Tx, writeAudit } from "@arc-tid/db";
 import {
   addDays,
   dailyNorm,
@@ -21,6 +21,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 import type { AuthContext } from "../auth/plugin.ts";
 import { flexBalance, loadEmployee, normContext, summaryEntries } from "./calendar.ts";
 import { AppError } from "./errors.ts";
+import { approvalMode } from "./project-approval.ts";
 
 /** Timesheet period statuses in which the employee can no longer edit entries. */
 export const LOCKED_PERIOD = new Set(["submitted", "partially_approved", "approved"]);
@@ -318,6 +319,9 @@ export async function saveCell(tx: Tx, auth: AuthContext, b: CellInput) {
     comment,
     billable: b.absenceCodeId ? false : (b.billable ?? current?.billable ?? defaultBillable),
     status: "draft" as const,
+    // An edited entry needs its project manager's approval again (approval.md R3).
+    pmApprovedBy: null,
+    pmApprovedAt: null,
     updatedAt: new Date(),
   };
   // An edited rejected week goes back to "open" so it can be submitted again.
@@ -380,7 +384,49 @@ export async function submitWeek(tx: Tx, auth: AuthContext, weekStart: LocalDate
   await tx
     .insert(schema.timesheetEvents)
     .values({ tenantId: auth.tenantId, periodId: period.id, action: "submit", userId: auth.userId, comment });
+  if ((await approvalMode(tx, auth.tenantId)) === "none") {
+    await autoApprove(tx, auth, period.id, weekStart);
+    return { status: "approved", warnings };
+  }
   return { status: "submitted", warnings };
+}
+
+/**
+ * Approval mode "none": the submitted week is approved at once — still with rate snapshots, an event and an audit
+ * row, so history and invoicing work exactly as with a human approver.
+ */
+async function autoApprove(tx: Tx, auth: AuthContext, periodId: string, weekStart: LocalDate) {
+  const updated = await tx
+    .update(schema.timeEntries)
+    .set({ status: "approved", approvedAt: new Date(), updatedAt: new Date() })
+    .where(
+      and(
+        eq(schema.timeEntries.userId, auth.userId),
+        gte(schema.timeEntries.date, weekStart),
+        lte(schema.timeEntries.date, addDays(weekStart, 6)),
+        eq(schema.timeEntries.status, "submitted"),
+      ),
+    )
+    .returning({ id: schema.timeEntries.id });
+  await snapshotRates(
+    tx,
+    updated.map((u) => u.id),
+  );
+  await tx
+    .update(schema.timesheetPeriods)
+    .set({ status: "approved", decidedAt: new Date(), updatedAt: new Date() })
+    .where(eq(schema.timesheetPeriods.id, periodId));
+  await tx
+    .insert(schema.timesheetEvents)
+    .values({ tenantId: auth.tenantId, periodId, action: "auto_approve", userId: auth.userId });
+  await writeAudit(tx, {
+    tenantId: auth.tenantId,
+    entity: "timesheet_period",
+    entityId: periodId,
+    action: "auto_approve",
+    userId: auth.userId,
+    after: { status: "approved", entries: updated.length },
+  });
 }
 
 /** Lets the employee take back a submitted week before anyone has approved it (audited). */

@@ -124,3 +124,12 @@ worked examples. Norm-based utilisation stays in the TypeScript dashboard (singl
 Power BI service refresh needs API tokens (spec R10), which come later; until then the datasets work from a
 signed-in browser or Excel. `pnpm dev` starts it via dev.mjs (creates .venv on first run, skipped if Python is
 missing). · accepted
+
+**D-022 · 2026-11-08 · Approval modes** — Admin chooses per tenant (Indstillinger → Godkendelse): _line manager_
+(default, D-013), _project manager first, then line manager_, or _none_. In the PM mode each project with submitted
+hours is one PM step (projects without a manager, or managed by the employee, skip to the line manager; absence is
+always the line manager's). A PM approval makes the week "partially approved"; a PM reject sends only that project's
+hours back, with the comment prefixed by the project number; edited entries lose their PM stamp, so after
+resubmission only they return to the PM (spec R3/AC3). The line manager may approve before all PM steps are done
+("on behalf", recorded in the audit log). Mode _none_ approves at submission with the same rate snapshots, event and
+audit row. The employee can withdraw a week only while no step is approved. · accepted

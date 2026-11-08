@@ -1,12 +1,14 @@
 "use client";
 
-import { addDays, startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
+import { addDays, hasRole, startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
 import { Badge, Button } from "@arc-tid/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ExpenseApprovals } from "@/components/expense-approvals";
+import { ProjectApprovals } from "@/components/project-approvals";
+import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
 import { api } from "@/lib/api";
@@ -24,6 +26,7 @@ interface Item {
   flex: number;
   anomalies: { date: string; kind: "over" | "under" }[];
   projects: { number: string; name: string; hours: number }[];
+  pmPending: number;
 }
 
 export default function ApprovalPage() {
@@ -34,29 +37,42 @@ export default function ApprovalPage() {
   );
 }
 
-/** Two tabs: timesheets (per week) and expenses (everything submitted). */
+type Tab = "timesheets" | "projects" | "expenses";
+const TAB_LABEL: Record<Tab, MessageKey> = {
+  timesheets: "ap.tab.timesheets",
+  projects: "ap.tab.projects",
+  expenses: "ap.tab.expenses",
+};
+
+/** Tabs: timesheets (per week) and expenses for approvers; "my projects" for project managers. */
 function ApprovalTabs() {
   const { t } = useI18n();
+  const me = useMe();
   const params = useSearchParams();
   const router = useRouter();
-  const tab = params.get("tab") === "expenses" ? "expenses" : "timesheets";
+  const tabs: Tab[] = [
+    ...(hasRole(me.roles, "line_manager", "admin", "finance") ? (["timesheets"] as const) : []),
+    ...(hasRole(me.roles, "project_manager") ? (["projects"] as const) : []),
+    ...(hasRole(me.roles, "line_manager", "admin", "finance") ? (["expenses"] as const) : []),
+  ];
+  const tab = tabs.find((x) => x === params.get("tab")) ?? tabs[0] ?? "timesheets";
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <div role="tablist" aria-label={t("ap.title")} className="flex gap-1 border-b border-line">
-        {(["timesheets", "expenses"] as const).map((x) => (
+        {tabs.map((x) => (
           <button
             key={x}
             type="button"
             role="tab"
             aria-selected={tab === x}
-            onClick={() => router.push(x === "expenses" ? "/approval?tab=expenses" : "/approval")}
+            onClick={() => router.push(`/approval?tab=${x}`)}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold ${tab === x ? "border-brand-600 text-ink-900" : "border-transparent text-ink-500 hover:text-ink-900"}`}
           >
-            {t(x === "expenses" ? "ap.tab.expenses" : "ap.tab.timesheets")}
+            {t(TAB_LABEL[x])}
           </button>
         ))}
       </div>
-      {tab === "expenses" ? <ExpenseApprovals /> : <Approval />}
+      {tab === "expenses" ? <ExpenseApprovals /> : tab === "projects" ? <ProjectApprovals /> : <Approval />}
     </div>
   );
 }
@@ -96,7 +112,9 @@ function Approval() {
   });
 
   const items = inbox.data?.items ?? [];
-  const submittable = items.filter((i) => i.status === "submitted" && i.periodId);
+  const decidable = (i: Item) =>
+    (i.status === "submitted" || i.status === "partially_approved") && i.periodId;
+  const submittable = items.filter(decidable);
   const go = (w: string) => router.push(`/approval?week=${w}`);
 
   return (
@@ -142,7 +160,7 @@ function Approval() {
         {items.map((i) => {
           const over = i.anomalies.filter((a) => a.kind === "over").length;
           const under = i.anomalies.filter((a) => a.kind === "under").length;
-          const canDecide = i.status === "submitted" && i.periodId;
+          const canDecide = decidable(i);
           return (
             <li key={i.user.id} className="rounded-lg border border-line bg-surface">
               <div className="flex flex-wrap items-center gap-4 p-4">
@@ -169,6 +187,9 @@ function Approval() {
                   <Badge tone={i.status === "approved" ? "brand" : "neutral"}>
                     {t(`ts.status.${i.status}` as MessageKey)}
                   </Badge>
+                  {i.pmPending > 0 && (
+                    <p className="mt-1 text-xs text-ink-500">{t("ap.pmPending", { count: i.pmPending })}</p>
+                  )}
                 </div>
                 <dl className="grid grid-cols-4 gap-x-6 text-sm tabular-nums">
                   <Fig label={t("ts.norm")} value={fmtHours(i.norm, locale)} />

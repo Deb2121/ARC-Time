@@ -471,4 +471,23 @@ export const en: Record<MessageKey, string> = {
   "rp.kpiExcel": "Key figures (Excel)",
   "rp.kpiExcelHint":
     "Key figures per project and employee for the period: hours, billable share, effective rate and contribution margin.",
+  "ap.tab.projects": "My projects",
+  "ap.pmIntro":
+    "Hours on your projects waiting for you. After you approve, the line manager approves the whole week.",
+  "ap.pmEmpty": "No hours are waiting for you.",
+  "ap.pmDisabled":
+    "Project manager approval is not switched on. Timesheets are approved by the line manager.",
+  "ap.pmBillable": "{hours} h billable",
+  "ap.pmEntries": "Entries ({count})",
+  "ap.pmPending": "Waiting for project manager: {count}",
+  "adm.approvalMode": "Timesheet approval",
+  "adm.approvalMode.none": "No approval – submitted weeks are approved automatically",
+  "adm.approvalMode.line_manager": "The line manager approves the week",
+  "adm.approvalMode.pm_then_line_manager":
+    "Project managers approve their projects first, then the line manager",
+  "adm.approvalModeHint": "Applies to weeks submitted from now on.",
+  "err.pm_step_disabled": "Project manager approval is not switched on.",
+  "err.self_approval": "You cannot approve your own hours.",
+  "err.nothing_to_decide": "There are no more hours to decide on.",
+  "set.tab.approval": "Approval",
 };

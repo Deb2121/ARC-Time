@@ -11,6 +11,7 @@ import type { AuthContext } from "../auth/plugin.ts";
 import { loadEmployee, normContext, summaryEntries } from "./calendar.ts";
 import { AppError } from "./errors.ts";
 import { approveeIds, canApproveUser } from "./people.ts";
+import { approvalMode, pendingPmSteps } from "./project-approval.ts";
 
 /** Loads a timesheet period by id or throws 404. */
 async function loadPeriod(tx: Tx, periodId: string) {
@@ -78,6 +79,7 @@ export async function approvalInbox(tx: Tx, auth: AuthContext, weekStart: LocalD
     )
     .groupBy(schema.timeEntries.userId, schema.projects.number, schema.projects.name);
 
+  const pmMode = (await approvalMode(tx, auth.tenantId)) === "pm_then_line_manager";
   const items = [];
   for (const person of people.sort((a, b) => a.fullName.localeCompare(b.fullName))) {
     const emp = await loadEmployee(tx, person.id);
@@ -98,6 +100,9 @@ export async function approvalInbox(tx: Tx, auth: AuthContext, weekStart: LocalD
       billableBp: s.billableBp,
       flex: s.flex / 100,
       anomalies: dayAnomalies(s.days),
+      /** open project manager steps; the line manager may still approve ("on behalf", audited) */
+      pmPending:
+        pmMode && period && period.status !== "open" ? await pendingPmSteps(tx, person.id, weekStart) : 0,
       projects: perProject.filter((x) => x.userId === person.id).map(({ userId: _u, ...rest }) => rest),
     });
   }
@@ -111,6 +116,7 @@ export async function approvalInbox(tx: Tx, auth: AuthContext, weekStart: LocalD
 export async function approvePeriod(tx: Tx, auth: AuthContext, periodId: string) {
   const p = await loadForDecision(tx, auth, periodId);
   if (p.status !== "submitted" && p.status !== "partially_approved") throw new AppError(409, "not_submitted");
+  const onBehalfOfPm = await pendingPmSteps(tx, p.userId, p.weekStart);
   const updated = await tx
     .update(schema.timeEntries)
     .set({ status: "approved", approvedBy: auth.userId, approvedAt: new Date(), updatedAt: new Date() })
@@ -134,7 +140,7 @@ export async function approvePeriod(tx: Tx, auth: AuthContext, periodId: string)
     action: "approve",
     userId: auth.userId,
     before: { status: p.status },
-    after: { status: "approved", entries: updated.length },
+    after: { status: "approved", entries: updated.length, ...(onBehalfOfPm ? { onBehalfOfPm } : {}) },
   });
   return { status: "approved", entries: updated.length };
 }
@@ -200,6 +206,8 @@ export async function reopenApprovedPeriod(tx: Tx, auth: AuthContext, periodId: 
       costRate: null,
       approvedBy: null,
       approvedAt: null,
+      pmApprovedBy: null,
+      pmApprovedAt: null,
       updatedAt: new Date(),
     })
     .where(and(range, eq(schema.timeEntries.status, "approved")));

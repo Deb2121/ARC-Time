@@ -469,6 +469,24 @@ export const da = {
   "rp.kpiExcel": "Nøgletal (Excel)",
   "rp.kpiExcelHint":
     "Nøgletal pr. projekt og medarbejder for perioden: timer, faktureringsgrad, effektiv timepris og dækningsbidrag.",
+  "ap.tab.projects": "Mine projekter",
+  "ap.pmIntro":
+    "Timer på dine projekter, som venter på dig. Når du har godkendt, godkender nærmeste leder hele ugen.",
+  "ap.pmEmpty": "Ingen timer venter på dig.",
+  "ap.pmDisabled": "Projektledergodkendelse er ikke slået til. Ugesedler godkendes af nærmeste leder.",
+  "ap.pmBillable": "{hours} t fakturerbare",
+  "ap.pmEntries": "Registreringer ({count})",
+  "ap.pmPending": "Venter på projektleder: {count}",
+  "adm.approvalMode": "Godkendelse af ugesedler",
+  "adm.approvalMode.none": "Ingen godkendelse – indsendte uger godkendes automatisk",
+  "adm.approvalMode.line_manager": "Nærmeste leder godkender ugen",
+  "adm.approvalMode.pm_then_line_manager":
+    "Projektleder godkender sine projekter først, derefter nærmeste leder",
+  "adm.approvalModeHint": "Gælder for uger, der indsendes fra nu af.",
+  "err.pm_step_disabled": "Projektledergodkendelse er ikke slået til.",
+  "err.self_approval": "Du kan ikke godkende dine egne timer.",
+  "err.nothing_to_decide": "Der er ikke flere timer at tage stilling til.",
+  "set.tab.approval": "Godkendelse",
 } as const;
 
 export type MessageKey = keyof typeof da;

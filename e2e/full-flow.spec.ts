@@ -140,16 +140,23 @@ test("register → submit → approve → invoice → close period", async ({ pa
   await expect(jf.getByRole("row").filter({ hasText: "Kontorhus Nordvang" })).toHaveCount(0);
 
   // 4. Finance closes the first open month (acknowledging checklist warnings)
+  type Period = { id: string; month: string; status: string };
+  const latestClosed = async () =>
+    ((await (await jf.request.get(`${API}/api/v1/periods`)).json()) as Period[])
+      .filter((p) => p.status === "closed")
+      .sort((a, b) => b.month.localeCompare(a.month))[0];
+  const before = (await latestClosed())?.month ?? "";
   await jf.goto("/periods");
   const closeBtn = jf.getByRole("button", { name: "Luk måned" });
   await closeBtn.click();
   const anyway = jf.getByRole("button", { name: "Luk alligevel" });
-  const reopen = jf.getByRole("button", { name: "Genåbn" });
-  await expect(anyway.or(reopen).first()).toBeVisible();
+  // Either the checklist warnings appear (then acknowledge them) or the month closes at once. An older month's
+  // "Genåbn" button is visible from the start, so it cannot be used as the signal.
+  const newlyClosed = async () => ((await latestClosed())?.month ?? "") !== before;
+  await expect.poll(async () => (await anyway.isVisible()) || (await newlyClosed())).toBe(true);
   if (await anyway.isVisible()) await anyway.click();
-  await expect(reopen).toBeVisible();
-  const periods = await (await jf.request.get(`${API}/api/v1/periods`)).json();
-  closedPeriodId = [...periods].reverse().find((p: { status: string }) => p.status === "closed")?.id ?? null;
+  await expect.poll(newlyClosed).toBe(true);
+  closedPeriodId = (await latestClosed())?.id ?? null;
   if (shots) await jf.screenshot({ path: `${shots}/m2-periods.png`, fullPage: true });
   await jfCtx.close();
 });

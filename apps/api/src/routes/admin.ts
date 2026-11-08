@@ -9,6 +9,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { type AuthContext, requireRole } from "../auth/plugin.ts";
 import { AppError } from "../services/errors.ts";
+import { approvalMode } from "../services/project-approval.ts";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const hoursPerDay = z.number().min(0).max(24).multipleOf(0.25);
@@ -33,7 +34,35 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           .orderBy(asc(schema.holidays.date)),
         absenceCodes: await tx.select().from(schema.absenceCodes).orderBy(asc(schema.absenceCodes.code)),
         priceGroups: await tx.select().from(schema.priceGroups).orderBy(asc(schema.priceGroups.sort)),
+        approvalMode: await approvalMode(tx, req.auth?.tenantId ?? ""),
       }));
+    },
+  );
+
+  /** Sets how weeks are approved: none | line_manager | pm_then_line_manager (Admin only, audited). */
+  app.patch(
+    "/admin/approval-mode",
+    { schema: { body: z.object({ mode: z.enum(["none", "line_manager", "pm_then_line_manager"]) }) } },
+    async (req) => {
+      requireRole(req, "admin");
+      const auth = req.auth as AuthContext;
+      return req.withTenant(async (tx) => {
+        const before = await approvalMode(tx, auth.tenantId);
+        await tx
+          .update(schema.tenants)
+          .set({ approvalMode: req.body.mode, updatedAt: new Date() })
+          .where(eq(schema.tenants.id, auth.tenantId));
+        await writeAudit(tx, {
+          tenantId: auth.tenantId,
+          entity: "tenant",
+          entityId: auth.tenantId,
+          action: "approval_mode",
+          userId: auth.userId,
+          before: { mode: before },
+          after: { mode: req.body.mode },
+        });
+        return { mode: req.body.mode };
+      });
     },
   );
 
