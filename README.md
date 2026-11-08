@@ -1,4 +1,4 @@
-﻿# ARCnordic Tid
+# ARCnordic Tid
 
 Time tracking, projects, budgets, resource planning, approvals, invoicing, expenses, absence/flex, payroll export and
 reporting for ARCnordic. Built in-house as a clean-room implementation.
