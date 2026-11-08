@@ -20,3 +20,6 @@ Thumbs.db
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# uploaded receipts (local storage, D-017)
+data/

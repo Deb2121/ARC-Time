@@ -24,6 +24,7 @@ interface BasisRow {
   oldest: string | null;
   milestones: number;
   milestoneCount: number;
+  expenses: number;
   total: number;
 }
 export interface InvoiceListRow {
@@ -136,11 +137,10 @@ function Basis() {
     },
   });
 
-  const sum = rows.reduce((a, r) => ({ h: a.h + r.hours, v: a.v + r.value, m: a.m + r.milestones }), {
-    h: 0,
-    v: 0,
-    m: 0,
-  });
+  const sum = rows.reduce(
+    (a, r) => ({ h: a.h + r.hours, v: a.v + r.value, m: a.m + r.milestones, x: a.x + r.expenses }),
+    { h: 0, v: 0, m: 0, x: 0 },
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -221,6 +221,9 @@ function Basis() {
                   {t("inv.milestones")}
                 </th>
                 <th scope="col" className="px-4 py-3 text-right font-semibold">
+                  {t("inv.expenses")}
+                </th>
+                <th scope="col" className="px-4 py-3 text-right font-semibold">
                   {t("inv.total")}
                 </th>
                 <th scope="col" className="px-4 py-3 text-left font-semibold">
@@ -257,6 +260,9 @@ function Basis() {
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     {r.milestones ? fmtKr(r.milestones, locale) : ""}
                   </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    {r.expenses ? fmtKr(r.expenses, locale) : ""}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-ink-900">
                     {fmtKr(r.total, locale)}
                   </td>
@@ -275,7 +281,10 @@ function Basis() {
                 <td className="px-4 py-3 text-right">{fmtHours(sum.h, locale)}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">{fmtKr(sum.v, locale)}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">{fmtKr(sum.m, locale)}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-right">{fmtKr(sum.v + sum.m, locale)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right">{fmtKr(sum.x, locale)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right">
+                  {fmtKr(sum.v + sum.m + sum.x, locale)}
+                </td>
                 <td />
               </tr>
             </tfoot>

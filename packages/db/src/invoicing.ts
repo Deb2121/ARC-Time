@@ -8,6 +8,7 @@
  * reservation final (entry status "invoiced", plan item "invoiced").
  */
 import {
+  billableAmount,
   buildTimeLines,
   DANISH_VAT_BP,
   dueDate,
@@ -15,6 +16,7 @@ import {
   type Grouping,
   type InvoiceableEntry,
   invoiceTotals,
+  isAmountLine,
   isLocked,
   type LocalDate,
   lineAmount,
@@ -37,8 +39,6 @@ export class InvoiceError extends Error {
     super(code);
   }
 }
-
-const AMOUNT_KINDS = new Set(["time", "milestone", "product"]);
 
 /** Closed accounting months for the tenant (single legal entity in MVP; per entity in M4). */
 export async function closedMonths(tx: Tx): Promise<Set<string>> {
@@ -173,7 +173,32 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
             ),
           )
           .orderBy(asc(s.paymentPlanItems.dueDate));
-  if (!entries.length && !milestones.length) return null;
+  // Approved, billable, unreserved expenses on the projects (brief §4.7): re-invoiced at net + markup.
+  const billableExpenses = await tx
+    .select({
+      id: s.expenses.id,
+      projectId: s.expenses.projectId,
+      date: s.expenses.date,
+      kind: s.expenses.kind,
+      description: s.expenses.description,
+      netAmount: s.expenses.netAmount,
+      markupBp: s.expenses.markupBp,
+      km: s.expenses.km,
+      typeName: s.expenseTypes.name,
+    })
+    .from(s.expenses)
+    .leftJoin(s.expenseTypes, eq(s.expenseTypes.id, s.expenses.expenseTypeId))
+    .where(
+      and(
+        inArray(s.expenses.projectId, p.projectIds),
+        eq(s.expenses.status, "approved"),
+        eq(s.expenses.billable, true),
+        isNull(s.expenses.invoiceLineId),
+        lte(s.expenses.date, p.upTo),
+      ),
+    )
+    .orderBy(asc(s.expenses.date));
+  if (!entries.length && !milestones.length && !billableExpenses.length) return null;
 
   const [invoice] = await tx
     .insert(s.invoices)
@@ -197,7 +222,8 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
     const projMilestones = milestones.filter(
       (m) => contracts.find((c) => c.id === m.contractId)?.projectId === project.id,
     );
-    if (!projEntries.length && !projMilestones.length) continue;
+    const projExpenses = billableExpenses.filter((x) => x.projectId === project.id);
+    if (!projEntries.length && !projMilestones.length && !projExpenses.length) continue;
     if (projects.length > 1) {
       await tx.insert(s.invoiceLines).values({
         tenantId: p.tenantId,
@@ -272,6 +298,28 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
           ),
         );
     }
+    for (const x of projExpenses) {
+      const amount = billableAmount(x.netAmount, x.markupBp);
+      const label =
+        x.kind === "mileage" ? `Kørsel ${x.km} km` : `Udlæg${x.typeName ? ` (${x.typeName})` : ""}`;
+      const [line] = await tx
+        .insert(s.invoiceLines)
+        .values({
+          tenantId: p.tenantId,
+          invoiceId: invoice.id,
+          sort: sort++,
+          kind: "expense",
+          description: `${label}: ${x.description}`,
+          quantity: 1,
+          unitPrice: amount,
+          amount,
+          originalAmount: amount,
+          vatBp: DANISH_VAT_BP,
+          projectId: project.id,
+        })
+        .returning();
+      await tx.update(s.expenses).set({ invoiceLineId: line?.id }).where(eq(s.expenses.id, x.id));
+    }
   }
   await recalcInvoice(tx, invoice.id);
   await writeAudit(tx, {
@@ -304,7 +352,7 @@ async function assertEditable(tx: Tx, invoiceId: string) {
 export async function recalcInvoice(tx: Tx, invoiceId: string) {
   const lines = await tx.select().from(s.invoiceLines).where(eq(s.invoiceLines.invoiceId, invoiceId));
   const t = invoiceTotals(
-    lines.filter((l) => AMOUNT_KINDS.has(l.kind)).map((l) => ({ amount: l.amount, vatBp: l.vatBp })),
+    lines.filter((l) => isAmountLine(l.kind)).map((l) => ({ amount: l.amount, vatBp: l.vatBp })),
   );
   await tx
     .update(s.invoices)
@@ -340,7 +388,7 @@ export async function updateLine(tx: Tx, tenantId: string, userId: string, lineI
     ...line,
     ...Object.fromEntries(Object.entries(u).filter(([, v]) => v !== undefined)),
   } as typeof line;
-  if (AMOUNT_KINDS.has(line.kind)) {
+  if (isAmountLine(line.kind)) {
     if (u.amount !== undefined) next.amount = u.amount;
     else if (u.quantity !== undefined || u.unitPrice !== undefined || u.discountBp !== undefined) {
       next.amount = lineAmount(Math.round(next.quantity * 100), next.unitPrice, next.discountBp);
@@ -429,6 +477,7 @@ export async function addFreeLine(
 
 async function releaseLines(tx: Tx, lineIds: string[]) {
   if (!lineIds.length) return;
+  await tx.update(s.expenses).set({ invoiceLineId: null }).where(inArray(s.expenses.invoiceLineId, lineIds));
   await tx
     .update(s.timeEntries)
     .set({ invoiceLineId: null })
@@ -486,7 +535,7 @@ export async function bookInvoice(
 ): Promise<number> {
   const inv = await assertEditable(tx, invoiceId);
   const lines = await tx.select().from(s.invoiceLines).where(eq(s.invoiceLines.invoiceId, invoiceId));
-  if (!lines.some((l) => AMOUNT_KINDS.has(l.kind))) throw new InvoiceError("invoice_empty", 422);
+  if (!lines.some((l) => isAmountLine(l.kind))) throw new InvoiceError("invoice_empty", 422);
   if (isLocked(inv.invoiceDate, await closedMonths(tx))) throw new InvoiceError("period_closed");
 
   await tx
@@ -513,6 +562,10 @@ export async function bookInvoice(
   const lineIds = lines.map((l) => l.id);
   if (inv.type === "invoice") {
     await tx
+      .update(s.expenses)
+      .set({ status: "invoiced", updatedAt: new Date() })
+      .where(inArray(s.expenses.invoiceLineId, lineIds));
+    await tx
       .update(s.timeEntries)
       .set({ status: "invoiced", updatedAt: new Date() })
       .where(inArray(s.timeEntries.invoiceLineId, lineIds));
@@ -524,6 +577,10 @@ export async function bookInvoice(
     // Credit note with "re-open": the credited lines' entries/milestones become invoiceable again.
     const toRelease = lines.flatMap((l) => (l.creditsLineId ? [l.creditsLineId] : []));
     if (toRelease.length) {
+      await tx
+        .update(s.expenses)
+        .set({ status: "approved", invoiceLineId: null, updatedAt: new Date() })
+        .where(inArray(s.expenses.invoiceLineId, toRelease));
       await tx
         .update(s.timeEntries)
         .set({ status: "approved", invoiceLineId: null, updatedAt: new Date() })

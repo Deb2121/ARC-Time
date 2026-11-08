@@ -1,5 +1,6 @@
 "use client";
 
+import { isAmountLine } from "@arc-tid/domain";
 import { Badge, Button, Card } from "@arc-tid/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -357,7 +358,7 @@ export default function InvoicePage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {["time", "milestone", "product"].includes(l.kind) && (
+                      {isAmountLine(l.kind) && (
                         <input
                           aria-label={t("inv.quantity")}
                           inputMode="decimal"
@@ -369,7 +370,7 @@ export default function InvoicePage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {["time", "milestone", "product"].includes(l.kind) && (
+                      {isAmountLine(l.kind) && (
                         <input
                           aria-label={t("inv.unitPrice")}
                           inputMode="decimal"
@@ -381,7 +382,7 @@ export default function InvoicePage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {["time", "milestone", "product"].includes(l.kind) && (
+                      {isAmountLine(l.kind) && (
                         <input
                           aria-label={t("inv.amount")}
                           inputMode="decimal"
@@ -450,13 +451,13 @@ export default function InvoicePage() {
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      {["time", "milestone", "product"].includes(l.kind) ? fmtHours(l.quantity, locale) : ""}
+                      {isAmountLine(l.kind) ? fmtHours(l.quantity, locale) : ""}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right">
-                      {["time", "milestone", "product"].includes(l.kind) ? fmtKr(l.unitPrice, locale, 2) : ""}
+                      {isAmountLine(l.kind) ? fmtKr(l.unitPrice, locale, 2) : ""}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right text-ink-900">
-                      {["time", "milestone", "product"].includes(l.kind) ? fmtKr(l.amount, locale, 2) : ""}
+                      {isAmountLine(l.kind) ? fmtKr(l.amount, locale, 2) : ""}
                     </td>
                     {editable && (
                       <td className="px-3 py-2.5 text-right">

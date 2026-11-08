@@ -55,3 +55,33 @@ export interface Me extends Person {
   tenantId: string;
   csrfToken: string;
 }
+
+/** Metadata of an uploaded file (receipt) as returned by POST /files. */
+export interface UploadedFile {
+  id: string;
+  filename: string;
+  contentType: string;
+  size: number;
+}
+
+/**
+ * Uploads one file (e.g. a receipt) as multipart form data with the session cookie and CSRF header.
+ * The server checks size (≤ 10 MB) and real file type; errors come back as ApiError codes.
+ */
+export async function uploadFile(file: File): Promise<UploadedFile> {
+  const body = new FormData();
+  body.append("file", file, file.name);
+  const headers = new Headers();
+  if (csrfToken) headers.set("x-csrf-token", csrfToken);
+  const res = await fetch(`${API_URL}/api/v1/files`, {
+    method: "POST",
+    body,
+    headers,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(res.status, err.error ?? "error");
+  }
+  return (await res.json()) as UploadedFile;
+}

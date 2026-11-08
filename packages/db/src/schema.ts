@@ -595,6 +595,7 @@ export const invoiceTypeEnum = pgEnum("invoice_type", ["invoice", "credit"]);
 export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "ready", "booked"]);
 export const invoiceLineKindEnum = pgEnum("invoice_line_kind", [
   "time",
+  "expense",
   "milestone",
   "product",
   "text",
@@ -767,4 +768,90 @@ export const outbox = pgTable(
     processedAt: timestamp("processed_at", { withTimezone: true }),
   },
   (t) => [index("outbox_pending_idx").on(t.status, t.createdAt)],
+);
+
+/* ───────────────────────────── M3: expenses, mileage, files ───────────────────────────── */
+
+/** Expense categories; `vatDeductibleBp` is the share of the VAT the company may deduct (e.g. 2500 for restaurant). */
+export const expenseTypes = pgTable("expense_types", {
+  id: id(),
+  tenantId: tenantId(),
+  name: text("name").notNull(),
+  vatBp: integer("vat_bp").notNull().default(2500),
+  vatDeductibleBp: integer("vat_deductible_bp").notNull().default(10_000),
+  active: boolean("active").notNull().default(true),
+});
+
+/** Mileage allowance per year: high rate (øre/km) up to the threshold, low rate above. Configuration, verified by Finance. */
+export const mileageRates = pgTable(
+  "mileage_rates",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    year: integer("year").notNull(),
+    highRate: bigint("high_rate", { mode: "number" }).notNull(),
+    lowRate: bigint("low_rate", { mode: "number" }).notNull(),
+    thresholdKm: integer("threshold_km").notNull().default(20_000),
+  },
+  (t) => [uniqueIndex("mileage_rates_tenant_year_uq").on(t.tenantId, t.year)],
+);
+
+/** Uploaded files (receipts). The bytes live on disk under data/uploads/<tenant>/<id>; this row is the metadata. */
+export const files = pgTable("files", {
+  id: id(),
+  tenantId: tenantId(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => users.id),
+  filename: text("filename").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  sha256: text("sha256").notNull(),
+  createdAt: createdAt(),
+});
+
+export const expenseKindEnum = pgEnum("expense_kind", ["expense", "mileage"]);
+
+/**
+ * An out-of-pocket expense or a mileage claim. Amounts in øre in `currency`; for mileage, `km` and the computed
+ * allowance (`grossAmount`, no VAT). Same lifecycle as time entries: draft → submitted → approved → invoiced.
+ */
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    date: date("date").notNull(),
+    kind: expenseKindEnum("kind").notNull(),
+    projectId: uuid("project_id").references(() => projects.id),
+    expenseTypeId: uuid("expense_type_id").references(() => expenseTypes.id),
+    description: text("description").notNull(),
+    currency: char("currency", { length: 3 }).notNull().default("DKK"),
+    grossAmount: bigint("gross_amount", { mode: "number" }).notNull(),
+    vatAmount: bigint("vat_amount", { mode: "number" }).notNull().default(0),
+    netAmount: bigint("net_amount", { mode: "number" }).notNull(),
+    /** what the company bears: net + non-deductible VAT (øre) */
+    costAmount: bigint("cost_amount", { mode: "number" }).notNull(),
+    billable: boolean("billable").notNull().default(false),
+    markupBp: integer("markup_bp").notNull().default(0),
+    km: numeric("km", { precision: 8, scale: 1, mode: "number" }),
+    fromPlace: text("from_place"),
+    toPlace: text("to_place"),
+    receiptFileId: uuid("receipt_file_id").references(() => files.id),
+    status: entryStatusEnum("status").notNull().default("draft"),
+    rejectComment: text("reject_comment"),
+    approvedBy: uuid("approved_by").references(() => users.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    invoiceLineId: uuid("invoice_line_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("expenses_user_date_idx").on(t.tenantId, t.userId, t.date),
+    index("expenses_project_idx").on(t.tenantId, t.projectId),
+    check("expenses_billable_needs_project", sql`not ${t.billable} or ${t.projectId} is not null`),
+  ],
 );

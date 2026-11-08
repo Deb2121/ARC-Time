@@ -24,6 +24,7 @@ import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 import { createDb, type Tx } from "./client.ts";
 import * as s from "./schema.ts";
+import { seedExpenses } from "./seed-expenses.ts";
 import { seedMoney } from "./seed-money.ts";
 
 config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
@@ -923,6 +924,7 @@ await db.transaction(async (tx: Tx) => {
   }
 
   await seedMoney(tx, tenantId, uid("JF"), firstMonday, today);
+  await seedExpenses(tx, tenantId, today);
 });
 
 const [{ count } = { count: 0 }] = await db.execute<{ count: number }>(

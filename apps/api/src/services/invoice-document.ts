@@ -3,7 +3,7 @@
  * Template texts are our own. Bank details come from the legal entity (fictional in the seed).
  */
 import { schema, type Tx } from "@arc-tid/db";
-import { formatMinor, invoiceTotals } from "@arc-tid/domain";
+import { formatMinor, invoiceTotals, isAmountLine } from "@arc-tid/domain";
 import { asc, eq, inArray } from "drizzle-orm";
 
 const esc = (s: string | null | undefined) =>
@@ -40,9 +40,7 @@ export async function invoiceHtml(tx: Tx, invoiceId: string): Promise<string> {
     .where(eq(schema.invoiceLines.invoiceId, invoiceId))
     .orderBy(asc(schema.invoiceLines.sort));
   const totals = invoiceTotals(
-    lines
-      .filter((l) => ["time", "milestone", "product"].includes(l.kind))
-      .map((l) => ({ amount: l.amount, vatBp: l.vatBp })),
+    lines.filter((l) => isAmountLine(l.kind)).map((l) => ({ amount: l.amount, vatBp: l.vatBp })),
   );
 
   const spec = inv.attachSpecification

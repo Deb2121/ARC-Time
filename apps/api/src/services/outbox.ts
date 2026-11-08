@@ -4,8 +4,9 @@
  * Integrations are disabled by default: events for a tenant without an enabled connection are marked "skipped".
  */
 import { type Db, schema, withTenant } from "@arc-tid/db";
+import { AMOUNT_LINE_KINDS } from "@arc-tid/domain";
 import { type AccountingAdapter, IntegrationError, type InvoiceDoc } from "@arc-tid/integrations";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 const MAX_ATTEMPTS = 5;
 
@@ -25,7 +26,7 @@ async function invoiceDoc(
       .where(
         and(
           eq(schema.invoiceLines.invoiceId, inv.id),
-          sql`${schema.invoiceLines.kind} in ('time','milestone','product')`,
+          inArray(schema.invoiceLines.kind, [...AMOUNT_LINE_KINDS]),
         ),
       )
       .orderBy(asc(schema.invoiceLines.sort));

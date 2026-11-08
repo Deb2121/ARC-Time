@@ -27,6 +27,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/", label: "nav.home", ready: true },
   { href: "/timesheet", label: "nav.timesheet", ready: true },
+  { href: "/expenses", label: "nav.expenses", ready: true },
   { href: "/approval", label: "nav.approval", roles: ["line_manager", "admin", "finance"], ready: true },
   { href: "/projects", label: "nav.projects", ready: true },
   {

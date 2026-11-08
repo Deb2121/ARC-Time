@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { ExpenseApprovals } from "@/components/expense-approvals";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
 import { api } from "@/lib/api";
@@ -28,8 +29,35 @@ interface Item {
 export default function ApprovalPage() {
   return (
     <Suspense>
-      <Approval />
+      <ApprovalTabs />
     </Suspense>
+  );
+}
+
+/** Two tabs: timesheets (per week) and expenses (everything submitted). */
+function ApprovalTabs() {
+  const { t } = useI18n();
+  const params = useSearchParams();
+  const router = useRouter();
+  const tab = params.get("tab") === "expenses" ? "expenses" : "timesheets";
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <div role="tablist" aria-label={t("ap.title")} className="flex gap-1 border-b border-line">
+        {(["timesheets", "expenses"] as const).map((x) => (
+          <button
+            key={x}
+            type="button"
+            role="tab"
+            aria-selected={tab === x}
+            onClick={() => router.push(x === "expenses" ? "/approval?tab=expenses" : "/approval")}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold ${tab === x ? "border-brand-600 text-ink-900" : "border-transparent text-ink-500 hover:text-ink-900"}`}
+          >
+            {t(x === "expenses" ? "ap.tab.expenses" : "ap.tab.timesheets")}
+          </button>
+        ))}
+      </div>
+      {tab === "expenses" ? <ExpenseApprovals /> : <Approval />}
+    </div>
   );
 }
 

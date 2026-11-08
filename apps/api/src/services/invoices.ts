@@ -8,7 +8,7 @@
  * invoices for projects they manage. Only Finance/Admin book and credit (enforced in the routes).
  */
 import { InvoiceError, loadInvoice, recalcInvoice, schema, type Tx, writeAudit } from "@arc-tid/db";
-import { hasRole, invoiceTotals, type LocalDate } from "@arc-tid/domain";
+import { hasRole, invoiceTotals, isAmountLine, type LocalDate } from "@arc-tid/domain";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { AuthContext } from "../auth/plugin.ts";
 import { AppError } from "./errors.ts";
@@ -51,7 +51,8 @@ export async function assertCanSeeLine(tx: Tx, auth: AuthContext, lineId: string
 
 /**
  * Invoicing basis ("faktureringsgrundlag"): per customer project, everything invoiceable up to `upTo` — approved,
- * billable, unreserved T&M hours (value at the approval rate snapshot, øre) and due or ready payment-plan items.
+ * billable, unreserved T&M hours (value at the approval rate snapshot, øre), due or ready payment-plan items, and
+ * approved billable expenses (net + markup).
  * Project managers see only projects they manage.
  */
 export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate) {
@@ -69,10 +70,12 @@ export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate)
     oldest: string | null;
     milestones: string;
     milestone_count: number;
+    expenses: string;
   }>(sql`
     select p.id as project_id, p.number, p.name, c.id as customer_id, c.name as customer_name, u.initials as manager_initials,
       coalesce(t.hours, 0) as hours, coalesce(t.value, 0) as value, t.oldest,
-      coalesce(m.amount, 0) as milestones, coalesce(m.n, 0)::int as milestone_count
+      coalesce(m.amount, 0) as milestones, coalesce(m.n, 0)::int as milestone_count,
+      coalesce(x.amount, 0) as expenses
     from projects p
     join customers c on c.id = p.customer_id
     left join users u on u.id = p.manager_id
@@ -87,7 +90,13 @@ export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate)
       where k.project_id = p.id and pi.invoice_line_id is null
         and (pi.status = 'ready' or (pi.status = 'planned' and pi.due_date <= ${upTo}))
     ) m on true
-    where (coalesce(t.hours, 0) > 0 or coalesce(m.n, 0) > 0)
+    left join lateral (
+      select round(sum(ex.net_amount + ex.net_amount * ex.markup_bp / 10000.0)) as amount
+      from expenses ex
+      where ex.project_id = p.id and ex.status = 'approved' and ex.billable and ex.invoice_line_id is null
+        and ex.date <= ${upTo}
+    ) x on true
+    where (coalesce(t.hours, 0) > 0 or coalesce(m.n, 0) > 0 or coalesce(x.amount, 0) > 0)
       ${onlyOwn ? sql`and p.manager_id = ${auth.userId}` : sql``}
     order by c.name, p.number`);
   return rows.map((r) => ({
@@ -102,7 +111,8 @@ export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate)
     oldest: r.oldest,
     milestones: Number(r.milestones),
     milestoneCount: r.milestone_count,
-    total: Number(r.value) + Number(r.milestones),
+    expenses: Number(r.expenses),
+    total: Number(r.value) + Number(r.milestones) + Number(r.expenses),
   }));
 }
 
@@ -201,9 +211,7 @@ export async function invoiceDetail(tx: Tx, auth: AuthContext, invoiceId: string
       : null,
     lines: lines.map((l) => ({ ...l, sourceCount: sourceCounts.find((c) => c.lineId === l.id)?.n ?? 0 })),
     totals: invoiceTotals(
-      lines
-        .filter((l) => ["time", "milestone", "product"].includes(l.kind))
-        .map((l) => ({ amount: l.amount, vatBp: l.vatBp })),
+      lines.filter((l) => isAmountLine(l.kind)).map((l) => ({ amount: l.amount, vatBp: l.vatBp })),
     ),
     credits,
     canBook: hasRole(auth.roles, "finance", "admin") && inv.status !== "booked",

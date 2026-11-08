@@ -7,6 +7,7 @@ import { type Db, InvoiceError, PeriodError } from "@arc-tid/db";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
@@ -24,6 +25,7 @@ import { authRoutes } from "./auth/routes.ts";
 import type { Config } from "./config.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { approvalRoutes } from "./routes/approval.ts";
+import { expenseRoutes } from "./routes/expenses.ts";
 import { financeRoutes } from "./routes/finance.ts";
 import { invoicingRoutes } from "./routes/invoicing.ts";
 import { projectRoutes } from "./routes/projects.ts";
@@ -76,6 +78,7 @@ export async function buildApp(config: Config, db: Db) {
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
   });
   await app.register(cookie, { secret: config.SESSION_SECRET });
+  await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 + 1, files: 1 } });
   await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
 
   await app.register(swagger, {
@@ -106,6 +109,7 @@ export async function buildApp(config: Config, db: Db) {
       await v1.register(invoicingRoutes);
       await v1.register(financeRoutes);
       await v1.register(adminRoutes);
+      await v1.register(expenseRoutes);
     },
     { prefix: "/api/v1" },
   );

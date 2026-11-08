@@ -160,3 +160,10 @@ export function lineAmount(quantity: number, unitPrice: Minor, discountBp = 0): 
   const gross = divRound(quantity * unitPrice, 100);
   return gross - percentOf(gross, discountBp);
 }
+
+/** Invoice line kinds that carry an amount (count in totals/VAT); headings, texts and subtotals do not. */
+export const AMOUNT_LINE_KINDS = ["time", "expense", "milestone", "product"] as const;
+
+/** True for line kinds that carry an amount. @example isAmountLine("expense") // true; isAmountLine("text") // false */
+export const isAmountLine = (kind: string): boolean =>
+  (AMOUNT_LINE_KINDS as readonly string[]).includes(kind);

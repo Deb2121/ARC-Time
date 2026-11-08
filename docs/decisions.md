@@ -96,3 +96,11 @@ and documentation so new developers can take over. Route files are thin Controll
 (Polymorphism / Protected Variations); services throw `AppError` instead of depending on HTTP code (Low Coupling).
 Every file has a header and every export a JSDoc, enforced by `scripts/check-docs.mjs` in `pnpm check` and the
 pre-commit hook. Guide: `docs/architecture.md`. · accepted
+
+**D-019 · 2026-11-08 · Expenses: approval, VAT, mileage rates, receipts** — One approval step: the employee's line
+manager (Finance/Admin may approve anyone's, never their own). VAT is split from the VAT-inclusive amount per
+expense type, with a deductible share (restaurant/representation 25 %). Mileage uses a yearly rate table (high rate
+up to 20.000 km per person per year, low rate above); the seeded rates are illustrative and must be verified by
+Finance. Billable expenses need a project and are re-invoiced at net + markup, once (reserved like hours).
+Receipts ≤ 10 MB, type checked by content (PDF/JPEG/PNG/WebP), stored locally under data/uploads (D-017);
+malware scanning and company-card import are V2. · accepted
