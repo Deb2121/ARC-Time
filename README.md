@@ -3,7 +3,7 @@
 Time tracking, projects, budgets, resource planning, approvals, invoicing, expenses, absence/flex, payroll export and
 reporting for ARCnordic. Built in-house as a clean-room implementation.
 
-Status: **M2 Money done** — next: M3 (operations: expenses, resource planning, dashboards). See [`docs/progress.md`](docs/progress.md).
+Status: **M3 Operations done** — next: payroll export and data import (M4). See [`docs/progress.md`](docs/progress.md).
 
 **Ny udvikler? Start med [`docs/architecture.md`](docs/architecture.md)** — kodekort, GRASP-roller og "sådan tilføjer du en funktion".
 
@@ -27,7 +27,7 @@ pnpm dev                 # web http://localhost:3000 · API http://localhost:400
 ```
 
 Demo users (fictional): `kh@demo.arcnordic.test` (admin), `jf@…` (finance), `al@…` (line manager), `lv@…` (employee) — password `demo1234`.
-Walkthroughs: [`docs/demo/m0-foundation.md`](docs/demo/m0-foundation.md), [`docs/demo/m1-core-loop.md`](docs/demo/m1-core-loop.md), [`docs/demo/m2-money.md`](docs/demo/m2-money.md).
+Walkthroughs: [`docs/demo/m0-foundation.md`](docs/demo/m0-foundation.md), [`docs/demo/m1-core-loop.md`](docs/demo/m1-core-loop.md), [`docs/demo/m2-money.md`](docs/demo/m2-money.md), [`docs/demo/m3-operations.md`](docs/demo/m3-operations.md).
 
 Quality gate (run before every commit to main): `pnpm check` (lint + typecheck + tests). E2E: `pnpm e2e` with the dev stack running.
 

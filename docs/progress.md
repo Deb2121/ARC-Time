@@ -27,14 +27,18 @@
 
 - 2026-11-08 · **Settings & conveniences** — admin screens for norm time, holiday calendars and absence codes; employee editing; create-project form; timesheet day view. GRASP refactor with JSDoc gate (`docs/architecture.md`).
 
-## In progress — M3 Operations
+- 2026-11-08 · **M3 Operations** — see `docs/demo/m3-operations.md`
+  - Done: expenses and mileage (receipts, VAT split, approval, re-invoicing); resource planner (capacity heatmap, allocations, competence filter); role-based home dashboard (to-dos per role, team/company utilisation and billable share with a 12-week trend, invoiced revenue and effective rate for Finance/Management); weekly e-mail reminders (Monday 09:00, only when SMTP is configured, never sent twice); Outlook calendar import in "Min uge" (read-only, off by default, picked meetings become draft hours rounded to 0,25 h — D-020).
+  - KPI formulas live in `packages/domain/src/kpi.ts` with the worked examples from `docs/spec/reporting.md`.
+  - Python analytics service `apps/analytics` (D-021): KPI JSON, Excel workbook (Rapporter → "Nøgletal (Excel)"), Power BI datasets; read-only DB role; KPI formulas tested with the same examples as TypeScript; docs gate also checks Python docstrings.
+  - Approval modes (D-022): project manager step before the line manager (tab "Mine projekter"), or no approval; chosen under Indstillinger → Godkendelse.
+  - Test hygiene: the full-flow E2E now waits for the month to really close (it could pass without closing), and the M2 close test reopens a month it closed.
 
-- Done: expenses and mileage (receipts, VAT split, approval, re-invoicing); resource planner (capacity heatmap, allocations, competence filter); role-based home dashboard (to-dos per role, team/company utilisation and billable share with a 12-week trend, invoiced revenue and effective rate for Finance/Management); weekly e-mail reminders (Monday 09:00, only when SMTP is configured, never sent twice); Outlook calendar import in "Min uge" (read-only, off by default, picked meetings become draft hours rounded to 0,25 h — D-020).
-- KPI formulas live in `packages/domain/src/kpi.ts` with the worked examples from `docs/spec/reporting.md`.
-- Python analytics service `apps/analytics` (D-021): KPI JSON, Excel workbook (Rapporter → "Nøgletal (Excel)"), Power BI datasets; read-only DB role; KPI formulas tested with the same examples as TypeScript; docs gate also checks Python docstrings.
-- Next: M3 demo script.
-- Approval modes (D-022): project manager step before the line manager (tab "Mine projekter"), or no approval; chosen under Indstillinger → Godkendelse.
-- Test hygiene: the full-flow E2E now waits for the month to really close (it could pass without closing), and the M2 close test reopens a month it closed.
+## Next — M4 (prioritised with the product owner, 2026-11-08)
+
+1. Payroll export (Danløn / Dataløn / Zenegy file formats, behind adapters, disabled by default).
+2. Data import (customers, projects, employees from CSV/Excel, with a dry-run preview).
+3. Later, if needed: multi-entity and multi-currency, PWA, project templates, Gantt, CRM pipeline, API tokens.
 
 ## Waiting on product owner
 
