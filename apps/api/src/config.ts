@@ -1,6 +1,7 @@
 /**
  * Environment configuration, validated with Zod at start-up (fails fast on missing/invalid values).
- * Derived flags: dev login can never be on in production; Entra ID is enabled only when all three values are set.
+ * Derived flags: dev login can never be on in production; Entra ID is enabled only when all three values are set;
+ * Outlook calendar import needs Entra plus GRAPH_CALENDAR_ENABLED=true (off by default).
  */
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
@@ -22,18 +23,31 @@ const schema = z.object({
   ENTRA_CLIENT_ID: z.string().optional().default(""),
   ENTRA_CLIENT_SECRET: z.string().optional().default(""),
   ENTRA_REDIRECT_URI: z.string().optional().default(""),
+  /** read-only Outlook calendar import via Microsoft Graph (scope Calendars.Read) */
+  GRAPH_CALENDAR_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
-export type Config = z.infer<typeof schema> & { entraEnabled: boolean; devLoginEnabled: boolean };
+export type Config = z.infer<typeof schema> & {
+  entraEnabled: boolean;
+  devLoginEnabled: boolean;
+  calendarEnabled: boolean;
+};
 
 /** Loads .env from the repo root, applies overrides (used by tests) and returns the validated config. */
 export function loadConfig(overrides: Record<string, string | undefined> = {}): Config {
   loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
   const parsed = schema.parse({ ...process.env, ...overrides });
+  const entraEnabled = Boolean(
+    parsed.ENTRA_TENANT_ID && parsed.ENTRA_CLIENT_ID && parsed.ENTRA_CLIENT_SECRET,
+  );
   return {
     ...parsed,
     // Dev login can never be enabled in production, whatever the env says.
     devLoginEnabled: parsed.DEV_LOGIN_ENABLED && parsed.NODE_ENV !== "production",
-    entraEnabled: Boolean(parsed.ENTRA_TENANT_ID && parsed.ENTRA_CLIENT_ID && parsed.ENTRA_CLIENT_SECRET),
+    entraEnabled,
+    calendarEnabled: entraEnabled && parsed.GRAPH_CALENDAR_ENABLED,
   };
 }

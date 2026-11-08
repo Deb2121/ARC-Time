@@ -25,6 +25,7 @@ import { authRoutes } from "./auth/routes.ts";
 import type { Config } from "./config.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { approvalRoutes } from "./routes/approval.ts";
+import { calendarRoutes } from "./routes/calendar.ts";
 import { expenseRoutes } from "./routes/expenses.ts";
 import { financeRoutes } from "./routes/finance.ts";
 import { invoicingRoutes } from "./routes/invoicing.ts";
@@ -34,9 +35,16 @@ import { reportRoutes } from "./routes/reports.ts";
 import { timesheetRoutes } from "./routes/timesheet.ts";
 import { userRoutes } from "./routes/users.ts";
 import { AppError } from "./services/errors.ts";
+import { type CalendarProvider, graphCalendarProvider } from "./services/outlook.ts";
+
+/** Replaceable collaborators (tests pass fakes); defaults are the real, config-driven implementations. */
+export interface AppDeps {
+  calendar?: CalendarProvider;
+}
 
 /** Builds the configured Fastify app (no listening) — injected config and database make it testable with `app.inject`. */
-export async function buildApp(config: Config, db: Db) {
+export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
+  const calendar = deps.calendar ?? graphCalendarProvider(config.calendarEnabled, config.SESSION_SECRET);
   const app = Fastify({
     logger:
       config.NODE_ENV === "test"
@@ -112,6 +120,7 @@ export async function buildApp(config: Config, db: Db) {
       await v1.register(adminRoutes);
       await v1.register(expenseRoutes);
       await v1.register(planningRoutes);
+      await v1.register(calendarRoutes, { provider: calendar });
     },
     { prefix: "/api/v1" },
   );

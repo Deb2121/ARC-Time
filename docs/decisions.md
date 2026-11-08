@@ -104,3 +104,13 @@ up to 20.000 km per person per year, low rate above); the seeded rates are illus
 Finance. Billable expenses need a project and are re-invoiced at net + markup, once (reserved like hours).
 Receipts ≤ 10 MB, type checked by content (PDF/JPEG/PNG/WebP), stored locally under data/uploads (D-017);
 malware scanning and company-card import are V2. · accepted
+
+**D-020 · 2026-11-08 · Dashboard, reminders and Outlook calendar import** — The home page shows a role-based to-do
+list and, for line managers/Finance/Management/Admin, utilisation and billable share (last 4 complete weeks, plus a
+12-week trend) using the KPI definitions in `packages/domain/src/kpi.ts`; revenue and effective rate only for
+company scope. Weekly reminders run Monday from 09:00 (Copenhagen) and only when SMTP is configured; each is sent
+once (reminder_log). Outlook import is read-only (`Calendars.Read`), off unless Entra sign-in and
+GRAPH_CALENDAR_ENABLED are set; the delegated access token is stored AES-256-GCM encrypted (key derived from
+SESSION_SECRET), no refresh tokens are kept, so the user reconnects by signing in with Microsoft again. Picked
+meetings become draft hours on one chosen task through the normal timesheet rules; per-subject mapping rules are V2.
+· accepted

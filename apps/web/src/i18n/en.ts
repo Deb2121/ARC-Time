@@ -452,4 +452,20 @@ export const en: Record<MessageKey, string> = {
   "db.revenue": "Invoiced in {month}",
   "db.effectiveRate": "Effective rate {rate}",
   "db.trend": "Utilisation per week (12 weeks)",
+  "ts.fromCalendar": "From my calendar",
+  "cal.title": "Meetings from your Outlook calendar",
+  "cal.disabled":
+    "Calendar import is not switched on. It needs Microsoft sign-in, which an administrator can enable.",
+  "cal.notConnected": "Your calendar is not connected. Sign in with Microsoft to see this week's meetings.",
+  "cal.empty": "No meetings this week.",
+  "cal.ignore": "Ignore",
+  "cal.imported": "Registered",
+  "cal.ignored": "Ignored",
+  "cal.registerOn": "Register selected meetings on",
+  "cal.chooseTask": "Choose task…",
+  "cal.import": "Register ({count})",
+  "cal.readOnly":
+    "We only read your calendar – nothing is changed in Outlook. All-day events and ‘free’ time are not shown.",
+  "err.already_imported": "This meeting is already registered.",
+  "err.calendar_unavailable": "The calendar is not responding right now. Try again shortly.",
 };

@@ -911,3 +911,38 @@ export const reminderLog = pgTable(
   },
   (t) => [uniqueIndex("reminder_log_uq").on(t.userId, t.kind, t.ref)],
 );
+
+/* ───────────────────────────── M3: Outlook calendar import ───────────────────────────── */
+
+/**
+ * Delegated Microsoft Graph access token per user (read-only scope Calendars.Read), AES-GCM encrypted with a key
+ * derived from SESSION_SECRET. Short-lived (about 1 h); no refresh tokens are kept. Only written when calendar import is on.
+ */
+export const graphTokens = pgTable("graph_tokens", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tenantId: tenantId(),
+  tokenEnc: text("token_enc").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+/** Calendar events (per day) the user has imported into the timesheet or chosen to ignore — shown as handled. */
+export const calendarImports = pgTable(
+  "calendar_imports",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventId: text("event_id").notNull(),
+    date: date("date").notNull(),
+    /** imported | ignored */
+    state: text("state").notNull(),
+    taskId: uuid("task_id").references(() => tasks.id),
+    hours: hours("hours"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("calendar_imports_uq").on(t.userId, t.eventId, t.date)],
+);

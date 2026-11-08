@@ -1,5 +1,6 @@
 export * from "./absence-codes.ts";
 export * from "./budget.ts";
+export * from "./calendar-import.ts";
 export * from "./completion.ts";
 export * from "./dates.ts";
 export * from "./expenses.ts";

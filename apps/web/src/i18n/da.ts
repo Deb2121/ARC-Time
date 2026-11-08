@@ -450,6 +450,22 @@ export const da = {
   "db.revenue": "Faktureret i {month}",
   "db.effectiveRate": "Effektiv timepris {rate}",
   "db.trend": "Udnyttelsesgrad pr. uge (12 uger)",
+  "ts.fromCalendar": "Fra min kalender",
+  "cal.title": "Møder fra din Outlook-kalender",
+  "cal.disabled":
+    "Kalenderimport er ikke slået til. Den kræver Microsoft-login, som en administrator kan aktivere.",
+  "cal.notConnected": "Din kalender er ikke forbundet. Log ind med Microsoft for at se ugens møder.",
+  "cal.empty": "Ingen møder i denne uge.",
+  "cal.ignore": "Ignorér",
+  "cal.imported": "Registreret",
+  "cal.ignored": "Ignoreret",
+  "cal.registerOn": "Registrér valgte møder på",
+  "cal.chooseTask": "Vælg opgave…",
+  "cal.import": "Registrér ({count})",
+  "cal.readOnly":
+    "Vi læser kun din kalender – intet bliver ændret i Outlook. Heldagsbegivenheder og ‘ledig’ tid vises ikke.",
+  "err.already_imported": "Mødet er allerede registreret.",
+  "err.calendar_unavailable": "Kalenderen svarer ikke lige nu. Prøv igen om lidt.",
 } as const;
 
 export type MessageKey = keyof typeof da;

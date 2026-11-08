@@ -12,6 +12,7 @@ import * as oidc from "openid-client";
 import { z } from "zod";
 import type { Config } from "../config.ts";
 import { AppError } from "../services/errors.ts";
+import { storeGraphToken } from "../services/outlook.ts";
 import { createSession, deleteSession, SESSION_COOKIE, SESSION_TTL_MS } from "./session.ts";
 
 const OIDC_COOKIE = "arc_oidc";
@@ -85,7 +86,8 @@ export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = asy
       const state = oidc.randomState();
       const url = oidc.buildAuthorizationUrl(await oidcConfig(), {
         redirect_uri: config.ENTRA_REDIRECT_URI,
-        scope: "openid profile email",
+        // Calendars.Read only when the read-only Outlook import is switched on (GRAPH_CALENDAR_ENABLED).
+        scope: config.calendarEnabled ? "openid profile email Calendars.Read" : "openid profile email",
         code_challenge: await oidc.calculatePKCECodeChallenge(verifier),
         code_challenge_method: "S256",
         state,
@@ -132,6 +134,19 @@ export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = asy
       }
       if (!user?.active) throw new AppError(403, "user_not_provisioned");
       const s = await createSession(db, user.user_id, user.tenant_id);
+      if (config.calendarEnabled && tokens.access_token) {
+        const { user_id, tenant_id } = user;
+        await withTenant(db, tenant_id, (tx) =>
+          storeGraphToken(
+            tx,
+            user_id,
+            tenant_id,
+            tokens.access_token,
+            tokens.expires_in ?? 3600,
+            config.SESSION_SECRET,
+          ),
+        );
+      }
       setSessionCookie(reply, s.raw);
       reply.clearCookie(OIDC_COOKIE, { path: "/api/v1/auth/entra" });
       return reply.redirect(config.WEB_ORIGIN);

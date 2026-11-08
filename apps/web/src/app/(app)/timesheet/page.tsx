@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMe } from "@/components/session";
+import { CalendarPanel } from "@/components/timesheet/calendar-panel";
 import { DayView } from "@/components/timesheet/day-view";
 import { TaskPicker } from "@/components/timesheet/task-picker";
 import {
@@ -73,6 +74,7 @@ function Timesheet() {
   const viewedName = people.data?.find((p) => p.id === viewUser)?.fullName;
 
   const [extraRows, setExtraRows] = useState<Row[]>([]);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [selected, setSelected] = useState<Selected | null>(null);
   const [panel, setPanel] = useState<{
     sel: Selected;
@@ -339,7 +341,13 @@ function Timesheet() {
           <Button variant="ghost" onClick={() => copyRows.mutate()} disabled={copyRows.isPending}>
             ⧉ {t("ts.copyLastWeek")}
           </Button>
+          <Button variant="ghost" onClick={() => setShowCalendar((v) => !v)} aria-expanded={showCalendar}>
+            ▦ {t("ts.fromCalendar")}
+          </Button>
         </div>
+      )}
+      {data.editable && isOwn && showCalendar && (
+        <CalendarPanel weekStart={weekStart} onClose={() => setShowCalendar(false)} />
       )}
 
       <div className="flex flex-col gap-5">
