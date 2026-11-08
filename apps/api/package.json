@@ -12,6 +12,7 @@
   "dependencies": {
     "@arc-tid/db": "workspace:*",
     "@arc-tid/domain": "workspace:*",
+    "@arc-tid/integrations": "workspace:*",
     "@fastify/cookie": "^11.1.5",
     "@fastify/cors": "^11.4.1",
     "@fastify/helmet": "^13.2.0",
@@ -25,6 +26,7 @@
     "fastify-plugin": "^6.0.1",
     "fastify-type-provider-zod": "^7.0.0",
     "openid-client": "^6.8.9",
+    "playwright": "~1.65.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

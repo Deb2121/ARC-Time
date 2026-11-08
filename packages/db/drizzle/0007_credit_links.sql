@@ -1,0 +1,3 @@
+ALTER TABLE "invoice_lines" ADD COLUMN "credits_line_id" uuid;--> statement-breakpoint
+ALTER TABLE "invoices" ADD COLUMN "reopen_sources" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_credits_line_id_invoice_lines_id_fk" FOREIGN KEY ("credits_line_id") REFERENCES "public"."invoice_lines"("id") ON DELETE no action ON UPDATE no action;

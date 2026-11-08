@@ -24,12 +24,12 @@ Optional local tweak: copy `.npmrc.example` to `.npmrc` to keep pnpm's package s
 
 ## Layout
 
-| Path              | What                                                                                          |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| `apps/web`        | Next.js frontend (Danish first, English second)                                               |
-| `apps/api`        | Fastify REST API `/api/v1`, OpenAPI at `/api/docs`                                            |
-| `packages/domain` | All business rules as pure, tested functions (hours, money, norm, flex, holidays, budgets)    |
-| `packages/db`     | Drizzle schema, SQL migrations incl. row-level security, seed                                 |
-| `packages/ui`     | Design-system components (ARCnordic visual identity)                                          |
-| `e2e`             | Playwright end-to-end tests                                                                   |
-| `docs`            | Spec, decisions, open questions, progress, demo scripts, research                             |
+| Path              | What                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| `apps/web`        | Next.js frontend (Danish first, English second)                                            |
+| `apps/api`        | Fastify REST API `/api/v1`, OpenAPI at `/api/docs`                                         |
+| `packages/domain` | All business rules as pure, tested functions (hours, money, norm, flex, holidays, budgets) |
+| `packages/db`     | Drizzle schema, SQL migrations incl. row-level security, seed                              |
+| `packages/ui`     | Design-system components (ARCnordic visual identity)                                       |
+| `e2e`             | Playwright end-to-end tests                                                                |
+| `docs`            | Spec, decisions, open questions, progress, demo scripts, research                          |

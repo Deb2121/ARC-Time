@@ -2,8 +2,8 @@
  * Approval (docs/spec/approval.md, decision D-013: line manager approves the week).
  * Approving takes the rate snapshot on each entry so later rate changes never alter history (brief §4.9).
  */
-import { schema, type Tx, writeAudit } from "@arc-tid/db";
-import { addDays, dailyNorm, dayAnomalies, isoWeekday, summariseWeek } from "@arc-tid/domain";
+import { closedMonths, schema, snapshotRates, type Tx, writeAudit } from "@arc-tid/db";
+import { addDays, dailyNorm, dayAnomalies, isLocked, isoWeekday, summariseWeek } from "@arc-tid/domain";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
@@ -22,28 +22,37 @@ async function loadPeriod(tx: Tx, periodId: string) {
   return p;
 }
 
+/** Entries in a closed accounting month are locked for everyone (brief §4.4, §9). */
+async function assertWeekOpen(tx: Tx, weekStart: string) {
+  const closed = await closedMonths(tx);
+  if (isLocked(weekStart, closed) || isLocked(addDays(weekStart, 6), closed))
+    throw new HttpError(409, "period_closed");
+}
+
 async function approvePeriod(tx: Tx, auth: AuthContext, periodId: string) {
   const p = await loadPeriod(tx, periodId);
   if (!(await canApproveUser(tx, auth, p.userId))) throw new HttpError(403, "forbidden");
   if (p.status !== "submitted" && p.status !== "partially_approved")
     throw new HttpError(409, "not_submitted");
+  await assertWeekOpen(tx, p.weekStart);
   const sunday = addDays(p.weekStart, 6);
-  // Rate snapshot: contract rate for the task, otherwise the employee's default sales rate (full 5-step price-list
-  // resolution arrives in M2). Cost rate from the employee.
-  const updated = await tx.execute<{ id: string }>(sql`
-    update time_entries e set
-      status = 'approved',
-      approved_by = ${auth.userId},
-      approved_at = now(),
-      updated_at = now(),
-      cost_rate = u.cost_rate,
-      sales_rate = case when e.billable then coalesce(
-        (select c.hourly_rate from tasks t join contracts c on c.id = t.contract_id where t.id = e.task_id),
-        u.sales_rate) end
-    from users u
-    where u.id = e.user_id and e.user_id = ${p.userId}
-      and e.date between ${p.weekStart} and ${sunday} and e.status = 'submitted'
-    returning e.id`);
+  const updated = await tx
+    .update(schema.timeEntries)
+    .set({ status: "approved", approvedBy: auth.userId, approvedAt: new Date(), updatedAt: new Date() })
+    .where(
+      and(
+        eq(schema.timeEntries.userId, p.userId),
+        gte(schema.timeEntries.date, p.weekStart),
+        lte(schema.timeEntries.date, sunday),
+        eq(schema.timeEntries.status, "submitted"),
+      ),
+    )
+    .returning({ id: schema.timeEntries.id });
+  // Full 5-step rate resolution, snapshotted on each entry (brief §4.9, D-014).
+  await snapshotRates(
+    tx,
+    updated.map((u) => u.id),
+  );
   await tx
     .update(schema.timesheetPeriods)
     .set({ status: "approved", decidedBy: auth.userId, decidedAt: new Date(), updatedAt: new Date() })
@@ -159,6 +168,7 @@ export const approvalRoutes: FastifyPluginAsyncZod = async (app) => {
       return req.withTenant(async (tx) => {
         const p = await loadPeriod(tx, req.params.periodId);
         if (!(await canApproveUser(tx, auth, p.userId))) throw new HttpError(403, "forbidden");
+        await assertWeekOpen(tx, p.weekStart);
         if (p.status !== "submitted" && p.status !== "partially_approved")
           throw new HttpError(409, "not_submitted");
         await tx
@@ -218,6 +228,7 @@ export const approvalRoutes: FastifyPluginAsyncZod = async (app) => {
       return req.withTenant(async (tx) => {
         const p = await loadPeriod(tx, req.params.periodId);
         if (!(await canApproveUser(tx, auth, p.userId))) throw new HttpError(403, "forbidden");
+        await assertWeekOpen(tx, p.weekStart);
         if (p.status !== "approved") throw new HttpError(409, "not_approved");
         const range = and(
           eq(schema.timeEntries.userId, p.userId),

@@ -24,6 +24,7 @@ import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 import { createDb, type Tx } from "./client.ts";
 import * as s from "./schema.ts";
+import { seedMoney } from "./seed-money.ts";
 
 config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
 
@@ -341,7 +342,7 @@ const PROJECTS: ProjectDef[] = [
     members: ["PD", "LV", "EK", "IS", "OB"],
     category: "Nybyggeri",
     start: "2026-05-01",
-    contracts: [{ name: "Regning efter medgået tid", type: "time_material", rate: 975 }],
+    contracts: [{ name: "Regning efter medgået tid (rammeaftale)", type: "time_material" }],
     tasks: [ARK_PHASES(1.5, 975)],
     commentRequired: true,
   },
@@ -920,6 +921,8 @@ await db.transaction(async (tx: Tx) => {
       .insert(s.favourites)
       .values(lauraLeaves.map((l) => ({ tenantId, userId: uid("LV"), taskId: l.taskId })));
   }
+
+  await seedMoney(tx, tenantId, uid("JF"), firstMonday, today);
 });
 
 const [{ count } = { count: 0 }] = await db.execute<{ count: number }>(

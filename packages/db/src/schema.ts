@@ -109,6 +109,8 @@ export const users = pgTable(
     employmentStart: date("employment_start").notNull().default(sql`current_date`),
     employmentEnd: date("employment_end"),
     holidayCalendarId: uuid("holiday_calendar_id"),
+    /** rate role used for price-list lookup (M2) */
+    priceGroupId: uuid("price_group_id"),
     /** internal hourly cost in øre (cost-price groups arrive in M2) */
     costRate: bigint("cost_rate", { mode: "number" }).notNull().default(0),
     /** default hourly sales rate in øre (last step of rate resolution) */
@@ -274,6 +276,7 @@ export const customers = pgTable(
     countryCode: char("country_code", { length: 2 }).notNull().default("DK"),
     currency: char("currency", { length: 3 }).notNull().default("DKK"),
     paymentTermsDays: integer("payment_terms_days").notNull().default(30),
+    priceListId: uuid("price_list_id"),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -317,6 +320,7 @@ export const projects = pgTable(
     currency: char("currency", { length: 3 }).notNull().default("DKK"),
     billable: boolean("billable").notNull().default(true),
     commentRequired: boolean("comment_required").notNull().default(false),
+    priceListId: uuid("price_list_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -351,6 +355,7 @@ export const tasks = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     contractId: uuid("contract_id").references(() => contracts.id),
+    taskTypeId: uuid("task_type_id"),
     parentId: uuid("parent_id").references((): AnyPgColumn => tasks.id, { onDelete: "cascade" }),
     level: integer("level").notNull().default(1),
     wbs: text("wbs").notNull(),
@@ -490,4 +495,276 @@ export const favourites = pgTable(
       .references(() => tasks.id, { onDelete: "cascade" }),
   },
   (t) => [primaryKey({ columns: [t.userId, t.taskId] })],
+);
+
+/* ───────────────────────────── M2: rates ───────────────────────────── */
+
+/** Rate role of an employee (e.g. Partner, Arkitekt, Ingeniør) used to look up price-list rates. */
+export const priceGroups = pgTable("price_groups", {
+  id: id(),
+  tenantId: tenantId(),
+  name: text("name").notNull(),
+  sort: integer("sort").notNull().default(0),
+});
+
+export const taskTypes = pgTable("task_types", {
+  id: id(),
+  tenantId: tenantId(),
+  name: text("name").notNull(),
+});
+
+export const priceLists = pgTable("price_lists", {
+  id: id(),
+  tenantId: tenantId(),
+  name: text("name").notNull(),
+  /** set for a customer-specific list */
+  customerId: uuid("customer_id").references(() => customers.id),
+  isStandard: boolean("is_standard").notNull().default(false),
+  currency: char("currency", { length: 3 }).notNull().default("DKK"),
+  createdAt: createdAt(),
+});
+
+export const priceListRates = pgTable(
+  "price_list_rates",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    priceListId: uuid("price_list_id")
+      .notNull()
+      .references(() => priceLists.id, { onDelete: "cascade" }),
+    priceGroupId: uuid("price_group_id").references(() => priceGroups.id),
+    taskTypeId: uuid("task_type_id").references(() => taskTypes.id),
+    /** øre per hour */
+    rate: bigint("rate", { mode: "number" }).notNull(),
+    validFrom: date("valid_from").notNull(),
+  },
+  (t) => [index("price_list_rates_list_idx").on(t.priceListId)],
+);
+
+export const projectEmployeeRates = pgTable("project_employee_rates", {
+  id: id(),
+  tenantId: tenantId(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  rate: bigint("rate", { mode: "number" }).notNull(),
+  validFrom: date("valid_from").notNull(),
+});
+
+/* ───────────────────────────── M2: invoicing ───────────────────────────── */
+
+export const planItemStatusEnum = pgEnum("plan_item_status", ["planned", "ready", "invoiced"]);
+
+/** Fixed-price payment plan / retainer fee schedule. */
+export const paymentPlanItems = pgTable(
+  "payment_plan_items",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    contractId: uuid("contract_id")
+      .notNull()
+      .references(() => contracts.id, { onDelete: "cascade" }),
+    description: text("description").notNull(),
+    dueDate: date("due_date").notNull(),
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    status: planItemStatusEnum("status").notNull().default("planned"),
+    invoiceLineId: uuid("invoice_line_id"),
+  },
+  (t) => [index("payment_plan_items_contract_idx").on(t.contractId)],
+);
+
+/** Gap-free invoice numbering per legal entity (brief §4.10). The counter row is locked during booking. */
+export const numberSeries = pgTable(
+  "number_series",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    legalEntityId: uuid("legal_entity_id")
+      .notNull()
+      .references(() => legalEntities.id),
+    kind: text("kind").notNull().default("invoice"),
+    nextNumber: integer("next_number").notNull().default(1),
+  },
+  (t) => [uniqueIndex("number_series_entity_kind_uq").on(t.legalEntityId, t.kind)],
+);
+
+export const invoiceTypeEnum = pgEnum("invoice_type", ["invoice", "credit"]);
+export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "ready", "booked"]);
+export const invoiceLineKindEnum = pgEnum("invoice_line_kind", [
+  "time",
+  "milestone",
+  "product",
+  "text",
+  "heading",
+  "subtotal",
+]);
+
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    legalEntityId: uuid("legal_entity_id")
+      .notNull()
+      .references(() => legalEntities.id),
+    /** assigned only when booked; drafts have no number */
+    number: integer("number"),
+    type: invoiceTypeEnum("type").notNull().default("invoice"),
+    creditOfId: uuid("credit_of_id").references((): AnyPgColumn => invoices.id),
+    /** credit note: when booked, release the credited time entries / milestones so they can be invoiced again */
+    reopenSources: boolean("reopen_sources").notNull().default(false),
+    status: invoiceStatusEnum("status").notNull().default("draft"),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => customers.id),
+    projectId: uuid("project_id").references(() => projects.id),
+    invoiceDate: date("invoice_date").notNull(),
+    dueDate: date("due_date").notNull(),
+    currency: char("currency", { length: 3 }).notNull().default("DKK"),
+    fxRate: numeric("fx_rate", { precision: 12, scale: 6, mode: "number" }).notNull().default(1),
+    heading: text("heading"),
+    ourReference: text("our_reference"),
+    theirReference: text("their_reference"),
+    attachSpecification: boolean("attach_specification").notNull().default(true),
+    subtotal: bigint("subtotal", { mode: "number" }).notNull().default(0),
+    vat: bigint("vat", { mode: "number" }).notNull().default(0),
+    total: bigint("total", { mode: "number" }).notNull().default(0),
+    createdBy: uuid("created_by").references(() => users.id),
+    bookedAt: timestamp("booked_at", { withTimezone: true }),
+    bookedBy: uuid("booked_by").references(() => users.id),
+    /** id in the accounting system once synced */
+    externalId: text("external_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("invoices_entity_number_uq")
+      .on(t.legalEntityId, t.number)
+      .where(sql`${t.number} is not null`),
+    index("invoices_customer_idx").on(t.tenantId, t.customerId),
+    check("invoices_booked_has_number", sql`(${t.status} = 'booked') = (${t.number} is not null)`),
+  ],
+);
+
+export const invoiceLines = pgTable(
+  "invoice_lines",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    sort: integer("sort").notNull().default(0),
+    kind: invoiceLineKindEnum("kind").notNull(),
+    description: text("description").notNull(),
+    /** hours or units, 2 decimals */
+    quantity: numeric("quantity", { precision: 10, scale: 2, mode: "number" }).notNull().default(0),
+    unitPrice: bigint("unit_price", { mode: "number" }).notNull().default(0),
+    discountBp: integer("discount_bp").notNull().default(0),
+    amount: bigint("amount", { mode: "number" }).notNull().default(0),
+    /** amount before write-down/up (registered value) */
+    originalAmount: bigint("original_amount", { mode: "number" }),
+    writeReason: text("write_reason"),
+    vatBp: integer("vat_bp").notNull().default(2500),
+    projectId: uuid("project_id").references(() => projects.id),
+    paymentPlanItemId: uuid("payment_plan_item_id").references(() => paymentPlanItems.id),
+    /** on a credit note: the original invoice line this line credits */
+    creditsLineId: uuid("credits_line_id").references((): AnyPgColumn => invoiceLines.id),
+  },
+  (t) => [index("invoice_lines_invoice_idx").on(t.invoiceId)],
+);
+
+/** Which time entries an invoice line covers, with registered and invoiced value (write-down analytics). */
+export const invoiceLineSources = pgTable(
+  "invoice_line_sources",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    invoiceLineId: uuid("invoice_line_id")
+      .notNull()
+      .references(() => invoiceLines.id, { onDelete: "cascade" }),
+    timeEntryId: uuid("time_entry_id")
+      .notNull()
+      .references(() => timeEntries.id),
+    hours: hours("hours").notNull(),
+    value: bigint("value", { mode: "number" }).notNull(),
+    invoiced: bigint("invoiced", { mode: "number" }).notNull(),
+  },
+  (t) => [index("invoice_line_sources_entry_idx").on(t.timeEntryId)],
+);
+
+/* ───────────────────────────── M2: accounting periods & revenue ───────────────────────────── */
+
+export const periodStateEnum = pgEnum("accounting_period_status", ["open", "closed"]);
+
+export const accountingPeriods = pgTable(
+  "accounting_periods",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    legalEntityId: uuid("legal_entity_id")
+      .notNull()
+      .references(() => legalEntities.id),
+    /** first day of the month */
+    month: date("month").notNull(),
+    status: periodStateEnum("status").notNull().default("open"),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedBy: uuid("closed_by").references(() => users.id),
+  },
+  (t) => [uniqueIndex("accounting_periods_entity_month_uq").on(t.legalEntityId, t.month)],
+);
+
+/** Snapshot taken when a month is closed: fixed-price revenue recognised to date and the month's delta. */
+export const revenueRecognitions = pgTable(
+  "revenue_recognitions",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    contractId: uuid("contract_id")
+      .notNull()
+      .references(() => contracts.id),
+    month: date("month").notNull(),
+    completionBp: integer("completion_bp").notNull(),
+    recognisedToDate: bigint("recognised_to_date", { mode: "number" }).notNull(),
+    delta: bigint("delta", { mode: "number" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("revenue_recognitions_contract_month_uq").on(t.contractId, t.month)],
+);
+
+/* ───────────────────────────── M2: integrations ───────────────────────────── */
+
+/** Configured accounting/payroll connections. Secrets live in env/secret store, never in this table. */
+export const integrationConnections = pgTable(
+  "integration_connections",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    kind: text("kind").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (t) => [uniqueIndex("integration_connections_tenant_kind_uq").on(t.tenantId, t.kind)],
+);
+
+/** Transactional outbox: events written in the same transaction as the change, delivered by a worker. */
+export const outbox = pgTable(
+  "outbox",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    kind: text("kind").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [index("outbox_pending_idx").on(t.status, t.createdAt)],
 );

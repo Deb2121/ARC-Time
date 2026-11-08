@@ -1,4 +1,4 @@
-import type { Db } from "@arc-tid/db";
+import { type Db, InvoiceError, PeriodError } from "@arc-tid/db";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -18,6 +18,8 @@ import { authPlugin, HttpError } from "./auth/plugin.ts";
 import { authRoutes } from "./auth/routes.ts";
 import type { Config } from "./config.ts";
 import { approvalRoutes } from "./routes/approval.ts";
+import { financeRoutes } from "./routes/finance.ts";
+import { invoicingRoutes } from "./routes/invoicing.ts";
 import { projectRoutes } from "./routes/projects.ts";
 import { reportRoutes } from "./routes/reports.ts";
 import { timesheetRoutes } from "./routes/timesheet.ts";
@@ -46,6 +48,12 @@ export async function buildApp(config: Config, db: Db) {
       const details = (err as HttpError & { details?: unknown }).details;
       return reply.status(err.statusCode).send(details ? { error: err.code, details } : { error: err.code });
     }
+    if (err instanceof InvoiceError || err instanceof PeriodError) {
+      return reply.status(err.status).send({ error: err.code });
+    }
+    // Database triggers guarding booked invoices raise check_violation.
+    const pgCode = (err as { code?: string }).code ?? (err as { cause?: { code?: string } }).cause?.code;
+    if (pgCode === "23514") return reply.status(409).send({ error: "immutable" });
     if ("statusCode" in err && err.statusCode && err.statusCode < 500) {
       return reply.status(err.statusCode).send({ error: err.code ?? "bad_request" });
     }
@@ -87,6 +95,8 @@ export async function buildApp(config: Config, db: Db) {
       await v1.register(approvalRoutes);
       await v1.register(projectRoutes);
       await v1.register(reportRoutes);
+      await v1.register(invoicingRoutes);
+      await v1.register(financeRoutes);
     },
     { prefix: "/api/v1" },
   );

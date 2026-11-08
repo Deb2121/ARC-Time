@@ -52,11 +52,12 @@ jobs:
             exit 1
           fi
       - run: pnpm db:seed
+      - name: Browser for PDF rendering and E2E
+        run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test
       - run: pnpm --filter @arc-tid/web build
       - name: E2E
         run: |
-          pnpm exec playwright install --with-deps chromium
           pnpm --filter @arc-tid/api start &
           pnpm --filter @arc-tid/web start &
           npx --yes wait-on http://localhost:4000/health http://localhost:3000/login

@@ -71,3 +71,16 @@ and can be changed later without code changes. · accepted
 | No manager (e.g. CEO)  | Approved by any admin other than the person themselves                                                                                           | OQ-22   |
 | Fixed price completion | All hours on the contract's tasks count                                                                                                          | OQ-26   |
 | Payment terms          | Netto 30 dage                                                                                                                                    | OQ-31   |
+
+**D-014 · 2026-11-08 · Contract hourly rate in the rate order** — A contract's own hourly rate is treated as the
+catch-all line (no price group, no task type) of the project price list, i.e. step 2 of the brief's resolution order.
+Specific lines on a project price list still win over it; customer and standard lists apply only when neither exists.
+Keeps simple projects simple (one rate on the contract) without a separate price list per project. · accepted
+
+**D-015 · 2026-11-08 · Invoice numbering and immutability** — Numbers are assigned only at booking, inside the booking
+transaction, from a per-legal-entity counter row locked with `SELECT … FOR UPDATE`; a failed booking rolls back the
+counter too, so there are never gaps or reuse. Credit notes share the series. Booked invoices and their lines are
+protected by database triggers (not only API checks). · accepted
+
+**D-016 · 2026-11-08 · PDF rendering** — Invoices are rendered from an HTML template by headless Chromium (Playwright's
+browser, already used for E2E) in the API process for M2; moves to the Python/worker side with the job queue in M3. · accepted

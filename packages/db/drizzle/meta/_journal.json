@@ -36,6 +36,34 @@
       "when": 1794137676006,
       "tag": "0004_tenant_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794139153146,
+      "tag": "0005_m2_money",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794139153817,
+      "tag": "0006_rls_m2",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794139372288,
+      "tag": "0007_credit_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794139731224,
+      "tag": "0008_outbox_claim",
+      "breakpoints": true
     }
   ]
 }

@@ -2,13 +2,14 @@
  * Timesheet (docs/spec/time-tracking.md). Week view, cell upsert, submit/reopen, task search, favourites.
  * Validation rules come from @arc-tid/domain.validateEntry so the browser and the API agree.
  */
-import { schema, type Tx, writeAudit } from "@arc-tid/db";
+import { closedMonths, schema, type Tx, writeAudit } from "@arc-tid/db";
 import {
   addDays,
   dailyNorm,
   type EntryError,
   fromDecimal,
   isEditableStatus,
+  isLocked,
   isoWeekday,
   type LocalDate,
   startOfIsoWeek,
@@ -141,11 +142,14 @@ export async function weekView(tx: Tx, auth: AuthContext, userId: string, weekSt
     : [];
   const today = todayCopenhagen();
   const status = period?.status ?? "open";
+  const closed = await closedMonths(tx);
+  const closedDays = summary.days.filter((d) => isLocked(d.date, closed)).map((d) => d.date);
   return {
     userId,
     weekStart,
     status,
-    editable: userId === auth.userId && !LOCKED_PERIOD.has(status),
+    editable: userId === auth.userId && !LOCKED_PERIOD.has(status) && closedDays.length < 7,
+    closedDays,
     today,
     days: summary.days.map((d) => ({
       date: d.date,
@@ -302,7 +306,8 @@ export const timesheetRoutes: FastifyPluginAsyncZod = async (app) => {
           taskOpen,
           commentRequired,
           comment,
-          periodLocked: LOCKED_PERIOD.has(period?.status ?? "open"),
+          periodLocked:
+            LOCKED_PERIOD.has(period?.status ?? "open") || isLocked(b.date, await closedMonths(tx)),
           currentStatus: current?.status,
         });
         // Clearing a cell (0 h) never needs a comment.
