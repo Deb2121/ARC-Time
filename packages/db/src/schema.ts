@@ -116,6 +116,8 @@ export const users = pgTable(
     /** default hourly sales rate in øre (last step of rate resolution) */
     salesRate: bigint("sales_rate", { mode: "number" }).notNull().default(0),
     flexOpening: hours("flex_opening").notNull().default(0),
+    /** employee number in the payroll system ("medarbejdernummer"); without it nothing is exported (D-023) */
+    payrollNumber: text("payroll_number"),
     /** opening vacation balance in days at go-live */
     vacationOpening: numeric("vacation_opening", { precision: 5, scale: 2, mode: "number" })
       .notNull()
@@ -254,6 +256,8 @@ export const absenceCodes = pgTable(
     countsTowardNorm: boolean("counts_toward_norm").notNull(),
     approvalRequired: boolean("approval_required").notNull(),
     sensitive: boolean("sensitive").notNull().default(false),
+    /** payroll: which salary code ("lønart") this absence is exported on; null = not exported (D-023) */
+    salaryCodeId: uuid("salary_code_id").references((): AnyPgColumn => salaryCodes.id),
     active: boolean("active").notNull().default(true),
   },
   (t) => [uniqueIndex("absence_codes_tenant_code_uq").on(t.tenantId, t.code)],
@@ -948,4 +952,87 @@ export const calendarImports = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("calendar_imports_uq").on(t.userId, t.eventId, t.date)],
+);
+
+/* ───────────────────────────── M4: payroll export ───────────────────────────── */
+
+/**
+ * Salary codes ("lønarter") the payroll system knows. kind says what feeds it: absence (via absence_codes.salary_code_id),
+ * mileage (approved mileage claims, km + amount) or expense (approved personal expenses, amount).
+ */
+export const salaryCodes = pgTable(
+  "salary_codes",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    /** hours | days | km | amount */
+    unit: text("unit").notNull(),
+    /** absence | mileage | expense */
+    kind: text("kind").notNull(),
+    /** the payroll provider's own code, if different */
+    providerCode: text("provider_code"),
+    includeInExport: boolean("include_in_export").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("salary_codes_tenant_code_uq").on(t.tenantId, t.code)],
+);
+
+/** Monthly pay periods: open → exported → locked. Locked months are frozen; later changes become late lines. */
+export const payPeriods = pgTable(
+  "pay_periods",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    /** first day of the month */
+    month: date("month").notNull(),
+    /** open | exported | locked */
+    status: text("status").notNull().default("open"),
+    exportedAt: timestamp("exported_at", { withTimezone: true }),
+    exportedBy: uuid("exported_by").references(() => users.id),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: uuid("locked_by").references(() => users.id),
+  },
+  (t) => [uniqueIndex("pay_periods_tenant_month_uq").on(t.tenantId, t.month)],
+);
+
+/** One generated export file for a pay period. Re-running an unlocked period replaces its run (AC4). */
+export const payrollRuns = pgTable("payroll_runs", {
+  id: id(),
+  tenantId: tenantId(),
+  payPeriodId: uuid("pay_period_id")
+    .notNull()
+    .references(() => payPeriods.id),
+  csv: text("csv").notNull(),
+  lineCount: integer("line_count").notNull(),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: createdAt(),
+});
+
+/** Lines of a run; `month` is the month the items are dated in (earlier than the run's month for late lines). */
+export const payrollLines = pgTable(
+  "payroll_lines",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRuns.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    salaryCodeId: uuid("salary_code_id")
+      .notNull()
+      .references(() => salaryCodes.id),
+    month: date("month").notNull(),
+    /** hundredths of the code's unit */
+    quantity: integer("quantity").notNull(),
+    /** øre */
+    amount: bigint("amount", { mode: "number" }),
+    sourceCount: integer("source_count").notNull(),
+  },
+  (t) => [index("payroll_lines_run_idx").on(t.runId)],
 );

@@ -22,10 +22,11 @@ import {
 import { hash } from "@node-rs/argon2";
 import { config } from "dotenv";
 import { eq } from "drizzle-orm";
-import { createDb, type Tx } from "./client.ts";
+import { createDb, type Tx, withTenant } from "./client.ts";
 import * as s from "./schema.ts";
 import { seedExpenses } from "./seed-expenses.ts";
 import { seedMoney } from "./seed-money.ts";
+import { seedPayroll } from "./seed-payroll.ts";
 import { seedPlanning } from "./seed-planning.ts";
 
 config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
@@ -505,6 +506,10 @@ const { db, close } = createDb(url, { max: 1 });
 
 const existing = await db.select().from(s.tenants).where(eq(s.tenants.slug, DEMO_SLUG));
 if (existing.length > 0) {
+  // Top up modules added after this database was seeded (idempotent), then stop.
+  const tenantId = existing[0]?.id as string;
+  const added = await withTenant(db, tenantId, (tx) => seedPayroll(tx, tenantId));
+  if (added) console.log("added payroll setup (salary codes, payroll numbers) to the existing demo tenant");
   console.log(
     "demo tenant already seeded — run `pnpm db:reset; pnpm db:migrate; pnpm db:seed` for a clean database",
   );
@@ -927,6 +932,7 @@ await db.transaction(async (tx: Tx) => {
   await seedMoney(tx, tenantId, uid("JF"), firstMonday, today);
   await seedExpenses(tx, tenantId, today);
   await seedPlanning(tx, tenantId, today);
+  await seedPayroll(tx, tenantId);
 });
 
 const [{ count } = { count: 0 }] = await db.execute<{ count: number }>(

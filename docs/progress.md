@@ -34,9 +34,11 @@
   - Approval modes (D-022): project manager step before the line manager (tab "Mine projekter"), or no approval; chosen under Indstillinger → Godkendelse.
   - Test hygiene: the full-flow E2E now waits for the month to really close (it could pass without closing), and the M2 close test reopens a month it closed.
 
+- 2026-11-08 · **M4 Payroll export** (D-023) — Løn page for Finance: monthly preview per employee and salary code with warnings, CSV file, lock; late changes become corrections next month; salary codes and absence mapping; payroll numbers on employees. Tested against spec AC1–AC4 and AC7 inside a rolled-back transaction.
+
 ## Next — M4 (prioritised with the product owner, 2026-11-08)
 
-1. Payroll export (Danløn / Dataløn / Zenegy file formats, behind adapters, disabled by default).
+1. ~~Payroll export~~ (done as generic CSV; provider adapters later).
 2. Data import (customers, projects, employees from CSV/Excel, with a dry-run preview).
 3. Later, if needed: multi-entity and multi-currency, PWA, project templates, Gantt, CRM pipeline, API tokens.
 

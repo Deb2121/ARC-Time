@@ -133,3 +133,12 @@ hours back, with the comment prefixed by the project number; edited entries lose
 resubmission only they return to the PM (spec R3/AC3). The line manager may approve before all PM steps are done
 ("on behalf", recorded in the audit log). Mode _none_ approves at submission with the same rate snapshots, event and
 audit row. The employee can withdraw a week only while no step is approved. · accepted
+
+**D-023 · 2026-11-08 · Payroll export, first version** — Monthly pay periods from the go-live month (no pay groups yet),
+generic CSV per spec R9 (UTF-8 BOM, `;`, decimal comma). Exported: approved absence on its mapped salary code (days =
+hours ÷ that day's norm), approved mileage (km + reimbursement) and approved expenses as reimbursement — all expenses
+count as paid by the employee until company cards exist (V2). Employees without a payroll number are left out with a
+warning. Re-exporting an unlocked month replaces its file; locking is final, and later changes to a locked month are
+delivered as delta lines with `original_period` in the next export. Finance only. Overtime, per diem, pay groups and
+provider APIs (Danløn/DataLøn/Zenegy) are later, behind adapters, sandbox only. Seed salary/provider codes are
+illustrative — Finance must replace them with the real payroll system's codes. · accepted

@@ -276,6 +276,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           costRate: u.costRate,
           flexOpening: u.flexOpening,
           vacationOpening: u.vacationOpening,
+          payrollNumber: u.payrollNumber,
           norms,
         };
       });
@@ -296,14 +297,18 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           employmentEnd: isoDate.nullable().optional(),
           flexOpening: z.number().min(-999).max(999).multipleOf(0.25).optional(),
           vacationOpening: z.number().min(-99).max(99).optional(),
+          /** employee number in the payroll system; empty string clears it */
+          payrollNumber: z.string().trim().max(20).optional(),
         }),
       },
     },
     async (req) => {
       const auth = req.auth as AuthContext;
       const b = req.body;
-      // Finance may change rates; everything else is admin only.
-      const ratesOnly = Object.keys(b).every((k) => k === "salesRate" || k === "costRate");
+      // Finance may change rates and payroll numbers; everything else is admin only.
+      const ratesOnly = Object.keys(b).every(
+        (k) => k === "salesRate" || k === "costRate" || k === "payrollNumber",
+      );
       if (!hasRole(auth.roles, "admin") && !(ratesOnly && hasRole(auth.roles, "finance")))
         throw new AppError(403, "forbidden");
       return req.withTenant(async (tx) => {
@@ -318,6 +323,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
             ...(b.employmentEnd !== undefined ? { employmentEnd: b.employmentEnd } : {}),
             ...(b.flexOpening !== undefined ? { flexOpening: b.flexOpening } : {}),
             ...(b.vacationOpening !== undefined ? { vacationOpening: b.vacationOpening } : {}),
+            ...(b.payrollNumber !== undefined ? { payrollNumber: b.payrollNumber || null } : {}),
             updatedAt: new Date(),
           })
           .where(eq(schema.users.id, before.id))
@@ -330,6 +336,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
             employmentEnd: u.employmentEnd,
             flexOpening: u.flexOpening,
             vacationOpening: u.vacationOpening,
+            payrollNumber: u.payrollNumber,
           };
         await writeAudit(tx, {
           tenantId: auth.tenantId,

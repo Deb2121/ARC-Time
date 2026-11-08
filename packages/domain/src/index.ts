@@ -11,6 +11,7 @@ export * from "./invoicing.ts";
 export * from "./kpi.ts";
 export * from "./money.ts";
 export * from "./norm.ts";
+export * from "./payroll.ts";
 export * from "./periods.ts";
 export * from "./planning.ts";
 export * from "./rates.ts";

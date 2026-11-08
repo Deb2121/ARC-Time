@@ -20,6 +20,7 @@ interface EmployeeDetail {
   costRate: number;
   flexOpening: number;
   vacationOpening: number;
+  payrollNumber: string | null;
   norms: { id: string; validFrom: string; patternId: string; patternName: string }[];
 }
 interface SettingsLite {
@@ -148,6 +149,8 @@ function EmployeePanel({ id, isAdmin, onClose }: { id: string; isAdmin: boolean;
       salesRate: num(f.get("salesRate")),
       costRate: num(f.get("costRate")),
     };
+    // Only send the payroll number when the field is on the form (never clear it by accident).
+    if (f.has("payrollNumber")) body.payrollNumber = String(f.get("payrollNumber")).trim();
     if (isAdmin) {
       Object.assign(body, {
         priceGroupId: f.get("priceGroupId") || null,
@@ -286,6 +289,11 @@ function EmployeePanel({ id, isAdmin, onClose }: { id: string; isAdmin: boolean;
                 />
               </label>
             </div>
+            <label className="flex flex-col gap-1">
+              <span className="font-semibold text-ink-900">{t("emp.payrollNumber")}</span>
+              <input name="payrollNumber" defaultValue={e.payrollNumber ?? ""} className={field} />
+              <span className="text-xs text-ink-500">{t("emp.payrollNumberHint")}</span>
+            </label>
             <label className="flex flex-col gap-1">
               <span className="font-semibold text-ink-900">{t("emp.employmentEnd")}</span>
               <input
