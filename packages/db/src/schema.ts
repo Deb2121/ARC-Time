@@ -50,6 +50,10 @@ export const tenants = pgTable("tenants", {
   slug: text("slug").notNull().unique(),
   defaultLocale: text("default_locale").notNull().default("da"),
   timeZone: text("time_zone").notNull().default("Europe/Copenhagen"),
+  /** balances (flex, vacation) are opening balance at this date + registrations after it */
+  goLiveDate: date("go_live_date").notNull().default(sql`current_date`),
+  /** approval mode (D-013): line manager only, or project managers first then line manager */
+  approvalMode: text("approval_mode").notNull().default("line_manager"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

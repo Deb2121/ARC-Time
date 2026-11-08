@@ -4,10 +4,11 @@
  */
 import { schema, type Tx, writeAudit } from "@arc-tid/db";
 import { hasRole, ROLES, type Role } from "@arc-tid/domain";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { HttpError, requireRole } from "../auth/plugin.ts";
+import { reportIds } from "../services/people.ts";
 
 const UserDto = z.object({
   id: z.string().uuid(),
@@ -20,16 +21,6 @@ const UserDto = z.object({
   roles: z.array(z.enum(ROLES)),
 });
 type UserDto = z.infer<typeof UserDto>;
-
-async function reportIds(tx: Tx, managerId: string): Promise<string[]> {
-  const rows = await tx.execute<{ id: string }>(sql`
-    with recursive r as (
-      select id from users where manager_id = ${managerId}
-      union
-      select u.id from users u join r on u.manager_id = r.id
-    ) select id from r`);
-  return rows.map((x) => x.id);
-}
 
 async function loadUsers(tx: Tx, ids?: string[]): Promise<UserDto[]> {
   const where = ids ? inArray(schema.users.id, ids) : undefined;

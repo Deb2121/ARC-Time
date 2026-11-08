@@ -17,6 +17,10 @@ import {
 import { authPlugin, HttpError } from "./auth/plugin.ts";
 import { authRoutes } from "./auth/routes.ts";
 import type { Config } from "./config.ts";
+import { approvalRoutes } from "./routes/approval.ts";
+import { projectRoutes } from "./routes/projects.ts";
+import { reportRoutes } from "./routes/reports.ts";
+import { timesheetRoutes } from "./routes/timesheet.ts";
 import { userRoutes } from "./routes/users.ts";
 
 export async function buildApp(config: Config, db: Db) {
@@ -38,7 +42,10 @@ export async function buildApp(config: Config, db: Db) {
     if (hasZodFastifySchemaValidationErrors(err)) {
       return reply.status(400).send({ error: "validation_failed", details: err.validation });
     }
-    if (err instanceof HttpError) return reply.status(err.statusCode).send({ error: err.code });
+    if (err instanceof HttpError) {
+      const details = (err as HttpError & { details?: unknown }).details;
+      return reply.status(err.statusCode).send(details ? { error: err.code, details } : { error: err.code });
+    }
     if ("statusCode" in err && err.statusCode && err.statusCode < 500) {
       return reply.status(err.statusCode).send({ error: err.code ?? "bad_request" });
     }
@@ -72,6 +79,10 @@ export async function buildApp(config: Config, db: Db) {
       await v1.register(authPlugin, { db });
       await v1.register(authRoutes, { db, config });
       await v1.register(userRoutes);
+      await v1.register(timesheetRoutes);
+      await v1.register(approvalRoutes);
+      await v1.register(projectRoutes);
+      await v1.register(reportRoutes);
     },
     { prefix: "/api/v1" },
   );

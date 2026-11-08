@@ -523,7 +523,10 @@ async function insertOne<T>(q: Promise<T[]>): Promise<T> {
 
 await db.transaction(async (tx: Tx) => {
   const tenant = await insertOne(
-    tx.insert(s.tenants).values({ name: "ARCnordic Demo ApS", slug: DEMO_SLUG }).returning(),
+    tx
+      .insert(s.tenants)
+      .values({ name: "ARCnordic Demo ApS", slug: DEMO_SLUG, goLiveDate: firstMonday })
+      .returning(),
   );
   const tenantId = tenant.id;
   const entity = await insertOne(
@@ -888,26 +891,22 @@ await db.transaction(async (tx: Tx) => {
             .returning(),
         );
         if (weekStatus !== "open") {
-          await tx
-            .insert(s.timesheetEvents)
-            .values({
-              tenantId,
-              periodId: period.id,
-              action: "submit",
-              userId: id,
-              at: period.submittedAt ?? undefined,
-            });
+          await tx.insert(s.timesheetEvents).values({
+            tenantId,
+            periodId: period.id,
+            action: "submit",
+            userId: id,
+            at: period.submittedAt ?? undefined,
+          });
         }
         if (weekStatus === "approved") {
-          await tx
-            .insert(s.timesheetEvents)
-            .values({
-              tenantId,
-              periodId: period.id,
-              action: "approve",
-              userId: approverId,
-              at: period.decidedAt ?? undefined,
-            });
+          await tx.insert(s.timesheetEvents).values({
+            tenantId,
+            periodId: period.id,
+            action: "approve",
+            userId: approverId,
+            at: period.decidedAt ?? undefined,
+          });
         }
       }
     }
