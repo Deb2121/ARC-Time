@@ -1,20 +1,20 @@
-# ARCnordic Tid
+﻿# ARCnordic Tid
 
 Time tracking, projects, budgets, resource planning, approvals, invoicing, expenses, absence/flex, payroll export and
 reporting for ARCnordic. Built in-house as a clean-room implementation.
 
-Status: **M0 Foundation done** — next: M1 (core loop: timesheet, approval, flex, budgets). See [`docs/progress.md`](docs/progress.md).
+Status: **M0 Foundation done** â€” next: M1 (core loop: timesheet, approval, flex, budgets). See [`docs/progress.md`](docs/progress.md).
 
 ## Run locally
 
-Requirements: Node.js ≥ 22, pnpm 10, Docker Desktop.
+Requirements: Node.js â‰¥ 22, pnpm 10, Docker Desktop.
 
 ```powershell
 pnpm install
 pnpm db:up; pnpm db:migrate; pnpm db:seed
-pnpm dev                 # web http://localhost:3000 · API http://localhost:4000 · API docs /api/docs
+pnpm dev                 # web http://localhost:3000 Â· API http://localhost:4000 Â· API docs /api/docs
 ```
-Demo users (fictional): `kh@demo.arcnordic.test` (admin), `jf@…` (finance), `al@…` (line manager), `lv@…` (employee) — password `demo1234`.
+Demo users (fictional): `kh@demo.arcnordic.test` (admin), `jf@â€¦` (finance), `al@â€¦` (line manager), `lv@â€¦` (employee) â€” password `demo1234`.
 Walkthrough: [`docs/demo/m0-foundation.md`](docs/demo/m0-foundation.md).
 
 Quality gate (run before every commit to main): `pnpm check` (lint + typecheck + tests). E2E: `pnpm exec playwright test` with the dev stack running.

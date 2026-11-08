@@ -54,7 +54,11 @@ export async function buildApp(config: Config, db: Db) {
   });
 
   await app.register(helmet, { contentSecurityPolicy: false }); // API serves JSON; CSP is set by the web app
-  await app.register(cors, { origin: config.WEB_ORIGIN, credentials: true });
+  await app.register(cors, {
+    origin: config.WEB_ORIGIN,
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+  });
   await app.register(cookie, { secret: config.SESSION_SECRET });
   await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
 

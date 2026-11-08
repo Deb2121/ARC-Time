@@ -158,3 +158,20 @@ describe("role administration", () => {
     await put(["employee"]); // restore seed state
   });
 });
+
+describe("CORS", () => {
+  it("allows the web app to send PUT, PATCH and DELETE with credentials", async () => {
+    const res = await app.inject({
+      method: "OPTIONS",
+      url: "/api/v1/timesheet/entries",
+      headers: {
+        origin: config.WEB_ORIGIN,
+        "access-control-request-method": "PUT",
+        "access-control-request-headers": "content-type,x-csrf-token",
+      },
+    });
+    expect(res.headers["access-control-allow-origin"]).toBe(config.WEB_ORIGIN);
+    expect(res.headers["access-control-allow-credentials"]).toBe("true");
+    expect(String(res.headers["access-control-allow-methods"])).toMatch(/PUT.*PATCH.*DELETE/);
+  });
+});

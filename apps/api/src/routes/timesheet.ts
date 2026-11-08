@@ -417,7 +417,7 @@ export const timesheetRoutes: FastifyPluginAsyncZod = async (app) => {
       return req.withTenant(async (tx) => {
         const period = await getPeriod(tx, auth.userId, weekStart);
         // The employee may take back a submitted week until someone has approved any of it.
-        if (!period || period.status !== "submitted") throw new HttpError(409, "cannot_reopen");
+        if (period?.status !== "submitted") throw new HttpError(409, "cannot_reopen");
         await tx
           .update(schema.timeEntries)
           .set({ status: "draft", updatedAt: new Date() })

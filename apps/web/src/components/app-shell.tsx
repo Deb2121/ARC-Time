@@ -21,14 +21,14 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: "/", label: "nav.home", ready: true },
-  { href: "/timesheet", label: "nav.timesheet", ready: false },
-  { href: "/approval", label: "nav.approval", roles: ["line_manager", "project_manager"], ready: false },
-  { href: "/projects", label: "nav.projects", ready: false },
+  { href: "/timesheet", label: "nav.timesheet", ready: true },
+  { href: "/approval", label: "nav.approval", roles: ["line_manager", "admin", "finance"], ready: true },
+  { href: "/projects", label: "nav.projects", ready: true },
   {
     href: "/customers",
     label: "nav.customers",
     roles: ["project_manager", "finance", "admin", "management"],
-    ready: false,
+    ready: true,
   },
   {
     href: "/planning",
@@ -37,7 +37,7 @@ const NAV: NavItem[] = [
     ready: false,
   },
   { href: "/invoicing", label: "nav.invoicing", roles: ["finance"], ready: false },
-  { href: "/reports", label: "nav.reports", ready: false },
+  { href: "/reports", label: "nav.reports", ready: true },
   {
     href: "/admin/people",
     label: "nav.people",
