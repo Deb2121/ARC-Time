@@ -14,3 +14,9 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+
+# local machine pnpm settings (see .npmrc.example)
+.npmrc
+test-results/
+playwright-report/
+*.tsbuildinfo

@@ -8,6 +8,8 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(32),
   API_PORT: z.coerce.number().int().default(4000),
   WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+  /** login attempts per minute per IP */
+  AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
   DEV_LOGIN_ENABLED: z
     .enum(["true", "false"])
     .default("false")

@@ -1,0 +1,57 @@
+@import "tailwindcss";
+@import "@fontsource-variable/open-sans";
+@import "@fontsource-variable/jost";
+
+/* Shared components live outside the app folder; let Tailwind see their class names. */
+@source "../../../../packages/ui/src";
+
+/*
+ * ARCnordic Tid design tokens — inspired by arcnordic.dk (docs/research/brand.md, decision D-007).
+ * Brand red is used sparingly: primary actions, focus, active navigation. Status colours are separate from brand red.
+ * Contrast: brand-600 on white 5.9:1, ink-700 on white 8.9:1 (WCAG AA).
+ */
+@theme {
+  --font-sans: "Open Sans Variable", "Open Sans", Arial, Helvetica, sans-serif;
+  --font-display: "Jost Variable", "Jost", "Open Sans Variable", Arial, sans-serif;
+
+  --color-brand-50: #fce8ee;
+  --color-brand-100: #f8c9d6;
+  --color-brand-600: #ca0538;
+  --color-brand-700: #a8042e;
+  --color-brand-800: #850324;
+
+  --color-ink-900: #0b0b0c;
+  --color-ink-700: #4a4a4a;
+  --color-ink-500: #71717a;
+  --color-line: #e4e4e7;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f4f4f5;
+
+  --color-success: #1f7a4d;
+  --color-warning: #b26a00;
+  --color-danger: #b42318;
+  --color-info: #1d5fa8;
+
+  --radius-control: 6px;
+  --radius-pill: 999px;
+}
+
+@layer base {
+  html {
+    color: var(--color-ink-700);
+    background: var(--color-surface-alt);
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum" 1; /* tabular figures for all numbers */
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    color: var(--color-ink-900);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+  }
+}

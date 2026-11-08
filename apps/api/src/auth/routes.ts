@@ -32,7 +32,7 @@ export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = asy
     app.post(
       "/auth/dev-login",
       {
-        config: { public: true, rateLimit: { max: 10, timeWindow: "1 minute" } },
+        config: { public: true, rateLimit: { max: config.AUTH_RATE_LIMIT, timeWindow: "1 minute" } },
         schema: {
           body: z.object({ email: z.string().email(), password: z.string().min(1).max(200) }),
           response: { 200: z.object({ csrfToken: z.string() }) },
