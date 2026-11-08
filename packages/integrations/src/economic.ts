@@ -20,6 +20,9 @@ export interface EconomicConfig {
 
 type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
+/**
+ * Maps our customer document to the e-conomic customer payload (pure function, tested without network).
+ */
 export const toEconomicCustomer = (c: CustomerDoc, cfg: EconomicConfig) => ({
   customerNumber: Number(c.number),
   name: c.name,
@@ -54,6 +57,10 @@ export const toEconomicDraft = (inv: InvoiceDoc, cfg: EconomicConfig) => ({
   })),
 });
 
+/**
+ * AccountingAdapter for e-conomic's REST API. GRASP: Polymorphism / Protected Variations — callers only know the
+ * AccountingAdapter interface. `fetchFn` is injectable so tests run without network.
+ */
 export class EconomicAdapter implements AccountingAdapter {
   readonly kind = "economic";
   private readonly base: string;

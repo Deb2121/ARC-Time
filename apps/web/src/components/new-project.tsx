@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * "Nyt projekt" form on the projects page (docs/spec/projects.md). Creates a project with one contract via
+ * POST /api/v1/projects and opens the new project page; tasks, budget and payment plan are added there.
+ */
+
 import { todayCopenhagen } from "@arc-tid/domain";
 import { Button, Card } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";

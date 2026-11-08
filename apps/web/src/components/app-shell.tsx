@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Application frame: top bar (wordmark, language, user, sign out) and the role-filtered main navigation.
+ * Navigation items are declared in NAV; each lists the roles that see it. Server-side checks still apply.
+ */
+
 import { hasRole, type Role } from "@arc-tid/domain";
 import { Wordmark } from "@arc-tid/ui";
 import { useQueryClient } from "@tanstack/react-query";
@@ -54,6 +59,7 @@ const NAV: NavItem[] = [
   },
 ];
 
+/** Wraps every signed-in page with the top bar, navigation and a skip-to-content link. */
 export function AppShell({ children }: { children: ReactNode }) {
   const me = useMe();
   const { t } = useI18n();

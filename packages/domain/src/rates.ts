@@ -75,6 +75,10 @@ export function matchPriceList(
   return undefined;
 }
 
+/**
+ * Resolves the hourly sales rate (øre) for one time entry using the brief's 5-step order and returns which step won.
+ * @example resolveRate({ ...ctx, customerList, standardList }).source // "customer_list"
+ */
 export function resolveRate(c: RateContext): ResolvedRate {
   const own = latest(
     c.projectEmployeeRates.filter((r) => r.userId === c.userId),

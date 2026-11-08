@@ -5,6 +5,8 @@ reporting for ARCnordic. Built in-house as a clean-room implementation.
 
 Status: **M2 Money done** — next: M3 (operations: expenses, resource planning, dashboards). See [`docs/progress.md`](docs/progress.md).
 
+**Ny udvikler? Start med [`docs/architecture.md`](docs/architecture.md)** — kodekort, GRASP-roller og "sådan tilføjer du en funktion".
+
 ## Start på din egen PC (ingen hosting)
 
 1. Start **Docker Desktop** og vent til den er klar.

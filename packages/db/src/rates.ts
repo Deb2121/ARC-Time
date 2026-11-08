@@ -9,6 +9,10 @@ import * as s from "./schema.ts";
 
 const CATCH_ALL_FROM = "1900-01-01";
 
+/**
+ * Resolves and stores the sales rate (billable entries only) and cost rate (øre/h) on the given time entries.
+ * Called at approval and by the seed so history never changes when rates change later. Returns the number updated.
+ */
 export async function snapshotRates(tx: Tx, entryIds: string[]): Promise<number> {
   if (!entryIds.length) return 0;
   const rows = await tx

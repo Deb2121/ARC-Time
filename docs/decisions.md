@@ -89,3 +89,10 @@ browser, already used for E2E) in the API process for M2; moves to the Python/wo
 on localhost". The app runs on the owner's PC via `Start-ARCnordic-Tid.cmd` / VS Code task (Docker for Postgres,
 Node for API + web). Azure deployment (brief §6) is deferred until the owner asks for it; nothing is published or
 exposed outside localhost. · accepted
+
+**D-018 · 2026-11-08 · Code structure (GRASP) and documentation rules** — Owner requirement: clear GRASP structure
+and documentation so new developers can take over. Route files are thin Controllers; workflows live in services
+(Pure Fabrication); rules in `packages/domain` (Information Expert); external systems behind adapters
+(Polymorphism / Protected Variations); services throw `AppError` instead of depending on HTTP code (Low Coupling).
+Every file has a header and every export a JSDoc, enforced by `scripts/check-docs.mjs` in `pnpm check` and the
+pre-commit hook. Guide: `docs/architecture.md`. · accepted

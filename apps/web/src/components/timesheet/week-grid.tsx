@@ -30,6 +30,7 @@ interface Props {
   onCommentNeeded: (s: Selected, hours: number) => void;
 }
 
+/** Human-readable label for a timesheet row (used for accessible cell names and panels). */
 export const rowLabel = (r: Row, locale: "da" | "en") =>
   r.kind === "task"
     ? `${r.ref.projectNumber} ${r.ref.projectName} – ${r.ref.taskName}`
@@ -37,6 +38,10 @@ export const rowLabel = (r: Row, locale: "da" | "en") =>
       ? r.ref.nameDa
       : r.ref.nameEn;
 
+/**
+ * Keyboard-first weekly timesheet grid. Tab/Shift+Tab moves, ↑↓ change row, ←→ change day at the caret edge,
+ * Enter saves and moves down, Esc reverts. Saves on blur with the same validation rules as the API.
+ */
 export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded }: Props) {
   const { t, locale } = useI18n();
   const qc = useQueryClient();

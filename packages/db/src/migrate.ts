@@ -1,3 +1,8 @@
+/**
+ * CLI entry point: applies all SQL migrations in packages/db/drizzle as the owner role (`pnpm db:migrate`).
+ * Generated migrations come from schema.ts (`pnpm --filter @arc-tid/db generate`); hand-written ones add RLS,
+ * triggers and SECURITY DEFINER functions.
+ */
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
 import { migrate } from "drizzle-orm/postgres-js/migrator";

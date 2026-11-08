@@ -25,6 +25,7 @@ export async function visibleUserIds(tx: Tx, auth: AuthContext): Promise<string[
   return ids;
 }
 
+/** True if the caller may read the user's time data (self, a report of a line manager, or Admin/Finance/Management). */
 export async function canViewUser(tx: Tx, auth: AuthContext, userId: string): Promise<boolean> {
   const v = await visibleUserIds(tx, auth);
   return v === "all" || v.includes(userId);

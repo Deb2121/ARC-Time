@@ -7,7 +7,8 @@ import { hasRole, ROLES, type Role } from "@arc-tid/domain";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { HttpError, requireRole } from "../auth/plugin.ts";
+import { requireRole } from "../auth/plugin.ts";
+import { AppError } from "../services/errors.ts";
 import { reportIds } from "../services/people.ts";
 
 const UserDto = z.object({
@@ -38,22 +39,23 @@ async function loadUsers(tx: Tx, ids?: string[]): Promise<UserDto[]> {
   }));
 }
 
+/** Registers /me, /users (scoped by role) and /users/:id/roles (admin, audited). */
 export const userRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/me",
     { schema: { response: { 200: UserDto.extend({ tenantId: z.string(), csrfToken: z.string() }) } } },
     async (req) => {
       const auth = req.auth;
-      if (!auth) throw new HttpError(401, "unauthenticated");
+      if (!auth) throw new AppError(401, "unauthenticated");
       const [me] = await req.withTenant((tx) => loadUsers(tx, [auth.userId]));
-      if (!me) throw new HttpError(404, "not_found");
+      if (!me) throw new AppError(404, "not_found");
       return { ...me, tenantId: auth.tenantId, csrfToken: auth.csrfToken };
     },
   );
 
   app.get("/users", { schema: { response: { 200: z.array(UserDto) } } }, async (req) => {
     const auth = req.auth;
-    if (!auth) throw new HttpError(401, "unauthenticated");
+    if (!auth) throw new AppError(401, "unauthenticated");
     return req.withTenant(async (tx) => {
       if (hasRole(auth.roles, "admin", "finance", "management")) return loadUsers(tx);
       const ids = [auth.userId];
@@ -75,16 +77,16 @@ export const userRoutes: FastifyPluginAsyncZod = async (app) => {
       const auth = requireRole(req, "admin");
       const { id } = req.params;
       const roles: Role[] = Array.from(new Set<Role>(["employee", ...req.body.roles]));
-      if (id === auth.userId && !roles.includes("admin")) throw new HttpError(400, "cannot_remove_own_admin");
+      if (id === auth.userId && !roles.includes("admin")) throw new AppError(400, "cannot_remove_own_admin");
       return req.withTenant(async (tx) => {
         const [before] = await loadUsers(tx, [id]);
-        if (!before) throw new HttpError(404, "not_found");
+        if (!before) throw new AppError(404, "not_found");
         await tx.delete(schema.userRoles).where(and(eq(schema.userRoles.userId, id)));
         await tx
           .insert(schema.userRoles)
           .values(roles.map((role) => ({ tenantId: auth.tenantId, userId: id, role })));
         const [after] = await loadUsers(tx, [id]);
-        if (!after) throw new HttpError(404, "not_found");
+        if (!after) throw new AppError(404, "not_found");
         await writeAudit(tx, {
           tenantId: auth.tenantId,
           entity: "user_roles",

@@ -46,6 +46,9 @@ export interface AccountingAdapter {
   pushInvoice(inv: InvoiceDoc): Promise<{ externalId: string }>;
 }
 
+/**
+ * Error from an external system. `retryable` tells the outbox worker whether to try again (5xx/429) or give up.
+ */
 export class IntegrationError extends Error {
   constructor(
     message: string,

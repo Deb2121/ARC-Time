@@ -28,6 +28,10 @@ const STANDARD_RATES: Record<string, number> = {
   Junior: 825,
 };
 
+/**
+ * Seeds the money part of the fictional demo company: price groups, task types, price lists, rate snapshots,
+ * payment plans, booked invoice history and closed months. Runs inside the main seed transaction.
+ */
 export async function seedMoney(
   tx: Tx,
   tenantId: string,

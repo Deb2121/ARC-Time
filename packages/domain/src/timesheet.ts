@@ -43,6 +43,10 @@ export interface EntryCheck {
 export const isEditableStatus = (s: EntryStatus | undefined): boolean =>
   s === undefined || s === "draft" || s === "rejected";
 
+/**
+ * Checks one time-entry change against the timesheet rules and returns every error found (empty = valid).
+ * Used by the API before writing and by the web app for instant feedback, so both always agree.
+ */
 export function validateEntry(c: EntryCheck): EntryError[] {
   const errors: EntryError[] = [];
   if (!isEditableStatus(c.currentStatus)) errors.push("not_editable");
@@ -86,6 +90,10 @@ export interface SummaryEntry {
   countsTowardNorm?: boolean;
 }
 
+/**
+ * Week summary for one employee: per-day norm/work/billable/absence and week totals, flex and billable %
+ * (basis points). `normOf` gives the norm (centi-hours) for each date.
+ */
 export function summariseWeek(
   monday: LocalDate,
   entries: SummaryEntry[],

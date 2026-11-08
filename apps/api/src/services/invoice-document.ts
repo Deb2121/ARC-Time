@@ -22,6 +22,10 @@ const date = (d: string) =>
     year: "numeric",
   }).format(new Date(`${d}T00:00:00Z`));
 
+/**
+ * Renders the invoice/credit note as a self-contained Danish HTML document (KLADDE watermark until booked,
+ * optional time-specification appendix). Input is escaped; used for preview and as the PDF source.
+ */
 export async function invoiceHtml(tx: Tx, invoiceId: string): Promise<string> {
   const [inv] = await tx.select().from(schema.invoices).where(eq(schema.invoices.id, invoiceId));
   if (!inv) throw new Error("not_found");

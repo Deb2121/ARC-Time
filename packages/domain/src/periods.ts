@@ -8,10 +8,12 @@ import { divRound, type Minor } from "./money.ts";
 /** "2026-11-08" → "2026-11-01" */
 export const monthOf = (d: LocalDate): LocalDate => `${d.slice(0, 7)}-01`;
 
+/** True when the date falls in a closed accounting month (`closedMonths` holds first-of-month dates). */
 export function isLocked(date: LocalDate, closedMonths: ReadonlySet<LocalDate>): boolean {
   return closedMonths.has(monthOf(date));
 }
 
+/** Last day of the month as a LocalDate. @example lastDayOfMonth("2028-02-01") // "2028-02-29" */
 export function lastDayOfMonth(month: LocalDate): LocalDate {
   const y = Number(month.slice(0, 4));
   const m = Number(month.slice(5, 7));

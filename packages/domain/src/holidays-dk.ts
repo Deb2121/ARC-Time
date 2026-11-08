@@ -10,6 +10,9 @@ export interface HolidayDef {
   nameDa: string;
 }
 
+/**
+ * Easter Sunday for a year (anonymous Gregorian algorithm). @example easterSunday(2026) // "2026-04-05"
+ */
 export function easterSunday(year: number): LocalDate {
   const a = year % 19;
   const b = Math.floor(year / 100);
@@ -28,6 +31,10 @@ export function easterSunday(year: number): LocalDate {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+/**
+ * Statutory Danish public holidays for a year, sorted by date (Store bededag only up to 2023).
+ * Company extra days off (Grundlovsdag etc.) come from `defaultCompanyDays`.
+ */
 export function danishPublicHolidays(year: number): HolidayDef[] {
   const e = easterSunday(year);
   const list: HolidayDef[] = [

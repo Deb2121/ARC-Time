@@ -14,6 +14,9 @@ import { fmtDay, fmtFlex, fmtHours } from "@/lib/format";
 import type { Row, WeekData } from "./types";
 import { rowLabel } from "./week-grid";
 
+/**
+ * Day view of the timesheet: day picker for the week plus one row per task with hours and comment side by side.
+ */
 export function DayView({
   week,
   rows,

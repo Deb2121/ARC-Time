@@ -1,3 +1,8 @@
+/**
+ * Authentication routes — GRASP Controller: dev login (email + password, never in production), logout, and
+ * Microsoft Entra ID sign-in via OIDC with PKCE (enabled only when configured). Sessions live in services in
+ * `session.ts`; login lookups use narrow SECURITY DEFINER functions because no tenant is known yet.
+ */
 import { type Db, schema, withTenant } from "@arc-tid/db";
 import { verify } from "@node-rs/argon2";
 import { eq, sql } from "drizzle-orm";
@@ -6,11 +11,12 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import * as oidc from "openid-client";
 import { z } from "zod";
 import type { Config } from "../config.ts";
-import { HttpError } from "./plugin.ts";
+import { AppError } from "../services/errors.ts";
 import { createSession, deleteSession, SESSION_COOKIE, SESSION_TTL_MS } from "./session.ts";
 
 const OIDC_COOKIE = "arc_oidc";
 
+/** Registers /auth/providers, /auth/dev-login (dev only), /auth/logout and the Entra ID login/callback routes. */
 export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = async (app, { db, config }) => {
   const isProd = config.NODE_ENV === "production";
 
@@ -48,7 +54,7 @@ export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = asy
         // Same error for unknown user, wrong password, inactive or ambiguous email (no user enumeration).
         const u = rows.length === 1 ? rows[0] : undefined;
         const ok = u?.active && u.password_hash && (await verify(u.password_hash, req.body.password));
-        if (!u || !ok) throw new HttpError(401, "invalid_credentials");
+        if (!u || !ok) throw new AppError(401, "invalid_credentials");
         const s = await createSession(db, u.user_id, u.tenant_id);
         setSessionCookie(reply, s.raw);
         return { csrfToken: s.csrf };
@@ -97,7 +103,7 @@ export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = asy
 
     app.get("/auth/entra/callback", { config: { public: true } }, async (req, reply) => {
       const cookie = req.unsignCookie(req.cookies[OIDC_COOKIE] ?? "");
-      if (!cookie.valid || !cookie.value) throw new HttpError(400, "oidc_state_missing");
+      if (!cookie.valid || !cookie.value) throw new AppError(400, "oidc_state_missing");
       const { verifier, state } = JSON.parse(cookie.value) as { verifier: string; state: string };
       const currentUrl = new URL(req.url, config.ENTRA_REDIRECT_URI);
       const tokens = await oidc.authorizationCodeGrant(await oidcConfig(), currentUrl, {
@@ -106,7 +112,7 @@ export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = asy
       });
       const claims = tokens.claims();
       const oid = typeof claims?.oid === "string" ? claims.oid : undefined;
-      if (!oid) throw new HttpError(401, "oidc_no_oid");
+      if (!oid) throw new AppError(401, "oidc_no_oid");
       const rows = await db.execute<{ user_id: string; tenant_id: string; active: boolean }>(
         sql`select user_id, tenant_id, active from auth_find_entra(${oid})`,
       );
@@ -124,7 +130,7 @@ export const authRoutes: FastifyPluginAsyncZod<{ db: Db; config: Config }> = asy
           );
         }
       }
-      if (!user?.active) throw new HttpError(403, "user_not_provisioned");
+      if (!user?.active) throw new AppError(403, "user_not_provisioned");
       const s = await createSession(db, user.user_id, user.tenant_id);
       setSessionCookie(reply, s.raw);
       reply.clearCookie(OIDC_COOKIE, { path: "/api/v1/auth/entra" });

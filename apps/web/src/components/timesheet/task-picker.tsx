@@ -10,6 +10,10 @@ import { useI18n } from "@/i18n";
 import { api } from "@/lib/api";
 import type { TaskRef } from "./types";
 
+/**
+ * Accessible combobox for adding a task row (WAI-ARIA pattern): type to search, ↑↓ to move, Enter to add,
+ * Esc to close. Favourites are listed first and can be toggled with the star.
+ */
 export function TaskPicker({ onPick, exclude }: { onPick: (t: TaskRef) => void; exclude: Set<string> }) {
   const { t } = useI18n();
   const qc = useQueryClient();

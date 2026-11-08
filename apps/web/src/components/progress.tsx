@@ -17,6 +17,9 @@ export function Progress({ bp, label }: { bp: number | null; label: string }) {
   );
 }
 
+/**
+ * Small coloured dot + label for budget health (ok, warning, over, no budget); colour is never the only signal.
+ */
 export function HealthDot({ health, label }: { health: string; label: string }) {
   const c =
     health === "over"

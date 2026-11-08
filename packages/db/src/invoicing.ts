@@ -26,6 +26,9 @@ import { writeAudit } from "./audit.ts";
 import type { Tx } from "./client.ts";
 import * as s from "./schema.ts";
 
+/**
+ * Business error from the invoicing service; `code` is shown to users via i18n, `status` is the HTTP status.
+ */
 export class InvoiceError extends Error {
   constructor(
     public code: string,
@@ -282,6 +285,7 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
   return invoice.id;
 }
 
+/** Loads an invoice header by id or throws InvoiceError("not_found", 404). */
 export async function loadInvoice(tx: Tx, invoiceId: string) {
   const [inv] = await tx.select().from(s.invoices).where(eq(s.invoices.id, invoiceId));
   if (!inv) throw new InvoiceError("not_found", 404);
@@ -294,6 +298,9 @@ async function assertEditable(tx: Tx, invoiceId: string) {
   return inv;
 }
 
+/**
+ * Recomputes subtotal, VAT (per rate) and total from the invoice's amount lines and stores them. Returns the totals.
+ */
 export async function recalcInvoice(tx: Tx, invoiceId: string) {
   const lines = await tx.select().from(s.invoiceLines).where(eq(s.invoiceLines.invoiceId, invoiceId));
   const t = invoiceTotals(
@@ -317,6 +324,10 @@ export interface LineUpdate {
   writeReason?: string | null;
 }
 
+/**
+ * Edits a draft invoice line. Changing the amount of a line with time entries is a write-down/up: it needs a reason
+ * and is spread exactly over the entries (largest-remainder). Recalculates totals and writes an audit record.
+ */
 export async function updateLine(tx: Tx, tenantId: string, userId: string, lineId: string, u: LineUpdate) {
   const [line] = await tx.select().from(s.invoiceLines).where(eq(s.invoiceLines.id, lineId));
   if (!line) throw new InvoiceError("not_found", 404);
@@ -380,6 +391,9 @@ export async function updateLine(tx: Tx, tenantId: string, userId: string, lineI
   });
 }
 
+/**
+ * Adds a manual line (product, text, heading or subtotal) at the end of a draft and recalculates totals.
+ */
 export async function addFreeLine(
   tx: Tx,
   tenantId: string,
@@ -425,6 +439,9 @@ async function releaseLines(tx: Tx, lineIds: string[]) {
     .where(inArray(s.paymentPlanItems.invoiceLineId, lineIds));
 }
 
+/**
+ * Deletes a draft line and releases its reserved time entries / milestones so they become invoiceable again.
+ */
 export async function deleteLine(tx: Tx, lineId: string) {
   const [line] = await tx.select().from(s.invoiceLines).where(eq(s.invoiceLines.id, lineId));
   if (!line) throw new InvoiceError("not_found", 404);
@@ -434,6 +451,7 @@ export async function deleteLine(tx: Tx, lineId: string) {
   await recalcInvoice(tx, line.invoiceId);
 }
 
+/** Deletes an unbooked invoice, releasing all reserved entries and milestones; audited. */
 export async function deleteDraft(tx: Tx, tenantId: string, userId: string, invoiceId: string) {
   const inv = await assertEditable(tx, invoiceId);
   const lines = await tx

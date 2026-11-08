@@ -6,10 +6,14 @@ import type { Role } from "@arc-tid/domain";
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 let csrfToken: string | null = null;
+/** Remembers the session's CSRF token (from login or /me); it is sent on every mutating request. */
 export const setCsrfToken = (t: string | null) => {
   csrfToken = t;
 };
 
+/**
+ * Error thrown by `api` for non-2xx responses; `code` is the API's error code (translate with `err.<code>`).
+ */
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -19,6 +23,10 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Calls the ARCnordic Tid API under /api/v1 with the session cookie, JSON body and CSRF header; returns parsed JSON.
+ * @example const me = await api<Me>("/me")
+ */
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);

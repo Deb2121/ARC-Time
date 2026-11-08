@@ -8,6 +8,7 @@ import type { Role } from "@arc-tid/domain";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
+import { AppError } from "../services/errors.ts";
 import { readSession, SESSION_COOKIE, safeEqual } from "./session.ts";
 
 export interface AuthContext {
@@ -30,21 +31,15 @@ declare module "fastify" {
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-export class HttpError extends Error {
-  constructor(
-    public statusCode: number,
-    public code: string,
-    message?: string,
-  ) {
-    super(message ?? code);
-  }
-}
-
+/**
+ * Fastify plugin: resolves the session cookie to `request.auth`, adds `request.withTenant()`, and enforces login
+ * and the CSRF header on every route not marked `config: { public: true }`.
+ */
 export const authPlugin = fp(async (app: FastifyInstance, opts: { db: Db }) => {
   const { db } = opts;
   app.decorateRequest("auth", null);
   app.decorateRequest("withTenant", function <T>(this: FastifyRequest, fn: (tx: Tx) => Promise<T>) {
-    if (!this.auth) throw new HttpError(401, "unauthenticated");
+    if (!this.auth) throw new AppError(401, "unauthenticated");
     return withTenant(db, this.auth.tenantId, fn);
   });
 
@@ -63,19 +58,20 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: { db: Db }) => {
       }
     }
     if (req.routeOptions.config?.public) return;
-    if (!req.auth) throw new HttpError(401, "unauthenticated");
+    if (!req.auth) throw new AppError(401, "unauthenticated");
     if (!SAFE_METHODS.has(req.method)) {
       const header = req.headers["x-csrf-token"];
       if (typeof header !== "string" || !safeEqual(header, req.auth.csrfToken)) {
-        throw new HttpError(403, "csrf_failed");
+        throw new AppError(403, "csrf_failed");
       }
     }
   });
 });
 
+/** Returns the auth context if the caller has at least one of the roles, otherwise throws 401/403. */
 export function requireRole(req: FastifyRequest, ...roles: Role[]): AuthContext {
   const a = req.auth;
-  if (!a) throw new HttpError(401, "unauthenticated");
-  if (!roles.some((r) => a.roles.includes(r))) throw new HttpError(403, "forbidden");
+  if (!a) throw new AppError(401, "unauthenticated");
+  if (!roles.some((r) => a.roles.includes(r))) throw new AppError(403, "forbidden");
   return a;
 }

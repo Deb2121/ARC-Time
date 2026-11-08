@@ -32,6 +32,11 @@ export interface BudgetActual extends BudgetActualInput {
 /** Health thresholds (D-013 / projects spec): warning from 90 %, over above 100 %. */
 export const WARNING_BP = 9_000;
 
+/**
+ * Budget vs actual for a project or task: remaining, consumption % (basis points), contribution margin and health.
+ * Health is "warning" from 90 % and "over" above 100 % of budget (hours or amount, whichever is worse).
+ * @example budgetActual({ budgetHours: 40000, budgetAmount: 0, usedHours: 31000, usedValue: 0, usedCost: 0 }).hoursConsumptionBp // 7750 (77,5 %)
+ */
 export function budgetActual(i: BudgetActualInput): BudgetActual {
   const hoursBp = i.budgetHours > 0 ? divRound(i.usedHours * 10_000, i.budgetHours) : null;
   const amountBp = i.budgetAmount > 0 ? divRound(i.usedValue * 10_000, i.budgetAmount) : null;

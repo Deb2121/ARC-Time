@@ -50,6 +50,11 @@ export interface SuggestedLine {
 export const isInvoiceable = (e: InvoiceableEntry): boolean =>
   e.status === "approved" && e.billable && e.invoiceLineId === null && e.hours > 0;
 
+/**
+ * Builds invoice lines from invoiceable time entries, grouped per task, employee, task + employee, or one summary line.
+ * Only approved, billable, not-yet-invoiced entries are used (see `isInvoiceable`). Each line keeps its source
+ * allocations; amount = Σ hours × rate (øre) exactly, unit price is the rate or the weighted average for mixed rates.
+ */
 export function buildTimeLines(
   entries: InvoiceableEntry[],
   grouping: Grouping,
@@ -144,6 +149,9 @@ export function invoiceTotals(lines: TotalsLine[]): InvoiceTotals {
   return { subtotal, vat, total: subtotal + vat, vatByRate };
 }
 
+/**
+ * Due date from invoice date and payment terms in days. @example dueDate("2026-11-30", 30) // "2026-12-30"
+ */
 export const dueDate = (invoiceDate: LocalDate, paymentTermsDays: number): LocalDate =>
   addDays(invoiceDate, paymentTermsDays);
 

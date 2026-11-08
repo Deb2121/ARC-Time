@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Session context for the signed-in user. `SessionGate` loads /me (and the CSRF token) and redirects to
+ * /login when there is no session; `useMe` gives components the current user and roles.
+ */
+
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { createContext, type ReactNode, useContext, useEffect } from "react";
@@ -27,6 +32,7 @@ export function SessionGate({ children, fallback }: { children: ReactNode; fallb
   return <SessionCtx.Provider value={me.data}>{children}</SessionCtx.Provider>;
 }
 
+/** Returns the signed-in user (with roles and tenant). Only usable inside SessionGate. */
 export function useMe(): Me {
   const v = useContext(SessionCtx);
   if (!v) throw new Error("useMe outside SessionGate");

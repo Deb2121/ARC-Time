@@ -19,6 +19,7 @@ import { writeAudit } from "./audit.ts";
 import type { Tx } from "./client.ts";
 import * as s from "./schema.ts";
 
+/** Business error from the accounting-period service; `code` for i18n, `status` for HTTP. */
 export class PeriodError extends Error {
   constructor(
     public code: string,
@@ -71,6 +72,11 @@ export interface MonthEndReport {
   }[];
 }
 
+/**
+ * Month-end figures for a month (first day as LocalDate): WIP on T&M (approved, not on a booked invoice),
+ * fixed-price recognition (to date, this month, invoiced to date incl. pre-go-live milestones) and retainer deferral.
+ * Amounts in øre. Read-only.
+ */
 export async function monthEndReport(tx: Tx, month: LocalDate): Promise<MonthEndReport> {
   const end = lastDayOfMonth(month);
 
@@ -204,6 +210,10 @@ export async function closeChecklist(tx: Tx, month: LocalDate) {
   ].filter((w) => w.count > 0);
 }
 
+/**
+ * Closes an accounting month if all earlier months are closed. Returns warnings (unapproved timesheets, unbooked
+ * invoices) without closing unless `acknowledge` is true. On close: snapshots fixed-price revenue, writes outbox + audit.
+ */
 export async function closeMonth(
   tx: Tx,
   tenantId: string,

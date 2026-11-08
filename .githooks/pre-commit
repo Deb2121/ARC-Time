@@ -1,7 +1,7 @@
 #!/bin/sh
 # Quality gate before every commit (brief §9): lint + type-check. Tests run in CI (they need the database).
 if command -v powershell.exe >/dev/null 2>&1; then
-  powershell.exe -NoProfile -Command '$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User"); pnpm.cmd lint; if ($LASTEXITCODE -ne 0) { exit 1 }; pnpm.cmd typecheck; if ($LASTEXITCODE -ne 0) { exit 1 }' || { echo "pre-commit: lint/typecheck failed"; exit 1; }
+  powershell.exe -NoProfile -Command '$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User"); pnpm.cmd lint; if ($LASTEXITCODE -ne 0) { exit 1 }; pnpm.cmd docs:check; if ($LASTEXITCODE -ne 0) { exit 1 }; pnpm.cmd typecheck; if ($LASTEXITCODE -ne 0) { exit 1 }' || { echo "pre-commit: lint/typecheck failed"; exit 1; }
 else
-  pnpm lint && pnpm typecheck || { echo "pre-commit: lint/typecheck failed"; exit 1; }
+  pnpm lint && pnpm docs:check && pnpm typecheck || { echo "pre-commit: lint/typecheck failed"; exit 1; }
 fi

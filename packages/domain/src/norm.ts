@@ -42,6 +42,7 @@ function assignmentFor(date: LocalDate, assignments: NormAssignment[]): NormAssi
   return best;
 }
 
+/** Norm hours (centi-hours) a pattern gives for a date, before holidays; handles 1- and 2-week cycles. */
 export function patternHours(date: LocalDate, a: NormAssignment): CentiHours {
   const weekdayIndex = isoWeekday(date) - 1;
   if (a.pattern.cycleWeeks === 1) return a.pattern.days[weekdayIndex] ?? 0;
@@ -64,10 +65,15 @@ export function dailyNorm(date: LocalDate, ctx: NormContext): CentiHours {
   return Math.min(base, holiday.hours);
 }
 
+/** Sum of daily norm hours (centi-hours) for `days` consecutive days starting at `from`. */
 export function normForRange(from: LocalDate, days: number, ctx: NormContext): CentiHours {
   let sum = 0;
   for (let i = 0; i < days; i++) sum += dailyNorm(addDays(from, i), ctx);
   return sum;
 }
 
+/**
+ * Norm hours (centi-hours) for the ISO week starting on `monday`, after holidays and employment dates.
+ * @example weeklyNorm("2024-12-30", ctxWithDanishHolidays) // 2950 = 29,5 h (Wednesday 1 Jan is a holiday)
+ */
 export const weeklyNorm = (monday: LocalDate, ctx: NormContext): CentiHours => normForRange(monday, 7, ctx);

@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.34.9",
   "engines": {
-    "node": "\u003e=22"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "pnpm -r --parallel --filter ./apps/* dev",
@@ -15,9 +15,10 @@
     "db:up": "docker compose up -d db",
     "db:migrate": "pnpm --filter @arc-tid/db migrate",
     "db:seed": "pnpm --filter @arc-tid/db seed",
-    "check": "pnpm lint \u0026\u0026 pnpm typecheck \u0026\u0026 pnpm test",
-    "db:reset": "docker compose down -v \u0026\u0026 docker compose up -d db",
-    "e2e": "playwright test"
+    "check": "pnpm lint && pnpm docs:check && pnpm typecheck && pnpm test",
+    "db:reset": "docker compose down -v && docker compose up -d db",
+    "e2e": "playwright test",
+    "docs:check": "node scripts/check-docs.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",

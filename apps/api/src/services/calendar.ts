@@ -31,11 +31,13 @@ export interface Employee {
   managerId: string | null;
 }
 
+/** Loads the user row with employment, rates and opening balances; undefined if not found (RLS-scoped). */
 export async function loadEmployee(tx: Tx, userId: string): Promise<Employee | undefined> {
   const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, userId));
   return u;
 }
 
+/** Builds the domain NormContext for an employee: norm assignments with valid-from, holiday calendar, employment dates. */
 export async function normContext(tx: Tx, emp: Employee): Promise<NormContext> {
   const assignments = await tx
     .select({

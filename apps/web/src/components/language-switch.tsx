@@ -1,9 +1,14 @@
 "use client";
 
+/**
+ * DA/EN language toggle. Stores the choice in a cookie via the i18n provider (see src/i18n/index.tsx).
+ */
+
 import { type Locale, useI18n } from "@/i18n";
 
 const NAMES: Record<Locale, string> = { da: "Dansk", en: "English" };
 
+/** Two pressed-state buttons (Dansk / English) that switch the UI language immediately. */
 export function LanguageSwitch() {
   const { locale, setLocale, t } = useI18n();
   return (

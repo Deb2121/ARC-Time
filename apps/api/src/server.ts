@@ -1,3 +1,7 @@
+/**
+ * Process entry point for the API (`pnpm dev` / `pnpm start`): builds the app, listens on API_PORT, runs the
+ * outbox delivery loop every 30 s, and shuts down cleanly on SIGINT/SIGTERM.
+ */
 import { createDb } from "@arc-tid/db";
 import { economicFromEnv } from "@arc-tid/integrations";
 import { buildApp } from "./app.ts";

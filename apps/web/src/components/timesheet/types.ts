@@ -1,3 +1,7 @@
+/**
+ * Shared types for the timesheet screens, mirroring the GET /api/v1/timesheet/week/:weekStart response.
+ * Hours are decimals here (7.5) because they come straight from the API JSON.
+ */
 export interface TaskRef {
   taskId: string;
   taskName: string;
@@ -53,5 +57,7 @@ export interface WeekData {
   events: { action: string; comment: string | null; at: string; by: string | null }[];
 }
 
+/** Stable row key for a task row in the timesheet grid. */
 export const taskRowKey = (taskId: string) => `t:${taskId}`;
+/** Stable row key for an absence-code row in the timesheet grid. */
 export const absenceRowKey = (id: string) => `a:${id}`;

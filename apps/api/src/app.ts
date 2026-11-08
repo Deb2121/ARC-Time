@@ -1,3 +1,8 @@
+/**
+ * Fastify application factory — wires security plugins (helmet, CORS, cookies, rate limit), OpenAPI docs,
+ * health checks, the auth plugin and all /api/v1 route modules, plus the global error handler that turns AppError,
+ * invoice/period errors and Postgres check violations into `{ error: code }` responses. Used by server.ts and tests.
+ */
 import { type Db, InvoiceError, PeriodError } from "@arc-tid/db";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
@@ -14,7 +19,7 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
-import { authPlugin, HttpError } from "./auth/plugin.ts";
+import { authPlugin } from "./auth/plugin.ts";
 import { authRoutes } from "./auth/routes.ts";
 import type { Config } from "./config.ts";
 import { adminRoutes } from "./routes/admin.ts";
@@ -25,7 +30,9 @@ import { projectRoutes } from "./routes/projects.ts";
 import { reportRoutes } from "./routes/reports.ts";
 import { timesheetRoutes } from "./routes/timesheet.ts";
 import { userRoutes } from "./routes/users.ts";
+import { AppError } from "./services/errors.ts";
 
+/** Builds the configured Fastify app (no listening) — injected config and database make it testable with `app.inject`. */
 export async function buildApp(config: Config, db: Db) {
   const app = Fastify({
     logger:
@@ -41,12 +48,12 @@ export async function buildApp(config: Config, db: Db) {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  app.setErrorHandler((err: FastifyError | HttpError, req, reply) => {
+  app.setErrorHandler((err: FastifyError | AppError, req, reply) => {
     if (hasZodFastifySchemaValidationErrors(err)) {
       return reply.status(400).send({ error: "validation_failed", details: err.validation });
     }
-    if (err instanceof HttpError) {
-      const details = (err as HttpError & { details?: unknown }).details;
+    if (err instanceof AppError) {
+      const details = (err as AppError & { details?: unknown }).details;
       return reply.status(err.statusCode).send(details ? { error: err.code, details } : { error: err.code });
     }
     if (err instanceof InvoiceError || err instanceof PeriodError) {

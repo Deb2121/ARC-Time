@@ -64,6 +64,10 @@ async function invoiceDoc(
   });
 }
 
+/**
+ * Claims up to 20 pending outbox events across tenants and delivers them (e.g. booked invoice → accounting system).
+ * Events without an enabled integration are marked "skipped"; retryable failures go back to pending (max 5 attempts).
+ */
 export async function processOutbox(
   db: Db,
   accounting: AccountingAdapter | null,

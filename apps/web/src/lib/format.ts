@@ -1,3 +1,8 @@
+/**
+ * Display formatting for the web app (Danish first): hours, money, percentages, dates and week labels.
+ * GRASP: Pure Fabrication — keeps locale rules in one place so every screen formats numbers the same way.
+ * Inputs use the domain units: hours as decimals (7.5), money in øre, percentages in basis points.
+ */
 import { addDays, isoWeek } from "@arc-tid/domain";
 import type { Locale } from "@/i18n";
 
@@ -27,10 +32,12 @@ export function fmtPct(bp: number | null | undefined, l: Locale): string {
   return `${new Intl.NumberFormat(tag(l), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(bp / 100)} %`;
 }
 
+/** Formats a LocalDate with Intl options in the UI locale (UTC-based, so the day never shifts). */
 export function fmtDay(date: string, l: Locale, opts: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat(tag(l), { timeZone: "UTC", ...opts }).format(new Date(`${date}T00:00:00Z`));
 }
 
+/** Label for a week, e.g. "Uge 45 · 2. nov. – 8. nov. 2026". */
 export function weekLabel(monday: string, l: Locale): string {
   const { week } = isoWeek(monday);
   const sunday = addDays(monday, 6);

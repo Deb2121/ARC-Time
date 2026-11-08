@@ -10,6 +10,7 @@ export interface Money {
   currency: string;
 }
 
+/** Asserts that a number is a safe integer amount in minor units (øre); throws RangeError otherwise. */
 export function assertMinor(n: number): asserts n is Minor {
   if (!Number.isSafeInteger(n)) throw new RangeError(`not an integer minor amount: ${n}`);
 }

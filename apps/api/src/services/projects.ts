@@ -23,6 +23,7 @@ export async function visibleProjectIds(tx: Tx, auth: AuthContext): Promise<stri
   return rows.map((r) => r.id);
 }
 
+/** True if the caller may change the project: Admin/Finance, or its project manager. */
 export async function canEditProject(tx: Tx, auth: AuthContext, projectId: string): Promise<boolean> {
   if (hasRole(auth.roles, "admin", "finance")) return true;
   const [p] = await tx
@@ -76,6 +77,7 @@ export async function taskActuals(tx: Tx, projectIds: string[]): Promise<Map<str
   );
 }
 
+/** Project list rows with budget vs actual (hours, value, cost, margin, health) for the given ids or all projects. */
 export async function projectSummaries(tx: Tx, projectIds: string[] | "all") {
   const where =
     projectIds === "all"

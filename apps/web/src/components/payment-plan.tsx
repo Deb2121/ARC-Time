@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Payment plan card on the project page: fixed-price milestones / retainer fees (brief §4.3, §4.10).
+ * Lists items with status, lets the project manager add items and mark them ready for invoicing.
+ */
+
 import { Badge, Button, Card } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";

@@ -14,12 +14,14 @@ import { hasRole, kr, todayCopenhagen } from "@arc-tid/domain";
 import { asc, eq, inArray } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { type AuthContext, HttpError, requireRole } from "../auth/plugin.ts";
+import { type AuthContext, requireRole } from "../auth/plugin.ts";
+import { AppError } from "../services/errors.ts";
 import { canEditProject } from "../services/projects.ts";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const monthParam = z.string().regex(/^\d{4}-\d{2}-01$/);
 
+/** Registers accounting-period, month-end report, price-list and payment-plan endpoints. */
 export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
   /* ───────── accounting periods ───────── */
 
@@ -84,7 +86,7 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get("/price-lists", async (req) => {
     const auth = req.auth as AuthContext;
     if (!hasRole(auth.roles, "finance", "admin", "management", "project_manager"))
-      throw new HttpError(403, "forbidden");
+      throw new AppError(403, "forbidden");
     return req.withTenant(async (tx) => {
       const lists = await tx
         .select({
@@ -229,9 +231,9 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
       const auth = req.auth as AuthContext;
       return req.withTenant(async (tx) => {
         const [c] = await tx.select().from(schema.contracts).where(eq(schema.contracts.id, req.params.id));
-        if (!c) throw new HttpError(404, "not_found");
-        if (!(await canEditProject(tx, auth, c.projectId))) throw new HttpError(403, "forbidden");
-        if (c.type === "time_material") throw new HttpError(422, "plan_only_for_fixed_price_or_retainer");
+        if (!c) throw new AppError(404, "not_found");
+        if (!(await canEditProject(tx, auth, c.projectId))) throw new AppError(403, "forbidden");
+        if (c.type === "time_material") throw new AppError(422, "plan_only_for_fixed_price_or_retainer");
         const [row] = await tx
           .insert(schema.paymentPlanItems)
           .values({
@@ -275,10 +277,10 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
           .select()
           .from(schema.paymentPlanItems)
           .where(eq(schema.paymentPlanItems.id, req.params.id));
-        if (!item) throw new HttpError(404, "not_found");
+        if (!item) throw new AppError(404, "not_found");
         const [c] = await tx.select().from(schema.contracts).where(eq(schema.contracts.id, item.contractId));
-        if (!c || !(await canEditProject(tx, auth, c.projectId))) throw new HttpError(403, "forbidden");
-        if (item.status === "invoiced" || item.invoiceLineId) throw new HttpError(409, "plan_item_invoiced");
+        if (!c || !(await canEditProject(tx, auth, c.projectId))) throw new AppError(403, "forbidden");
+        if (item.status === "invoiced" || item.invoiceLineId) throw new AppError(409, "plan_item_invoiced");
         const { amount, ...rest } = req.body;
         const [after] = await tx
           .update(schema.paymentPlanItems)

@@ -1,3 +1,8 @@
+/**
+ * Database connection and tenant scoping (decision D-012).
+ * GRASP: Indirection / Protected Variations — all tenant data access goes through `withTenant`, which sets the
+ * Postgres setting used by row-level security, so no query can see another tenant's rows.
+ */
 import { sql } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -6,6 +11,9 @@ import * as schema from "./schema.ts";
 export type Db = PostgresJsDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
+/**
+ * Creates a Drizzle client over a postgres.js pool; `close()` ends the pool. Use the app role URL at runtime.
+ */
 export function createDb(url: string, opts: { max?: number } = {}): { db: Db; close: () => Promise<void> } {
   const client = postgres(url, { max: opts.max ?? 10, prepare: true });
   return { db: drizzle(client, { schema }), close: () => client.end() };

@@ -7,11 +7,13 @@ import { danishPublicHolidays, defaultCompanyDays, hasRole, kr } from "@arc-tid/
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { type AuthContext, HttpError, requireRole } from "../auth/plugin.ts";
+import { type AuthContext, requireRole } from "../auth/plugin.ts";
+import { AppError } from "../services/errors.ts";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const hoursPerDay = z.number().min(0).max(24).multipleOf(0.25);
 
+/** Registers the administration endpoints (settings, norm patterns, holidays, absence codes, employee settings). */
 export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
   /** Everything the settings screens need in one call. */
   app.get(
@@ -193,7 +195,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           .select()
           .from(schema.absenceCodes)
           .where(eq(schema.absenceCodes.id, req.params.id));
-        if (!before) throw new HttpError(404, "not_found");
+        if (!before) throw new AppError(404, "not_found");
         const [after] = await tx
           .update(schema.absenceCodes)
           .set(req.body)
@@ -222,7 +224,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       requireRole(req, "admin", "finance");
       return req.withTenant(async (tx) => {
         const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, req.params.id));
-        if (!u) throw new HttpError(404, "not_found");
+        if (!u) throw new AppError(404, "not_found");
         const norms = await tx
           .select({
             id: schema.employeeNorms.id,
@@ -274,10 +276,10 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       // Finance may change rates; everything else is admin only.
       const ratesOnly = Object.keys(b).every((k) => k === "salesRate" || k === "costRate");
       if (!hasRole(auth.roles, "admin") && !(ratesOnly && hasRole(auth.roles, "finance")))
-        throw new HttpError(403, "forbidden");
+        throw new AppError(403, "forbidden");
       return req.withTenant(async (tx) => {
         const [before] = await tx.select().from(schema.users).where(eq(schema.users.id, req.params.id));
-        if (!before) throw new HttpError(404, "not_found");
+        if (!before) throw new AppError(404, "not_found");
         const [after] = await tx
           .update(schema.users)
           .set({
