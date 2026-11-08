@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  addDays,
-  danishPublicHolidays,
-  hasRole,
-  isoWeek,
-  startOfIsoWeek,
-  todayCopenhagen,
-} from "@arc-tid/domain";
+import { danishPublicHolidays, isoWeek, startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
 import { Badge, Card } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { type DashboardData, KpiPanel, TodoList } from "@/components/dashboard";
 import { useMe } from "@/components/session";
 import type { WeekData } from "@/components/timesheet/types";
 import { useI18n } from "@/i18n";
@@ -29,19 +23,13 @@ export default function HomePage() {
   const today = todayCopenhagen();
   const monday = startOfIsoWeek(today);
   const { week, year } = isoWeek(today);
-  const isApprover = hasRole(me.roles, "line_manager", "admin", "finance");
 
   const balances = useQuery({ queryKey: ["balances"], queryFn: () => api<Balances>("/me/balances") });
   const thisWeek = useQuery({
     queryKey: ["week", monday, "me"],
     queryFn: () => api<WeekData>(`/timesheet/week/${monday}`),
   });
-  const inbox = useQuery({
-    queryKey: ["approvals", addDays(monday, -7)],
-    queryFn: () => api<{ items: { status: string }[] }>(`/approvals?weekStart=${addDays(monday, -7)}`),
-    enabled: isApprover,
-  });
-  const pending = inbox.data?.items.filter((i) => i.status === "submitted").length ?? 0;
+  const dash = useQuery({ queryKey: ["dashboard"], queryFn: () => api<DashboardData>("/me/dashboard") });
   const nextHoliday = [...danishPublicHolidays(year), ...danishPublicHolidays(year + 1)].find(
     (h) => h.date >= today,
   );
@@ -59,6 +47,8 @@ export default function HomePage() {
         </h1>
         <p className="mt-2 text-ink-700">{t("home.intro")}</p>
       </header>
+
+      {dash.data && <TodoList todos={dash.data.todos} />}
 
       <div className="grid gap-5 md:grid-cols-3">
         <Card title={t("home.week")} className="md:col-span-2">
@@ -136,16 +126,6 @@ export default function HomePage() {
       </div>
 
       <div className="grid gap-5 md:grid-cols-3">
-        {isApprover && (
-          <Card title={t("home.toApprove")}>
-            <p className="font-[family-name:var(--font-display)] text-3xl tabular-nums text-ink-900">
-              {pending}
-            </p>
-            <Link href="/approval" className="text-sm font-semibold text-brand-700 hover:underline">
-              {t("home.toApproveCount", { count: pending })} →
-            </Link>
-          </Card>
-        )}
         <Card title={t("home.roles")}>
           <ul className="flex flex-wrap gap-2">
             {me.roles.map((r) => (
@@ -164,6 +144,8 @@ export default function HomePage() {
           </Card>
         )}
       </div>
+
+      {dash.data?.kpis && <KpiPanel kpis={dash.data.kpis} />}
     </div>
   );
 }

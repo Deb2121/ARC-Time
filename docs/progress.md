@@ -25,17 +25,14 @@
   - Bugs found by tests and fixed: wrapped Postgres errors not mapped (409), reopen of hours held by a draft invoice, deleting credited-back entries (now kept with 0 h), invoiced-to-date missing pre-go-live milestones, E2E races (parallel specs, delayed dialogs).
   - Quality gate: pre-commit hook runs lint + typecheck.
 
-## Deferred from the MVP list (planned next)
+- 2026-11-08 · **Settings & conveniences** — admin screens for norm time, holiday calendars and absence codes; employee editing; create-project form; timesheet day view. GRASP refactor with JSDoc gate (`docs/architecture.md`).
 
-- Day view of the timesheet (week view covers the flow; day view is a convenience) → early M2.
-- Admin screens for norm patterns, holiday calendars and absence codes (data and API exist; editing via seed/SQL for now) → M2.
-- Project manager approval step (mode exists in tenant settings, UI and per-entry approval not yet) → M3 with reminders.
-- Create-project form in the UI (API exists) → M2.
+## In progress — M3 Operations
 
-## Next — M2 Money
-
-Price lists and 5-step rate resolution, T&M invoice suggestions, invoice drafts/booking with gap-free numbering, PDF,
-credit notes, fixed-price payment plans, accounting periods and locking, e-conomic adapter (sandbox).
+- Done: expenses and mileage (receipts, VAT split, approval, re-invoicing); resource planner (capacity heatmap, allocations, competence filter); role-based home dashboard (to-dos per role, team/company utilisation and billable share with a 12-week trend, invoiced revenue and effective rate for Finance/Management); weekly e-mail reminders (Monday 09:00, only when SMTP is configured, never sent twice).
+- KPI formulas live in `packages/domain/src/kpi.ts` with the worked examples from `docs/spec/reporting.md`.
+- Next: Outlook calendar import (Microsoft Graph, read-only, disabled unless Entra is configured); Python analytics service (read-only KPI/Excel export, Power BI-friendly); M3 demo script.
+- Still open: project manager approval step (tenant setting exists; UI not yet).
 
 ## Waiting on product owner
 

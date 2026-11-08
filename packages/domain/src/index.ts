@@ -7,6 +7,7 @@ export * from "./flex.ts";
 export * from "./holidays-dk.ts";
 export * from "./hours.ts";
 export * from "./invoicing.ts";
+export * from "./kpi.ts";
 export * from "./money.ts";
 export * from "./norm.ts";
 export * from "./periods.ts";

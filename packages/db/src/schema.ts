@@ -892,3 +892,22 @@ export const userCompetencies = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.name] })],
 );
+
+/* ───────────────────────────── M3: reminders ───────────────────────────── */
+
+/** E-mail reminders already sent, so the weekly job never sends the same reminder twice. */
+export const reminderLog = pgTable(
+  "reminder_log",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** what the reminder is about, e.g. the ISO week "2026-11-02" */
+    ref: text("ref").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("reminder_log_uq").on(t.userId, t.kind, t.ref)],
+);

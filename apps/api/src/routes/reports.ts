@@ -3,12 +3,16 @@
  * and choose JSON or CSV download.
  *
  *   GET /me/balances                                   own flex and vacation balance
+ *   GET /me/dashboard                                  to-dos and key figures for the caller's roles
  *   GET /reports/budget-actual[?format=csv]            budget vs actual per visible project
  *   GET /reports/time-entries?from&to[&userId][&projectId][&format=csv]   time entries
  */
+
+import { todayCopenhagen } from "@arc-tid/domain";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { AuthContext } from "../auth/plugin.ts";
+import { dashboard } from "../services/dashboard.ts";
 import {
   budgetActualCsv,
   budgetActualRows,
@@ -23,6 +27,10 @@ const format = z.enum(["json", "csv"]).default("json");
 /** Registers the report endpoints under /api/v1. */
 export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get("/me/balances", async (req) => req.withTenant((tx) => myBalances(tx, req.auth as AuthContext)));
+
+  app.get("/me/dashboard", async (req) =>
+    req.withTenant((tx) => dashboard(tx, req.auth as AuthContext, todayCopenhagen())),
+  );
 
   app.get("/reports/budget-actual", { schema: { querystring: z.object({ format }) } }, async (req, reply) => {
     const rows = await req.withTenant((tx) => budgetActualRows(tx, req.auth as AuthContext));
