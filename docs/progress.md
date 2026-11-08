@@ -31,7 +31,8 @@
 
 - Done: expenses and mileage (receipts, VAT split, approval, re-invoicing); resource planner (capacity heatmap, allocations, competence filter); role-based home dashboard (to-dos per role, team/company utilisation and billable share with a 12-week trend, invoiced revenue and effective rate for Finance/Management); weekly e-mail reminders (Monday 09:00, only when SMTP is configured, never sent twice); Outlook calendar import in "Min uge" (read-only, off by default, picked meetings become draft hours rounded to 0,25 h — D-020).
 - KPI formulas live in `packages/domain/src/kpi.ts` with the worked examples from `docs/spec/reporting.md`.
-- Next: Python analytics service (read-only KPI/Excel export, Power BI-friendly); M3 demo script.
+- Python analytics service `apps/analytics` (D-021): KPI JSON, Excel workbook (Rapporter → "Nøgletal (Excel)"), Power BI datasets; read-only DB role; KPI formulas tested with the same examples as TypeScript; docs gate also checks Python docstrings.
+- Next: M3 demo script.
 - Still open: project manager approval step (tenant setting exists; UI not yet).
 
 ## Waiting on product owner

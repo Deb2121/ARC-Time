@@ -466,6 +466,9 @@ export const da = {
     "Vi læser kun din kalender – intet bliver ændret i Outlook. Heldagsbegivenheder og ‘ledig’ tid vises ikke.",
   "err.already_imported": "Mødet er allerede registreret.",
   "err.calendar_unavailable": "Kalenderen svarer ikke lige nu. Prøv igen om lidt.",
+  "rp.kpiExcel": "Nøgletal (Excel)",
+  "rp.kpiExcelHint":
+    "Nøgletal pr. projekt og medarbejder for perioden: timer, faktureringsgrad, effektiv timepris og dækningsbidrag.",
 } as const;
 
 export type MessageKey = keyof typeof da;

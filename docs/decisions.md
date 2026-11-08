@@ -114,3 +114,13 @@ GRAPH_CALENDAR_ENABLED are set; the delegated access token is stored AES-256-GCM
 SESSION_SECRET), no refresh tokens are kept, so the user reconnects by signing in with Microsoft again. Picked
 meetings become draft hours on one chosen task through the normal timesheet rules; per-subject mapping rules are V2.
 · accepted
+
+**D-021 · 2026-11-08 · Python analytics service** — `apps/analytics` (FastAPI) serves KPI JSON, a KPI Excel workbook
+and flat datasets for Power BI / Power Query. It connects as the read-only role `arc_analytics` (SELECT on reporting
+tables only, row-level security applies, every query in a read-only transaction with app.tenant_id set) and
+identifies the caller from the normal sign-in cookie via auth_get_session(); only Finance, Management and Admin get
+data. KPI formulas live in `arc_analytics/kpi.py`, mirror `packages/domain/src/kpi.ts` and are tested with the same
+worked examples. Norm-based utilisation stays in the TypeScript dashboard (single norm-calendar implementation).
+Power BI service refresh needs API tokens (spec R10), which come later; until then the datasets work from a
+signed-in browser or Excel. `pnpm dev` starts it via dev.mjs (creates .venv on first run, skipped if Python is
+missing). · accepted

@@ -120,6 +120,13 @@
       "when": 1794144475814,
       "tag": "0016_rls_m3d",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794144928091,
+      "tag": "0017_analytics_role",
+      "breakpoints": true
     }
   ]
 }

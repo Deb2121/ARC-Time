@@ -1,13 +1,14 @@
 "use client";
 
-import { addDays, todayCopenhagen } from "@arc-tid/domain";
+import { addDays, hasRole, todayCopenhagen } from "@arc-tid/domain";
 import { Card, TextField } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { HealthDot } from "@/components/progress";
+import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { API_URL, api } from "@/lib/api";
+import { ANALYTICS_URL, API_URL, api } from "@/lib/api";
 import { fmtHours, fmtKr, fmtPct } from "@/lib/format";
 import type { ProjectSummary } from "../projects/page";
 
@@ -16,6 +17,8 @@ const downloadLink =
 
 export default function ReportsPage() {
   const { t, locale } = useI18n();
+  const me = useMe();
+  const seesKpis = hasRole(me.roles, "finance", "management", "admin");
   const rows = useQuery({
     queryKey: ["budget-actual"],
     queryFn: () => api<ProjectSummary[]>("/reports/budget-actual"),
@@ -143,7 +146,13 @@ export default function ReportsPage() {
           >
             ↓ {t("common.download")}
           </a>
+          {seesKpis && (
+            <a className={downloadLink} href={`${ANALYTICS_URL}/v1/kpi.xlsx?from=${from}&to=${to}`}>
+              ↓ {t("rp.kpiExcel")}
+            </a>
+          )}
         </div>
+        {seesKpis && <p className="mt-3 text-xs text-ink-500">{t("rp.kpiExcelHint")}</p>}
       </Card>
     </div>
   );

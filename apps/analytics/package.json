@@ -1,0 +1,10 @@
+{
+  "name": "@arc-tid/analytics",
+  "private": true,
+  "description": "Python analytics service (FastAPI, read-only): KPIs, Excel export, Power BI datasets",
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.mjs dev",
+    "test": "node dev.mjs test"
+  }
+}

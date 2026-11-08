@@ -468,4 +468,7 @@ export const en: Record<MessageKey, string> = {
     "We only read your calendar – nothing is changed in Outlook. All-day events and ‘free’ time are not shown.",
   "err.already_imported": "This meeting is already registered.",
   "err.calendar_unavailable": "The calendar is not responding right now. Try again shortly.",
+  "rp.kpiExcel": "Key figures (Excel)",
+  "rp.kpiExcelHint":
+    "Key figures per project and employee for the period: hours, billable share, effective rate and contribution margin.",
 };

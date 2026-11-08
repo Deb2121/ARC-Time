@@ -54,6 +54,9 @@ jobs:
       - run: pnpm db:seed
       - name: Browser for PDF rendering and E2E
         run: pnpm exec playwright install --with-deps chromium
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - run: pnpm test
       - run: pnpm --filter @arc-tid/web build
       - name: E2E

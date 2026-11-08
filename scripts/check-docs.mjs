@@ -7,6 +7,7 @@
  *   2. an exported function / exported arrow-function constant / exported class has no JSDoc block (/** … *\/)
  *      directly above it.
  * Tests, generated files and Next.js page/layout files (whose purpose is their route) are skipped.
+ * Python (apps/analytics/arc_analytics): every module needs a docstring and every top-level def/class one too.
  *
  * Run: node scripts/check-docs.mjs   (part of `pnpm check`)
  */
@@ -58,6 +59,24 @@ for (const folder of FOLDERS) {
         problems.push(`${rel}:${i + 1}  exported "${name}" has no JSDoc`);
     });
   }
+}
+
+// Python: module docstring + docstring on every top-level def/class.
+const PY_FOLDER = "apps/analytics/arc_analytics";
+for (const name of readdirSync(join(ROOT, PY_FOLDER)).filter((n) => n.endsWith(".py"))) {
+  const rel = `${PY_FOLDER}/${name}`;
+  const lines = readFileSync(join(ROOT, PY_FOLDER, name), "utf8").split(/\r?\n/);
+  const first = lines.find((l) => l.trim() !== "");
+  if (!first?.startsWith('"""')) problems.push(`${rel}:1  missing module docstring`);
+  lines.forEach((line, i) => {
+    const m = /^(?:async\s+)?(?:def|class)\s+(\w+)/.exec(line);
+    if (!m) return;
+    let j = i;
+    while (j < lines.length && !lines[j].trimEnd().endsWith(":")) j++; // end of a multi-line signature
+    let k = j + 1;
+    while (k < lines.length && lines[k].trim() === "") k++;
+    if (!lines[k]?.trim().startsWith('"""')) problems.push(`${rel}:${i + 1}  "${m[1]}" has no docstring`);
+  });
 }
 
 if (problems.length) {

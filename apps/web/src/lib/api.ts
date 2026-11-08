@@ -4,6 +4,8 @@
 import type { Role } from "@arc-tid/domain";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+/** Base URL of the Python analytics service (KPI Excel export, Power BI datasets). */
+export const ANALYTICS_URL = process.env.NEXT_PUBLIC_ANALYTICS_URL ?? "http://localhost:8000";
 
 let csrfToken: string | null = null;
 /** Remembers the session's CSRF token (from login or /me); it is sent on every mutating request. */
