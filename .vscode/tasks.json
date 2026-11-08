@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start ARCnordic Tid",
+      "detail": "Starter database, API og web på http://localhost:3000",
+      "type": "shell",
+      "command": "& '${workspaceFolder}\\Start-ARCnordic-Tid.cmd'",
+      "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "reveal": "always", "clear": true },
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Nulstil demo-data",
+      "detail": "Sletter databasen og opretter friske demo-data",
+      "type": "shell",
+      "command": "docker compose down -v; docker compose up -d db; Start-Sleep 5; pnpm.cmd db:migrate; pnpm.cmd db:seed",
+      "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } },
+      "problemMatcher": []
+    },
+    {
+      "label": "Kør tests",
+      "detail": "Lint, typecheck og alle unit/integrationstests",
+      "type": "shell",
+      "command": "pnpm.cmd check",
+      "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } },
+      "problemMatcher": []
+    }
+  ]
+}

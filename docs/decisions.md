@@ -84,3 +84,8 @@ protected by database triggers (not only API checks). · accepted
 
 **D-016 · 2026-11-08 · PDF rendering** — Invoices are rendered from an HTML template by headless Chromium (Playwright's
 browser, already used for E2E) in the API process for M2; moves to the Python/worker side with the job queue in M3. · accepted
+
+**D-017 · 2026-11-08 · Run locally, no hosting for now** — Product owner: "don't host anything — start it in VS Code
+on localhost". The app runs on the owner's PC via `Start-ARCnordic-Tid.cmd` / VS Code task (Docker for Postgres,
+Node for API + web). Azure deployment (brief §6) is deferred until the owner asks for it; nothing is published or
+exposed outside localhost. · accepted

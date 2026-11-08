@@ -5,7 +5,16 @@ reporting for ARCnordic. Built in-house as a clean-room implementation.
 
 Status: **M2 Money done** — next: M3 (operations: expenses, resource planning, dashboards). See [`docs/progress.md`](docs/progress.md).
 
-## Run locally
+## Start på din egen PC (ingen hosting)
+
+1. Start **Docker Desktop** og vent til den er klar.
+2. Dobbeltklik på **`Start-ARCnordic-Tid.cmd`** i projektmappen — eller åbn mappen i **VS Code** og vælg
+   _Terminal → Run Task… → Start ARCnordic Tid_ (eller `Ctrl+Shift+B`).
+3. Browseren åbner **http://localhost:3000**. Log ind med fx `lv@demo.arcnordic.test` / `demo1234`.
+
+Stop med `Ctrl+C` i vinduet. Frisk demo-data: _Run Task… → Nulstil demo-data_. Tests: _Run Task… → Kør tests_.
+
+## Run locally (developer details)
 
 Requirements: Node.js ≥ 22, pnpm 10, Docker Desktop.
 

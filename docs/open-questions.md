@@ -8,7 +8,7 @@ Each has a default we will use if unanswered (recorded as [Assumed] in the specs
 - ★ **OQ-02 Language split** — TypeScript for web + API + domain rules, Python for workers (reports, exports, PDF, imports, payroll files)? Or a Python (FastAPI) backend? _Default: TS core + Python workers (D-002)._
 - ★ **OQ-12 Dev machine** — Node.js 22 LTS, pnpm and Docker Desktop are not installed. Can we install them (may need IT)? _No default — needed for M0._
 - **OQ-03 GitHub** — Which GitHub org/repo for CI? Private repo under ARCnordic?
-- **OQ-04 Hosting** — Is there an Azure subscription (EU region) we can use, and who owns it?
+- ~~**OQ-04 Hosting**~~ — answered: run locally only for now (D-017). Original question: Is there an Azure subscription (EU region) we can use, and who owns it?
 - **OQ-05 Internal tool or product?** — Is ARCnordic Tid only for ARCnordic, or should it later be sold to other firms? (Affects priority of multi-tenancy polish, billing, onboarding.) _Default: internal first, multi-tenant-ready._
 
 ## B. Company facts (needed for seed config and defaults)
