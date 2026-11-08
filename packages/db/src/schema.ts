@@ -855,3 +855,40 @@ export const expenses = pgTable(
     check("expenses_billable_needs_project", sql`not ${t.billable} or ${t.projectId} is not null`),
   ],
 );
+
+/* ───────────────────────────── M3: resource planning ───────────────────────────── */
+
+/** Planned hours: one employee on one project in one ISO week (decision OQ-28 default: weekly granularity). */
+export const allocations = pgTable(
+  "allocations",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    weekStart: date("week_start").notNull(),
+    hours: hours("hours").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("allocations_user_project_week_uq").on(t.userId, t.projectId, t.weekStart),
+    index("allocations_week_idx").on(t.tenantId, t.weekStart),
+  ],
+);
+
+/** Competencies as simple tags per employee (e.g. "DGNB", "Brandrådgivning", "Revit"), used to find people. */
+export const userCompetencies = pgTable(
+  "user_competencies",
+  {
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.name] })],
+);

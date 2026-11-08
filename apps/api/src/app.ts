@@ -28,6 +28,7 @@ import { approvalRoutes } from "./routes/approval.ts";
 import { expenseRoutes } from "./routes/expenses.ts";
 import { financeRoutes } from "./routes/finance.ts";
 import { invoicingRoutes } from "./routes/invoicing.ts";
+import { planningRoutes } from "./routes/planning.ts";
 import { projectRoutes } from "./routes/projects.ts";
 import { reportRoutes } from "./routes/reports.ts";
 import { timesheetRoutes } from "./routes/timesheet.ts";
@@ -110,6 +111,7 @@ export async function buildApp(config: Config, db: Db) {
       await v1.register(financeRoutes);
       await v1.register(adminRoutes);
       await v1.register(expenseRoutes);
+      await v1.register(planningRoutes);
     },
     { prefix: "/api/v1" },
   );

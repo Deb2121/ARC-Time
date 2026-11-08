@@ -10,6 +10,7 @@ export * from "./invoicing.ts";
 export * from "./money.ts";
 export * from "./norm.ts";
 export * from "./periods.ts";
+export * from "./planning.ts";
 export * from "./rates.ts";
 export * from "./roles.ts";
 export * from "./timesheet.ts";
