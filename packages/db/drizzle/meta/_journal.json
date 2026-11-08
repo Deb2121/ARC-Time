@@ -15,6 +15,20 @@
       "when": 1794135229545,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794137348638,
+      "tag": "0002_m1_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794137349664,
+      "tag": "0003_rls_m1",
+      "breakpoints": true
     }
   ]
 }

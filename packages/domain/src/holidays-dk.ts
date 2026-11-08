@@ -47,3 +47,16 @@ export function danishPublicHolidays(year: number): HolidayDef[] {
   }
   return list.sort((x, y) => x.date.localeCompare(y.date));
 }
+
+export interface CompanyDayDef extends HolidayDef {
+  kind: "full" | "half";
+}
+
+/** Default extra company days off (decision D-013); tenants can change these per calendar. */
+export function defaultCompanyDays(year: number): CompanyDayDef[] {
+  return [
+    { date: `${year}-06-05`, key: "holiday.constitutionDay", nameDa: "Grundlovsdag", kind: "half" },
+    { date: `${year}-12-24`, key: "holiday.christmasEve", nameDa: "Juleaftensdag", kind: "full" },
+    { date: `${year}-12-31`, key: "holiday.newYearsEve", nameDa: "Nytårsaftensdag", kind: "full" },
+  ];
+}

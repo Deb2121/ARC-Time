@@ -52,3 +52,22 @@ integration tests; Playwright for E2E; Biome for lint + format (one fast tool in
 **D-012 · 2026-11-08 · Multi-tenancy enforcement** — Every tenant table has `tenant_id` + Postgres RLS policy
 `tenant_id = current_setting('app.tenant_id')::uuid`. The API connects as a non-owner role without BYPASSRLS and sets
 `app.tenant_id` per transaction (`SET LOCAL`). Migrations run as the owner role. · accepted
+
+**D-013 · 2026-11-08 · Business-rule defaults (owner delegated: "just make something")** — All are tenant settings
+and can be changed later without code changes. · accepted
+
+| Topic                  | Default                                                                                                                                          | Answers |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| Approval flow          | Line manager approves the whole week; PM step available but off                                                                                  | OQ-13   |
+| Period                 | ISO week                                                                                                                                         | OQ-13   |
+| Closing rule           | Warn (not block) when a week is below norm                                                                                                       | OQ-14   |
+| Company days           | Grundlovsdag half day; 24 Dec and 31 Dec full days off (company calendar, on top of statutory)                                                   | OQ-15   |
+| Vacation               | 25 days/year accrued 2,08 days/month (samtidighedsferie, holiday year 1 Sep–31 Aug), unit = days; 5 feriefridage granted 1 Jan per calendar year | OQ-16   |
+| Flex                   | No hard cap; warning outside ±37 h; overtime goes to flex (no paid overtime)                                                                     | OQ-17   |
+| Opening balances       | Entered by admin per employee at go-live (import tool in M4)                                                                                     | OQ-18   |
+| Time format / timer    | Decimal display; timer rounds to nearest 0,25 h (min 0,25); no future-dated work, future absence allowed                                         | OQ-19   |
+| Approver edits         | Approvers reject with comment; they cannot edit hours                                                                                            | OQ-20   |
+| Sickness privacy       | Colleagues and PMs see "Fravær"; reason visible to the employee, line manager, finance, admin                                                    | OQ-21   |
+| No manager (e.g. CEO)  | Approved by any admin other than the person themselves                                                                                           | OQ-22   |
+| Fixed price completion | All hours on the contract's tasks count                                                                                                          | OQ-26   |
+| Payment terms          | Netto 30 dage                                                                                                                                    | OQ-31   |
