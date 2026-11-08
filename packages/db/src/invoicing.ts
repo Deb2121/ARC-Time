@@ -196,16 +196,14 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
     );
     if (!projEntries.length && !projMilestones.length) continue;
     if (projects.length > 1) {
-      await tx
-        .insert(s.invoiceLines)
-        .values({
-          tenantId: p.tenantId,
-          invoiceId: invoice.id,
-          sort: sort++,
-          kind: "heading",
-          description: `${project.number} ${project.name}`,
-          projectId: project.id,
-        });
+      await tx.insert(s.invoiceLines).values({
+        tenantId: p.tenantId,
+        invoiceId: invoice.id,
+        sort: sort++,
+        kind: "heading",
+        description: `${project.number} ${project.name}`,
+        projectId: project.id,
+      });
     }
     for (const m of projMilestones) {
       const [line] = await tx
@@ -248,18 +246,16 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
         })
         .returning();
       if (!line) continue;
-      await tx
-        .insert(s.invoiceLineSources)
-        .values(
-          l.sources.map((src) => ({
-            tenantId: p.tenantId,
-            invoiceLineId: line.id,
-            timeEntryId: src.entryId,
-            hours: src.hours / 100,
-            value: src.value,
-            invoiced: src.invoiced,
-          })),
-        );
+      await tx.insert(s.invoiceLineSources).values(
+        l.sources.map((src) => ({
+          tenantId: p.tenantId,
+          invoiceLineId: line.id,
+          timeEntryId: src.entryId,
+          hours: src.hours / 100,
+          value: src.value,
+          invoiced: src.invoiced,
+        })),
+      );
       await tx
         .update(s.timeEntries)
         .set({ invoiceLineId: line.id })

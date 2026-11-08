@@ -65,28 +65,26 @@ export async function seedMoney(
     .insert(s.priceLists)
     .values({ tenantId, name: "Standardprisliste 2026", isStandard: true })
     .returning();
-  await tx
-    .insert(s.priceListRates)
-    .values([
-      ...groups
-        .filter((g) => STANDARD_RATES[g.name])
-        .map((g) => ({
-          tenantId,
-          priceListId: standard?.id ?? "",
-          priceGroupId: g.id,
-          taskTypeId: null,
-          rate: kr(STANDARD_RATES[g.name] ?? 0),
-          validFrom: "2026-01-01",
-        })),
-      {
+  await tx.insert(s.priceListRates).values([
+    ...groups
+      .filter((g) => STANDARD_RATES[g.name])
+      .map((g) => ({
         tenantId,
         priceListId: standard?.id ?? "",
-        priceGroupId: null,
+        priceGroupId: g.id,
         taskTypeId: null,
-        rate: kr(950),
+        rate: kr(STANDARD_RATES[g.name] ?? 0),
         validFrom: "2026-01-01",
-      },
-    ]);
+      })),
+    {
+      tenantId,
+      priceListId: standard?.id ?? "",
+      priceGroupId: null,
+      taskTypeId: null,
+      rate: kr(950),
+      validFrom: "2026-01-01",
+    },
+  ]);
 
   // Framework agreement with the municipality: own price list, supervision cheaper than design
   const [holm] = await tx.select().from(s.customers).where(eq(s.customers.number, "1002"));
