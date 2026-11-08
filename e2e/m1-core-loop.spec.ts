@@ -87,10 +87,12 @@ test("register → submit → approve", async ({ page, browser }) => {
   await tuesday.press("Escape");
 
   await page.getByRole("button", { name: "Indsend uge" }).click();
+  // Below norm a confirmation appears; wait for either outcome before deciding (avoids a race).
   const confirm = page.getByRole("alertdialog");
-  if (await confirm.isVisible().catch(() => false))
-    await confirm.getByRole("button", { name: "Indsend uge" }).click();
-  await expect(page.getByText("Ugen er indsendt og afventer godkendelse.")).toBeVisible();
+  const submitted = page.getByText("Ugen er indsendt og afventer godkendelse.");
+  await expect(confirm.or(submitted)).toBeVisible();
+  if (await confirm.isVisible()) await confirm.getByRole("button", { name: "Indsend uge" }).click();
+  await expect(submitted).toBeVisible();
   await expect(cell).toHaveAttribute("readonly", "");
 
   // 2. Anne approves in her inbox.

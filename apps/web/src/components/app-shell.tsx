@@ -36,8 +36,15 @@ const NAV: NavItem[] = [
     roles: ["project_manager", "line_manager", "admin"],
     ready: false,
   },
-  { href: "/invoicing", label: "nav.invoicing", roles: ["finance"], ready: false },
+  { href: "/invoicing", label: "nav.invoicing", roles: ["finance", "admin", "project_manager"], ready: true },
+  { href: "/periods", label: "nav.periods", roles: ["finance", "admin", "management"], ready: true },
   { href: "/reports", label: "nav.reports", ready: true },
+  {
+    href: "/admin/price-lists",
+    label: "nav.priceLists",
+    roles: ["finance", "admin", "project_manager", "management"],
+    ready: true,
+  },
   {
     href: "/admin/people",
     label: "nav.people",

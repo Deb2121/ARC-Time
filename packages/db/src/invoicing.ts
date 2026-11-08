@@ -228,7 +228,10 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
         .set({ invoiceLineId: line?.id })
         .where(eq(s.paymentPlanItems.id, m.id));
     }
-    for (const l of buildTimeLines(projEntries, p.grouping)) {
+    const timeLines = buildTimeLines(projEntries, p.grouping).sort((a, b) =>
+      a.description.localeCompare(b.description, "da", { numeric: true }),
+    );
+    for (const l of timeLines) {
       const [line] = await tx
         .insert(s.invoiceLines)
         .values({

@@ -3,7 +3,7 @@
  * that re-opens the hours, so the same entries are invoiceable again next time.
  */
 import { bookInvoice, createDb, schema, withTenant } from "@arc-tid/db";
-import { todayCopenhagen } from "@arc-tid/domain";
+import { startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
 import { eq, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -13,6 +13,8 @@ import { loadConfig } from "./config.ts";
 const config = loadConfig({ NODE_ENV: "test", DEV_LOGIN_ENABLED: "true", AUTH_RATE_LIMIT: "1000" });
 const { db, close } = createDb(config.DATABASE_URL, { max: 3 });
 let app: FastifyInstance;
+/** drafts created by these tests; any still unbooked are deleted afterwards so a failure never leaks state */
+const createdDrafts: string[] = [];
 
 type Session = { cookie: string; csrf: string; id: string; tenantId: string };
 const sessions = new Map<string, Session>();
@@ -52,6 +54,11 @@ beforeAll(async () => {
   app = await buildApp(config, db);
 });
 afterAll(async () => {
+  for (const id of createdDrafts) {
+    const inv = await get("JF", `/api/v1/invoices/${id}`);
+    if (inv.statusCode === 200 && inv.json().status !== "booked")
+      await send("JF", "DELETE", `/api/v1/invoices/${id}`);
+  }
   await app.close();
   await close();
 });
@@ -84,10 +91,28 @@ describe("invoice lifecycle: draft → write-down → book → credit (re-open)"
     });
     expect(draft.statusCode).toBe(200);
     const id = draft.json().id;
+    createdDrafts.push(id);
 
     // Reserved: the same hours are no longer in the basis
     const after = (await get("JF", `/api/v1/invoicing/basis?upTo=${today}`)).json();
     expect(after.find((b: { projectId: string }) => b.projectId === p.id)).toBeUndefined();
+
+    // Hours held by a draft invoice cannot be reopened by the approver
+    const held = await withTenant(db, (await as("JF")).tenantId, async (tx) => {
+      const rows = await tx.execute<{ period_id: string }>(sql`
+        select tp.id as period_id from invoice_line_sources s
+        join invoice_lines l on l.id = s.invoice_line_id
+        join time_entries e on e.id = s.time_entry_id
+        join users u on u.id = e.user_id
+        join timesheet_periods tp on tp.user_id = e.user_id and e.date between tp.week_start and tp.week_start + 6
+        where l.invoice_id = ${id} and u.initials in ('LV', 'PD') and tp.status = 'approved'
+          and tp.week_start >= (select min(month) from accounting_periods where status = 'open') limit 1`);
+      return rows[0]?.period_id;
+    });
+    if (held) {
+      const r = await send("AL", "POST", `/api/v1/approvals/${held}/reopen`, { reason: "test" });
+      expect(r.json().error).toBe("contains_invoiced_entries");
+    }
 
     // Write-down needs a reason and is spread exactly over the entries
     const inv = (await get("JF", `/api/v1/invoices/${id}`)).json();
@@ -168,6 +193,7 @@ describe("invoice lifecycle: draft → write-down → book → credit (re-open)"
         grouping: "summary",
       })
     ).json().id;
+    createdDrafts.push(id);
 
     const next = await withTenant(db, jf.tenantId, async (tx) => {
       const [s] = await tx.select().from(schema.numberSeries);
@@ -239,6 +265,10 @@ describe("accounting periods", () => {
     expect(r.fixedPrice.length).toBeGreaterThan(0);
     expect(r.fixedPrice[0]).toHaveProperty("recognisedThisMonth");
     expect(r.retainers.length).toBe(1);
+    // 26001: rate 1 (290.000) + rate 2 (435.000) were invoiced in the previous system before go-live
+    const lyng = r.fixedPrice.find((f: { projectNumber: string }) => f.projectNumber === "26001");
+    expect(lyng.invoicedToDate).toBe(72_500_000);
+    expect(lyng.balance).toBe(lyng.recognisedToDate - 72_500_000);
     expect(typeof r.wipTimeMaterial).toBe("number");
   });
 });
@@ -281,5 +311,62 @@ describe("payment plan", () => {
     const ids = plan.map((i: { id: string }) => i.id);
     expect(ids.length).toBe(new Set(ids).size);
     void inArray;
+  });
+});
+
+describe("bookkeeping trail", () => {
+  it("clearing an entry that was invoiced and credited back keeps the row (never deleted)", async () => {
+    const jf = await as("JF");
+    const week = (await get("LV", `/api/v1/timesheet/week/${startOfIsoWeek(today)}`)).json();
+    const p = await projectId("26004");
+    const tasks = (await get("LV", "/api/v1/timesheet/tasks?q=behovsanalyse")).json();
+    const taskId = tasks[0].taskId;
+    // register → submit → approve
+    expect(
+      (await send("LV", "PUT", "/api/v1/timesheet/entries", { date: week.weekStart, taskId, hours: 3 }))
+        .statusCode,
+    ).toBe(200);
+    await send("LV", "POST", `/api/v1/timesheet/week/${week.weekStart}/submit`, {});
+    const inbox = (await get("AL", `/api/v1/approvals?weekStart=${week.weekStart}`)).json();
+    const periodId = inbox.items.find(
+      (i: { user: { initials: string } }) => i.user.initials === "LV",
+    ).periodId;
+    expect((await send("AL", "POST", `/api/v1/approvals/${periodId}/approve`)).statusCode).toBe(200);
+    // invoice → book → credit with re-open → book
+    const customerId = (await get("JF", `/api/v1/projects/${p.id}`)).json().customerId;
+    const id = (
+      await send("JF", "POST", "/api/v1/invoices/drafts", {
+        customerId,
+        projectIds: [p.id],
+        upTo: today,
+        invoiceDate: today,
+        grouping: "summary",
+      })
+    ).json().id;
+    createdDrafts.push(id);
+    await send("JF", "POST", `/api/v1/invoices/${id}/book`);
+    const credit = (await send("JF", "POST", `/api/v1/invoices/${id}/credit`, { reopenSources: true })).json()
+      .id;
+    await send("JF", "POST", `/api/v1/invoices/${credit}/book`);
+    // approver reopens the week, employee clears the cell
+    expect(
+      (await send("AL", "POST", `/api/v1/approvals/${periodId}/reopen`, { reason: "test" })).statusCode,
+    ).toBe(200);
+    const res = await send("LV", "PUT", "/api/v1/timesheet/entries", {
+      date: week.weekStart,
+      taskId,
+      hours: 0,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ cleared: true });
+    const kept = await withTenant(db, jf.tenantId, (tx) =>
+      tx
+        .select({ hours: schema.timeEntries.hours })
+        .from(schema.timeEntries)
+        .where(
+          sql`${schema.timeEntries.userId} = ${(week as { userId: string }).userId} and ${schema.timeEntries.taskId} = ${taskId} and ${schema.timeEntries.date} = ${week.weekStart}`,
+        ),
+    );
+    expect(kept).toEqual([{ hours: 0 }]);
   });
 });

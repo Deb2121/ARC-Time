@@ -3,7 +3,7 @@
 Time tracking, projects, budgets, resource planning, approvals, invoicing, expenses, absence/flex, payroll export and
 reporting for ARCnordic. Built in-house as a clean-room implementation.
 
-Status: **M1 MVP core loop done** — next: M2 (money: rates, invoicing, accounting periods). See [`docs/progress.md`](docs/progress.md).
+Status: **M2 Money done** — next: M3 (operations: expenses, resource planning, dashboards). See [`docs/progress.md`](docs/progress.md).
 
 ## Run locally
 
@@ -16,7 +16,7 @@ pnpm dev                 # web http://localhost:3000 · API http://localhost:400
 ```
 
 Demo users (fictional): `kh@demo.arcnordic.test` (admin), `jf@…` (finance), `al@…` (line manager), `lv@…` (employee) — password `demo1234`.
-Walkthroughs: [`docs/demo/m0-foundation.md`](docs/demo/m0-foundation.md), [`docs/demo/m1-core-loop.md`](docs/demo/m1-core-loop.md).
+Walkthroughs: [`docs/demo/m0-foundation.md`](docs/demo/m0-foundation.md), [`docs/demo/m1-core-loop.md`](docs/demo/m1-core-loop.md), [`docs/demo/m2-money.md`](docs/demo/m2-money.md).
 
 Quality gate (run before every commit to main): `pnpm check` (lint + typecheck + tests). E2E: `pnpm e2e` with the dev stack running.
 
@@ -24,12 +24,13 @@ Optional local tweak: copy `.npmrc.example` to `.npmrc` to keep pnpm's package s
 
 ## Layout
 
-| Path              | What                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------ |
-| `apps/web`        | Next.js frontend (Danish first, English second)                                            |
-| `apps/api`        | Fastify REST API `/api/v1`, OpenAPI at `/api/docs`                                         |
-| `packages/domain` | All business rules as pure, tested functions (hours, money, norm, flex, holidays, budgets) |
-| `packages/db`     | Drizzle schema, SQL migrations incl. row-level security, seed                              |
-| `packages/ui`     | Design-system components (ARCnordic visual identity)                                       |
-| `e2e`             | Playwright end-to-end tests                                                                |
-| `docs`            | Spec, decisions, open questions, progress, demo scripts, research                          |
+| Path                    | What                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| `apps/web`              | Next.js frontend (Danish first, English second)                                            |
+| `apps/api`              | Fastify REST API `/api/v1`, OpenAPI at `/api/docs`                                         |
+| `packages/domain`       | All business rules as pure, tested functions (hours, money, norm, flex, holidays, budgets) |
+| `packages/db`           | Drizzle schema, SQL migrations incl. row-level security, seed                              |
+| `packages/integrations` | Adapters to external systems (e-conomic; sandbox only, disabled by default)                |
+| `packages/ui`           | Design-system components (ARCnordic visual identity)                                       |
+| `e2e`                   | Playwright end-to-end tests                                                                |
+| `docs`                  | Spec, decisions, open questions, progress, demo scripts, research                          |

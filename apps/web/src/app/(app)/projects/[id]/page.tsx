@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { PaymentPlan } from "@/components/payment-plan";
 import { HealthDot, Progress } from "@/components/progress";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
@@ -297,6 +298,7 @@ export default function ProjectDetailPage() {
               ))}
             </ul>
           </Card>
+          <PaymentPlan projectId={d.id} contracts={d.contracts} canEdit={d.canEdit} />
           <Card title={t("pr.members")}>
             <ul className="flex flex-wrap gap-2">
               {d.members.map((m) => (

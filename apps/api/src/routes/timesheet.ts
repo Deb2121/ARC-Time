@@ -295,6 +295,9 @@ export const timesheetRoutes: FastifyPluginAsyncZod = async (app) => {
           defaultBillable = t.taskBillable;
         }
 
+        // Held by an invoice (draft or booked): only Finance can change it via the invoice.
+        if (current?.invoiceLineId)
+          throw Object.assign(new HttpError(409, "not_editable"), { details: ["not_editable"] });
         const comment = b.comment === undefined ? (current?.comment ?? null) : b.comment;
         const errors = validateEntry({
           hours,
@@ -318,7 +321,22 @@ export const timesheetRoutes: FastifyPluginAsyncZod = async (app) => {
         }
 
         if (hours === 0) {
-          if (current) await tx.delete(schema.timeEntries).where(eq(schema.timeEntries.id, current.id));
+          if (!current) return { deleted: true };
+          // An entry that has been on a booked invoice (e.g. invoiced, then credited back) is part of the bookkeeping
+          // trail and is never deleted; clearing it keeps the row with 0 hours.
+          const [history] = await tx
+            .select({ id: schema.invoiceLineSources.id })
+            .from(schema.invoiceLineSources)
+            .where(eq(schema.invoiceLineSources.timeEntryId, current.id))
+            .limit(1);
+          if (history) {
+            await tx
+              .update(schema.timeEntries)
+              .set({ hours: 0, status: "draft", updatedAt: new Date() })
+              .where(eq(schema.timeEntries.id, current.id));
+            return { cleared: true };
+          }
+          await tx.delete(schema.timeEntries).where(eq(schema.timeEntries.id, current.id));
           return { deleted: true };
         }
         const values = {

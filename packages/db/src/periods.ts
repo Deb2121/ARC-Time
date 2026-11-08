@@ -128,7 +128,11 @@ export async function monthEndReport(tx: Tx, month: LocalDate): Promise<MonthEnd
         join invoices i on i.id = l.invoice_id
         join payment_plan_items pi on pi.id = coalesce(l.payment_plan_item_id, (select l2.payment_plan_item_id from invoice_lines l2 where l2.id = l.credits_line_id))
         where pi.contract_id = ${c.id} and i.status = 'booked' and i.invoice_date <= ${end}`);
-      const invoicedToDate = Number(inv?.amount ?? 0);
+      // Milestones invoiced in the previous system before go-live have no invoice line but still count.
+      const [legacy] = await tx.execute<{ amount: string }>(sql`
+        select coalesce(sum(amount), 0) as amount from payment_plan_items
+        where contract_id = ${c.id} and status = 'invoiced' and invoice_line_id is null and due_date <= ${end}`);
+      const invoicedToDate = Number(inv?.amount ?? 0) + Number(legacy?.amount ?? 0);
       const previouslyRecognised = prev?.v ?? 0;
       fixedPrice.push({
         contractId: c.id,

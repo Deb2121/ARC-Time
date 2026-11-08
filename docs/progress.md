@@ -13,6 +13,18 @@
   - Tests: 35 domain, 5 RLS, 28 API integration, 7 E2E — all green.
   - Bug found by E2E and fixed: CORS allowed only GET/POST, so saving cells from the browser failed; regression test added.
 
+- 2026-11-08 · **M2 Money** — see `docs/demo/m2-money.md`
+  - Domain: 5-step rate resolution with specificity and valid-from; invoice suggestion builder (4 groupings); exact write-down spreading; VAT totals per rate; due dates; period locking; fixed-price recognition delta; retainer deferral.
+  - Data: price groups, task types, price lists + rates, project employee rates, payment plans, invoices/lines/line sources, gap-free number series, accounting periods, revenue recognitions, integration connections, outbox; DB triggers make booked invoices immutable.
+  - Services (shared by API and seed): rate snapshot at approval, draft from suggestion (with reservation and T&M caps), line edit/write-down, free lines, booking (locked counter), credit notes (optionally re-open sources), month-end report, close/reopen in order with checklist.
+  - API: invoicing basis, drafts (single/bulk), invoice editing, ready/book/credit, HTML + PDF (headless Chromium), periods + report, price lists, payment plans; closed months lock timesheet edits and approvals.
+  - Integrations: adapter interface, e-conomic adapter (sandbox, disabled by default), transactional outbox worker.
+  - Web: Fakturering (basis, drafts, booked), invoice editor, Regnskabsperioder with month-end report, Prislister, payment plan on projects.
+  - Seed: price lists incl. a framework list, payment plans, 13 booked invoices and two closed months.
+  - Tests: 51 domain, 5 RLS, 38 API, 4 integration, 8 E2E (incl. the brief's full flow) — all green, repeatable runs.
+  - Bugs found by tests and fixed: wrapped Postgres errors not mapped (409), reopen of hours held by a draft invoice, deleting credited-back entries (now kept with 0 h), invoiced-to-date missing pre-go-live milestones, E2E races (parallel specs, delayed dialogs).
+  - Quality gate: pre-commit hook runs lint + typecheck.
+
 ## Deferred from the MVP list (planned next)
 
 - Day view of the timesheet (week view covers the flow; day view is a convenience) → early M2.

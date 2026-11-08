@@ -238,7 +238,12 @@ export const approvalRoutes: FastifyPluginAsyncZod = async (app) => {
         const [invoiced] = await tx
           .select({ id: schema.timeEntries.id })
           .from(schema.timeEntries)
-          .where(and(range, eq(schema.timeEntries.status, "invoiced")))
+          .where(
+            and(
+              range,
+              sql`(${schema.timeEntries.status} = 'invoiced' or ${schema.timeEntries.invoiceLineId} is not null)`,
+            ),
+          )
           .limit(1);
         if (invoiced) throw new HttpError(409, "contains_invoiced_entries");
         await tx

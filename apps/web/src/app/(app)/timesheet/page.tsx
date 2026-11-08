@@ -121,6 +121,9 @@ function Timesheet() {
     },
   });
 
+  const [actionError, setActionError] = useState<string | null>(null);
+  const showError = (e: unknown) =>
+    setActionError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
   const submit = useMutation({
     mutationFn: () =>
       api<{ status: string; warnings: string[] }>(`/timesheet/week/${weekStart}/submit`, {
@@ -129,12 +132,15 @@ function Timesheet() {
       }),
     onSuccess: () => {
       setConfirmSubmit(false);
+      setActionError(null);
       void refresh();
     },
+    onError: showError,
   });
   const reopen = useMutation({
     mutationFn: () => api(`/timesheet/week/${weekStart}/reopen`, { method: "POST" }),
     onSuccess: () => void refresh(),
+    onError: showError,
   });
 
   const selRow = rows.find((r) => r.key === selected?.rowKey);
@@ -263,6 +269,12 @@ function Timesheet() {
       {data.status === "rejected" && (
         <div className="rounded-lg border border-danger/30 bg-danger/5 p-4 text-sm text-danger" role="alert">
           ⚠ {t("ts.rejected", { comment: lastReject?.comment ?? "" })}
+        </div>
+      )}
+
+      {actionError && (
+        <div className="rounded-lg border border-danger/30 bg-danger/5 p-4 text-sm text-danger" role="alert">
+          ⚠ {actionError}
         </div>
       )}
 
