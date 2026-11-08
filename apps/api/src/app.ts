@@ -17,6 +17,7 @@ import {
 import { authPlugin, HttpError } from "./auth/plugin.ts";
 import { authRoutes } from "./auth/routes.ts";
 import type { Config } from "./config.ts";
+import { adminRoutes } from "./routes/admin.ts";
 import { approvalRoutes } from "./routes/approval.ts";
 import { financeRoutes } from "./routes/finance.ts";
 import { invoicingRoutes } from "./routes/invoicing.ts";
@@ -97,6 +98,7 @@ export async function buildApp(config: Config, db: Db) {
       await v1.register(reportRoutes);
       await v1.register(invoicingRoutes);
       await v1.register(financeRoutes);
+      await v1.register(adminRoutes);
     },
     { prefix: "/api/v1" },
   );

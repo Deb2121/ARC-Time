@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMe } from "@/components/session";
+import { DayView } from "@/components/timesheet/day-view";
 import { TaskPicker } from "@/components/timesheet/task-picker";
 import {
   absenceRowKey,
@@ -54,6 +55,15 @@ function Timesheet() {
   const weekStart = startOfIsoWeek(params.get("week") ?? todayCopenhagen());
   const viewUser = params.get("user");
   const isOwn = !viewUser || viewUser === me.id;
+  const view = params.get("view") === "day" ? "day" : "week";
+  const today = todayCopenhagen();
+  const dayParam = params.get("day");
+  const selectedDay =
+    dayParam && dayParam >= weekStart && dayParam <= addDays(weekStart, 6)
+      ? dayParam
+      : today >= weekStart && today <= addDays(weekStart, 6)
+        ? today
+        : weekStart;
 
   const week = useQuery({
     queryKey: ["week", weekStart, viewUser ?? "me"],
@@ -108,7 +118,11 @@ function Timesheet() {
     [rows],
   );
 
-  const go = (w: string) => router.push(`/timesheet?week=${w}${isOwn ? "" : `&user=${viewUser}`}`);
+  /** Navigates within the timesheet, keeping the viewed user and the week/day view in the URL. */
+  const go = (w: string, v: "week" | "day" = view, day?: string) =>
+    router.push(
+      `/timesheet?week=${w}${isOwn ? "" : `&user=${viewUser}`}${v === "day" ? `&view=day${day ? `&day=${day}` : ""}` : ""}`,
+    );
   const refresh = () => qc.invalidateQueries({ queryKey: ["week"] });
 
   const addTaskRow = (x: TaskRef) =>
@@ -330,17 +344,39 @@ function Timesheet() {
 
       <div className="flex flex-col gap-5">
         <div className="flex min-w-0 flex-col gap-2">
-          <WeekGrid
-            week={data}
-            rows={rows}
-            selected={selected}
-            onSelect={setSelected}
-            onCommentNeeded={(sel, hours) => {
-              setSelected(sel);
-              openPanel(sel, hours);
-            }}
-          />
-          <p className="text-xs text-ink-500">{t("ts.keyboardHelp")}</p>
+          <div
+            role="tablist"
+            aria-label={t("ts.title")}
+            className="flex gap-1 self-start rounded-[var(--radius-control)] border border-line bg-surface p-1 text-sm"
+          >
+            {(["week", "day"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                onClick={() => go(weekStart, v, v === "day" ? selectedDay : undefined)}
+                className={`rounded px-3 py-1 font-semibold ${view === v ? "bg-ink-900 text-white" : "text-ink-700 hover:bg-surface-alt"}`}
+              >
+                {t(v === "week" ? "ts.view.week" : "ts.view.day")}
+              </button>
+            ))}
+          </div>
+          {view === "day" ? (
+            <DayView week={data} rows={rows} day={selectedDay} onDay={(d) => go(weekStart, "day", d)} />
+          ) : (
+            <WeekGrid
+              week={data}
+              rows={rows}
+              selected={selected}
+              onSelect={setSelected}
+              onCommentNeeded={(sel, hours) => {
+                setSelected(sel);
+                openPanel(sel, hours);
+              }}
+            />
+          )}
+          {view === "week" && <p className="text-xs text-ink-500">{t("ts.keyboardHelp")}</p>}
         </div>
 
         <aside className="contents">

@@ -1,9 +1,13 @@
 "use client";
 
-import { Badge } from "@arc-tid/ui";
+import { hasRole } from "@arc-tid/domain";
+import { Badge, Button } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useState } from "react";
+import { NewProject } from "@/components/new-project";
 import { HealthDot, Progress } from "@/components/progress";
+import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
 import { api } from "@/lib/api";
@@ -33,10 +37,17 @@ export interface ProjectSummary {
 export default function ProjectsPage() {
   const { t, locale } = useI18n();
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => api<ProjectSummary[]>("/projects") });
+  const me = useMe();
+  const canCreate = hasRole(me.roles, "admin", "finance", "project_manager");
+  const [creating, setCreating] = useState(false);
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <h1 className="text-3xl font-normal">{t("pr.title")}</h1>
+      <header className="flex items-end justify-between gap-4">
+        <h1 className="text-3xl font-normal">{t("pr.title")}</h1>
+        {canCreate && !creating && <Button onClick={() => setCreating(true)}>+ {t("np.new")}</Button>}
+      </header>
+      {creating && <NewProject onCancel={() => setCreating(false)} />}
       {projects.isLoading && <p className="text-ink-500">{t("common.loading")}</p>}
       {projects.data?.length === 0 && <p className="text-ink-500">{t("pr.empty")}</p>}
       {projects.data && projects.data.length > 0 && (
