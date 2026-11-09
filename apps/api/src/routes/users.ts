@@ -3,11 +3,11 @@
  * a line manager sees their direct and indirect reports; everyone sees themselves.
  */
 import { schema, type Tx, writeAudit } from "@arc-tid/db";
-import { hasRole, ROLES, type Role } from "@arc-tid/domain";
+import { CAPABILITIES, hasRole, RIGHTS, ROLES, type Role } from "@arc-tid/domain";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { requireRole } from "../auth/plugin.ts";
+import { policyOf, requireCapability } from "../auth/plugin.ts";
 import { AppError } from "../services/errors.ts";
 import { reportIds } from "../services/people.ts";
 
@@ -43,13 +43,31 @@ async function loadUsers(tx: Tx, ids?: string[]): Promise<UserDto[]> {
 export const userRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/me",
-    { schema: { response: { 200: UserDto.extend({ tenantId: z.string(), csrfToken: z.string() }) } } },
+    {
+      schema: {
+        response: {
+          200: UserDto.extend({
+            tenantId: z.string(),
+            csrfToken: z.string(),
+            rights: z.array(z.enum(RIGHTS)),
+            /** what the role matrix allows this person (D-025); the web shows only these actions */
+            capabilities: z.array(z.enum(CAPABILITIES)),
+          }),
+        },
+      },
+    },
     async (req) => {
       const auth = req.auth;
       if (!auth) throw new AppError(401, "unauthenticated");
       const [me] = await req.withTenant((tx) => loadUsers(tx, [auth.userId]));
       if (!me) throw new AppError(404, "not_found");
-      return { ...me, tenantId: auth.tenantId, csrfToken: auth.csrfToken };
+      return {
+        ...me,
+        tenantId: auth.tenantId,
+        csrfToken: auth.csrfToken,
+        rights: auth.rights ?? [],
+        capabilities: policyOf(auth).capabilities(),
+      };
     },
   );
 
@@ -74,7 +92,7 @@ export const userRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "admin");
+      const auth = requireCapability(req, "settings.manage");
       const { id } = req.params;
       const roles: Role[] = Array.from(new Set<Role>(["employee", ...req.body.roles]));
       if (id === auth.userId && !roles.includes("admin")) throw new AppError(400, "cannot_remove_own_admin");

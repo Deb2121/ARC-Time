@@ -4,11 +4,11 @@ Each has a default we will use if unanswered (recorded as [Assumed] in the specs
 
 ## A. Project setup & technology
 
-- ★ **OQ-01 Repo location** — The repo is in a OneDrive-synced folder. OneDrive + `.git` + `node_modules` is slow and can lock files. OK to keep docs here but put the working copy at e.g. `C:\dev\arcnordic-tid` with GitHub as source of truth? _Default: keep here, exclude build folders._
+- ★ **OQ-01 Repo location** — The repo is in a OneDrive-synced folder. OneDrive + `.git` + `node_modules` is slow and can lock files. OK to keep docs here but put the working copy at e.g. `C:\dev\arcnordic-tid` with GitHub as source of truth? _Default: keep here, exclude build folders._ **Status 2026-11-09:** still in OneDrive; move steps in docs/operations.md §4 (needs the owner to do it, D-027).
 - ★ **OQ-02 Language split** — TypeScript for web + API + domain rules, Python for workers (reports, exports, PDF, imports, payroll files)? Or a Python (FastAPI) backend? _Default: TS core + Python workers (D-002)._
 - ★ **OQ-12 Dev machine** — Node.js 22 LTS, pnpm and Docker Desktop are not installed. Can we install them (may need IT)? _No default — needed for M0._
 - **OQ-03 GitHub** — Which GitHub org/repo for CI? Private repo under ARCnordic?
-- ~~**OQ-04 Hosting**~~ — answered: run locally only for now (D-017). Original question: Is there an Azure subscription (EU region) we can use, and who owns it?
+- ~~**OQ-04 Hosting**~~ — answered: run locally only for now (D-017). Original question: Is there an Azure subscription (EU region) we can use, and who owns it? **Status 2026-11-09:** reopened for go-live: proposal in docs/operations.md §1 (D-027) — needs an owner decision and an Azure subscription.
 - **OQ-05 Internal tool or product?** — Is ARCnordic Tid only for ARCnordic, or should it later be sold to other firms? (Affects priority of multi-tenancy polish, billing, onboarding.) _Default: internal first, multi-tenant-ready._
 
 ## B. Company facts (needed for seed config and defaults)
@@ -30,7 +30,7 @@ Each has a default we will use if unanswered (recorded as [Assumed] in the specs
 - **OQ-18 Go-live balances** — Where will opening flex/vacation balances come from?
 - **OQ-19 Time format & timer** — Decimal (1,50) or hh:mm display? Timer rounds to nearest 0.25 h (min 0.25)? Future-dated hours allowed? _Default: decimal; nearest quarter; future up to 0 days for work, absence any future date._
 - **OQ-20 Approver edits** — May approvers edit hours, or only reject? _Default: reject only._
-- **OQ-21 Sickness privacy** — Show sickness as "absent" (not the reason) to colleagues/PMs? _Default: yes, reason visible only to employee, line manager, HR/Finance._
+- **OQ-21 Sickness privacy** — Show sickness as "absent" (not the reason) to colleagues/PMs? _Default: yes, reason visible only to employee, line manager, HR/Finance._ **Status 2026-11-09:** implemented as the default (D-025): only employee, line manager and Finance see the reason; others see "Fravær" in timesheets, reports and analytics.
 - **OQ-22 Who approves people without a manager** (e.g. CEO)? _Default: a designated admin approver._
 
 ## D. Projects, rates, planning
@@ -57,7 +57,7 @@ Each has a default we will use if unanswered (recorded as [Assumed] in the specs
 
 - **OQ-37 KPIs** — Which KPIs and targets does management follow? Utilisation = billable ÷ norm (default) or ÷ capacity? Include WIP in T&M margin? Is Power BI used?
 - **OQ-38 Admins** — Who are the first admin and finance users?
-- **OQ-39 Retention** — Confirm 5-year bookkeeping retention; fiscal year = calendar year?
+- **OQ-39 Retention** — Confirm 5-year bookkeeping retention; fiscal year = calendar year? **Status 2026-11-09:** built with the default 5 years + calendar fiscal year (D-026); bookkeeping data past retention is reported, not auto-deleted, until confirmed with the accountant.
 - **OQ-40 Security** — IP allow-list or extra MFA requirements beyond Entra ID?
 - **OQ-41 SharePoint** — Project folders structured by project number? Link only, or create folders automatically?
 - **OQ-42 Other systems** — Anything else to connect (e.g. Jira, document management, HR system)?

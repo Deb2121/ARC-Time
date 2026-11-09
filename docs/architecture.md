@@ -48,17 +48,17 @@ for a different reason (and vice versa).
 
 ## 3. GRASP in this codebase
 
-| Principle                | Where you see it                                                                                                                                                                                                                                      |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Information Expert**   | Calculations live with the data they need: `flex.ts` (flex), `norm.ts` (norm hours), `rates.ts` (rate order), `invoicing.ts` (suggestion lines, write-down spreading), `people.ts` (who may see/approve whom).                                        |
-| **Creator**              | The object that owns another creates it: `ensurePeriod` (a week creates its timesheet period), `createProject` (a project creates its first contract and PM membership), `createDraftFromSuggestion` (an invoice creates its lines and line sources). |
-| **Controller**           | Route files only: validate → authorize → delegate → respond. No SQL workflows or business rules.                                                                                                                                                      |
-| **Low Coupling**         | Services throw `AppError` (`services/errors.ts`) — they do not depend on HTTP/auth code. Domain has no dependencies at all. External systems are reached only through adapters.                                                                       |
-| **High Cohesion**        | One responsibility per module: `project-setup.ts` changes projects, `projects.ts` only reads/aggregates them; `invoices.ts` (access/read models) vs `packages/db/invoicing.ts` (workflows).                                                           |
-| **Polymorphism**         | `AccountingAdapter` interface — e-conomic today, Dinero/Business Central later, without touching callers.                                                                                                                                             |
-| **Pure Fabrication**     | Services that exist for good structure, not because the business has such a thing: outbox, audit writer, rate snapshot, report/CSV builder.                                                                                                           |
-| **Indirection**          | `withTenant()` between code and database; the transactional outbox between booking and the accounting system.                                                                                                                                         |
-| **Protected Variations** | Row-level security, immutability triggers on booked invoices, adapter interface, i18n keys, design tokens.                                                                                                                                            |
+| Principle                | Where you see it                                                                                                                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Information Expert**   | Calculations live with the data they need: `flex.ts` (flex), `norm.ts` (norm hours), `rates.ts` (rate order), `invoicing.ts` (suggestion lines, write-down spreading), `people.ts` (who may see/approve whom), `access.ts` (`AccessPolicy`: who may do what). |
+| **Creator**              | The object that owns another creates it: `ensurePeriod` (a week creates its timesheet period), `createProject` (a project creates its first contract and PM membership), `createDraftFromSuggestion` (an invoice creates its lines and line sources).         |
+| **Controller**           | Route files only: validate → authorize → delegate → respond. No SQL workflows or business rules.                                                                                                                                                              |
+| **Low Coupling**         | Services throw `AppError` (`services/errors.ts`) — they do not depend on HTTP/auth code. Domain has no dependencies at all. External systems are reached only through adapters.                                                                               |
+| **High Cohesion**        | One responsibility per module: `project-setup.ts` changes projects, `projects.ts` only reads/aggregates them; `invoices.ts` (access/read models) vs `packages/db/invoicing.ts` (workflows).                                                                   |
+| **Polymorphism**         | `AccountingAdapter` interface — e-conomic today, Dinero/Business Central later, without touching callers.                                                                                                                                                     |
+| **Pure Fabrication**     | Services that exist for good structure, not because the business has such a thing: outbox, audit writer, rate snapshot, report/CSV builder.                                                                                                                   |
+| **Indirection**          | `withTenant()` between code and database; the transactional outbox between booking and the accounting system.                                                                                                                                                 |
+| **Protected Variations** | Row-level security, immutability triggers on booked invoices, adapter interface, i18n keys, design tokens.                                                                                                                                                    |
 
 ## 4. Adding a new feature — checklist
 
@@ -102,11 +102,28 @@ for a different reason (and vice versa).
 | Rounding                   | half away from zero (`divRound`)                                 |                              |
 | Tenant                     | every table has `tenant_id`; always query through `withTenant()` |                              |
 
+### Object-oriented parts
+
+The core is deliberately **functional** (pure functions over plain data are the easiest to test and to mirror in
+Python). Objects are used where they model a thing with behaviour and identity, or a replaceable collaborator:
+
+| Class / interface                                                                             | Why it is an object                                                                                                                                                      |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AccessPolicy` (`packages/domain/src/access.ts`)                                              | Encapsulates one person's roles + rights; methods `can`, `capabilities`, `seesAbsenceReason`, `canReadAudit`. The matrix is private data — callers never see role lists. |
+| `AccountingAdapter`, `CalendarSource` (interfaces) + `EconomicAdapter`, `GraphCalendarSource` | Polymorphism / Protected Variations: swap systems without touching callers; tests pass fakes.                                                                            |
+| `AppError`, `InvoiceError`, `PeriodError`, `IntegrationError`                                 | Error types carry HTTP status / retryable flag; the error handler maps them in one place.                                                                                |
+| `CalendarProvider`, `Mailer` (interfaces)                                                     | Injected collaborators (`buildApp(config, db, deps)`), so tests never call Microsoft or send mail.                                                                       |
+| Python `Caller` dataclass                                                                     | Immutable value object for the signed-in person in the analytics service.                                                                                                |
+
+Rule of thumb: add a class when there is state that must stay consistent with its behaviour, or when callers should
+depend on an interface rather than a concrete system. Otherwise write a documented pure function.
+
 ## 7. Security model in one paragraph
 
 Sessions are opaque random tokens (only their hash is stored) with a per-session CSRF token required on every
 mutating request. Roles are additive (employee, project manager, line manager, finance, management, admin) and
-checked **server-side** in controllers/services; data visibility rules live in `services/people.ts` and
+checked **server-side** through `AccessPolicy` (`requireCapability` in routes; the web only mirrors the capability
+list from `/me`, D-025) — Admin configures, Finance transacts; data visibility rules live in `services/people.ts` and
 `services/projects.ts`. Tenant isolation is enforced by PostgreSQL row-level security with a non-owner runtime role.
 Booked invoices are immutable via database triggers. Financial changes are written to an append-only audit log.
 

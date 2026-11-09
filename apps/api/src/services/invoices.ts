@@ -10,12 +10,12 @@
 import { InvoiceError, loadInvoice, recalcInvoice, schema, type Tx, writeAudit } from "@arc-tid/db";
 import { hasRole, invoiceTotals, isAmountLine, type LocalDate } from "@arc-tid/domain";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import type { AuthContext } from "../auth/plugin.ts";
+import { type AuthContext, policyOf } from "../auth/plugin.ts";
 import { AppError } from "./errors.ts";
 
-/** Throws 403 unless the caller may prepare invoices for all given projects (Finance/Admin, or PM of each project). */
+/** Throws 403 unless the caller may prepare invoices for all given projects (Finance, or PM of each project). */
 export async function assertCanInvoice(tx: Tx, auth: AuthContext, projectIds: string[]) {
-  if (hasRole(auth.roles, "finance", "admin")) return;
+  if (policyOf(auth).can("invoice.prepare_all")) return;
   if (!hasRole(auth.roles, "project_manager")) throw new AppError(403, "forbidden");
   const rows = await tx
     .select({ managerId: schema.projects.managerId })
@@ -56,8 +56,9 @@ export async function assertCanSeeLine(tx: Tx, auth: AuthContext, lineId: string
  * Project managers see only projects they manage.
  */
 export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate) {
-  if (!hasRole(auth.roles, "finance", "admin", "project_manager")) throw new AppError(403, "forbidden");
-  const onlyOwn = !hasRole(auth.roles, "finance", "admin");
+  const policy = policyOf(auth);
+  if (!policy.can("invoice.prepare")) throw new AppError(403, "forbidden");
+  const onlyOwn = !policy.can("invoice.prepare_all");
   const rows = await tx.execute<{
     project_id: string;
     number: string;
@@ -214,7 +215,7 @@ export async function invoiceDetail(tx: Tx, auth: AuthContext, invoiceId: string
       lines.filter((l) => isAmountLine(l.kind)).map((l) => ({ amount: l.amount, vatBp: l.vatBp })),
     ),
     credits,
-    canBook: hasRole(auth.roles, "finance", "admin") && inv.status !== "booked",
+    canBook: policyOf(auth).can("invoice.book") && inv.status !== "booked",
   };
 }
 

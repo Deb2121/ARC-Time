@@ -23,3 +23,6 @@ playwright-report/
 
 # uploaded receipts (local storage, D-017)
 data/
+
+# local database backups (scripts/db-backup.mjs)
+backups/

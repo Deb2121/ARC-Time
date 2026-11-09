@@ -70,3 +70,12 @@ def test_power_bi_dataset_and_read_only_role(client: TestClient) -> None:
 def test_rejects_an_inverted_period(client: TestClient) -> None:
     client.cookies.set("arc_sid", session("jf"))
     assert client.get("/v1/kpi", params={"from": "2026-10-31", "to": "2026-09-01"}).status_code == 400
+
+
+def test_sickness_is_masked_for_management_but_not_finance(client: TestClient) -> None:
+    client.cookies.set("arc_sid", session("kh"))  # Admin + Management, not Finance
+    codes = {r["absence_code"] for r in client.get("/v1/datasets/time_entries", params=PERIOD).json()}
+    assert "SYG" not in codes and "BARNSYG" not in codes
+    client.cookies.set("arc_sid", session("jf"))  # Finance
+    codes = {r["absence_code"] for r in client.get("/v1/datasets/time_entries", params=PERIOD).json()}
+    assert "SYG" in codes and "FRAVÆR" not in codes

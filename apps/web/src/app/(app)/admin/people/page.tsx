@@ -1,13 +1,14 @@
 "use client";
 
-import { hasRole, todayCopenhagen } from "@arc-tid/domain";
+import { todayCopenhagen } from "@arc-tid/domain";
 import { Badge, Button, Card } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
+import { GdprSection } from "@/components/gdpr-section";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api, type Person } from "@/lib/api";
+import { ApiError, api, can, type Person } from "@/lib/api";
 import { fmtDay } from "@/lib/format";
 
 interface EmployeeDetail {
@@ -21,6 +22,8 @@ interface EmployeeDetail {
   flexOpening: number;
   vacationOpening: number;
   payrollNumber: string | null;
+  active: boolean;
+  canCreateProjects: boolean;
   norms: { id: string; validFrom: string; patternId: string; patternName: string }[];
 }
 interface SettingsLite {
@@ -33,7 +36,7 @@ const field = "h-9 w-full rounded-[var(--radius-control)] border border-line bg-
 export default function PeoplePage() {
   const { t } = useI18n();
   const me = useMe();
-  const canEdit = hasRole(me.roles, "admin", "finance");
+  const canEdit = can(me, "settings.read");
   const people = useQuery({ queryKey: ["users"], queryFn: () => api<Person[]>("/users") });
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -112,7 +115,7 @@ export default function PeoplePage() {
         {selected && (
           <EmployeePanel
             id={selected}
-            isAdmin={hasRole(me.roles, "admin")}
+            isAdmin={can(me, "settings.manage")}
             onClose={() => setSelected(null)}
           />
         )}
@@ -157,6 +160,8 @@ function EmployeePanel({ id, isAdmin, onClose }: { id: string; isAdmin: boolean;
         flexOpening: num(f.get("flexOpening")),
         vacationOpening: num(f.get("vacationOpening")),
         employmentEnd: f.get("employmentEnd") || null,
+        active: f.get("active") === "on",
+        canCreateProjects: f.get("canCreateProjects") === "on",
       });
     }
     try {
@@ -303,6 +308,25 @@ function EmployeePanel({ id, isAdmin, onClose }: { id: string; isAdmin: boolean;
                 className={field}
               />
             </label>
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                name="canCreateProjects"
+                defaultChecked={e.canCreateProjects}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-semibold text-ink-900">{t("emp.canCreateProjects")}</span>
+                <span className="block text-xs text-ink-500">{t("emp.canCreateProjectsHint")}</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2">
+              <input type="checkbox" name="active" defaultChecked={e.active} className="mt-0.5" />
+              <span>
+                <span className="font-semibold text-ink-900">{t("emp.active")}</span>
+                <span className="block text-xs text-ink-500">{t("emp.activeHint")}</span>
+              </span>
+            </label>
           </>
         )}
         <Button type="submit">{t("common.save")}</Button>
@@ -312,6 +336,7 @@ function EmployeePanel({ id, isAdmin, onClose }: { id: string; isAdmin: boolean;
           </p>
         )}
       </form>
+      {isAdmin && <GdprSection userId={id} />}
     </Card>
   );
 }

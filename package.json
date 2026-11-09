@@ -17,6 +17,8 @@
     "db:migrate": "pnpm --filter @arc-tid/db migrate",
     "db:seed": "pnpm --filter @arc-tid/db seed",
     "check": "pnpm lint && pnpm docs:check && pnpm typecheck && pnpm test",
+    "db:backup": "node scripts/db-backup.mjs",
+    "db:restore": "node scripts/db-restore.mjs",
     "db:reset": "docker compose down -v && docker compose up -d db",
     "e2e": "playwright test",
     "docs:check": "node scripts/check-docs.mjs"

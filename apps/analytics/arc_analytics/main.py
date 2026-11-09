@@ -97,4 +97,4 @@ def get_dataset(name: str, caller: CallerDep, p: PeriodDep) -> list[dict[str, An
     if name not in queries.DATASETS:
         raise HTTPException(status_code=404, detail="unknown_dataset")
     with db.tenant_cursor(caller.tenant_id) as cur:
-        return queries.dataset(cur, name, *p)
+        return queries.dataset(cur, name, *p, sees_reasons="finance" in caller.roles)

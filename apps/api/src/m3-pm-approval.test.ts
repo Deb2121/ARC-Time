@@ -5,7 +5,7 @@
  * everything back afterwards (reopen + mode line_manager).
  */
 import { createDb } from "@arc-tid/db";
-import { startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
+import { addDays, startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "./app.ts";
@@ -73,43 +73,58 @@ describe("approval mode pm_then_line_manager", () => {
     const ek = await login("ek");
     const al = await login("al");
     const pd = await login("pd");
-    const week = await get(ek, `/timesheet/week/${monday}`);
-    if (week.status !== "open") return; // already submitted in this database
+    // The latest open, editable week in which Emil has hours (seed data ages, so do not assume "this week").
+    let pmWeek = "";
+    let projectCount = 0;
+    for (let w = 0; w < 8 && !pmWeek; w++) {
+      const candidate = addDays(monday, -7 * w);
+      const v = await get(ek, `/timesheet/week/${candidate}`);
+      const projects = new Set(
+        v.rows
+          .filter((r: { kind: string }) => r.kind === "task")
+          .map((r: { ref: { projectNumber: string } }) => r.ref.projectNumber),
+      );
+      if (v.status === "open" && v.editable && projects.has("26001") && projects.has("26002"))
+        [pmWeek, projectCount] = [candidate, projects.size];
+    }
+    if (!pmWeek) return; // no suitable week in this database
     const ekId = (await get(ek, "/me")).id as string;
     try {
-      expect((await post(ek, `/timesheet/week/${monday}/submit`, {})).statusCode).toBe(200);
+      expect((await post(ek, `/timesheet/week/${pmWeek}/submit`, {})).statusCode).toBe(200);
 
-      // Line manager sees three open PM steps (26001 AL, 26002 PD, 26900 KH).
-      const inbox = await get(al, `/approvals?weekStart=${monday}`);
-      expect(inbox.items.find((i: { user: { id: string } }) => i.user.id === ekId).pmPending).toBe(3);
+      // Line manager sees one open PM step per project (26001 AL, 26002 PD, 26900 KH — none managed by Emil).
+      const inbox = await get(al, `/approvals?weekStart=${pmWeek}`);
+      expect(inbox.items.find((i: { user: { id: string } }) => i.user.id === ekId).pmPending).toBe(
+        projectCount,
+      );
 
       // AL approves 26001 as its project manager → week partially approved.
       const alPm = (await get(al, "/approvals/projects")).items as PmItem[];
       const p26001 = alPm.find(
-        (i) => i.userId === ekId && i.weekStart === monday && i.projectNumber === "26001",
+        (i) => i.userId === ekId && i.weekStart === pmWeek && i.projectNumber === "26001",
       );
       expect(p26001).toBeTruthy();
       const ok = await post(al, "/approvals/projects/decide", {
         userId: ekId,
-        weekStart: monday,
+        weekStart: pmWeek,
         projectId: p26001?.projectId,
         decision: "approve",
       });
       expect(ok.json().status).toBe("partially_approved");
 
       // The employee can no longer withdraw a week that a PM has approved.
-      expect((await post(ek, `/timesheet/week/${monday}/reopen`)).statusCode).toBe(409);
+      expect((await post(ek, `/timesheet/week/${pmWeek}/reopen`)).statusCode).toBe(409);
 
       // PD rejects 26002 with a comment.
       const p26002 = ((await get(pd, "/approvals/projects")).items as PmItem[]).find(
-        (i) => i.userId === ekId && i.weekStart === monday,
+        (i) => i.userId === ekId && i.weekStart === pmWeek,
       );
       expect(p26002?.projectNumber).toBe("26002");
       expect(
         (
           await post(pd, "/approvals/projects/decide", {
             userId: ekId,
-            weekStart: monday,
+            weekStart: pmWeek,
             projectId: p26002?.projectId,
             decision: "reject",
           })
@@ -117,13 +132,13 @@ describe("approval mode pm_then_line_manager", () => {
       ).toBe(400);
       const rej = await post(pd, "/approvals/projects/decide", {
         userId: ekId,
-        weekStart: monday,
+        weekStart: pmWeek,
         projectId: p26002?.projectId,
         decision: "reject",
         comment: "Forkert opgave",
       });
       expect(rej.json().status).toBe("rejected");
-      const after = await get(ek, `/timesheet/week/${monday}`);
+      const after = await get(ek, `/timesheet/week/${pmWeek}`);
       expect(after.status).toBe("rejected");
       expect(after.events.some((e: { comment: string | null }) => e.comment?.startsWith("26002"))).toBe(true);
 
@@ -144,7 +159,7 @@ describe("approval mode pm_then_line_manager", () => {
           })
         ).statusCode,
       ).toBe(200);
-      expect((await post(ek, `/timesheet/week/${monday}/submit`, {})).statusCode).toBe(200);
+      expect((await post(ek, `/timesheet/week/${pmWeek}/submit`, {})).statusCode).toBe(200);
 
       // AC3: 26002 is back with PD; 26001 stays approved and is not back with AL.
       expect(
@@ -154,33 +169,33 @@ describe("approval mode pm_then_line_manager", () => {
       ).toBe(true);
       expect(
         ((await get(al, "/approvals/projects")).items as PmItem[]).some(
-          (i) => i.userId === ekId && i.weekStart === monday,
+          (i) => i.userId === ekId && i.weekStart === pmWeek,
         ),
       ).toBe(false);
 
       // PD approves; the line manager approves the week (26900 still open → approved on behalf, audited).
       await post(pd, "/approvals/projects/decide", {
         userId: ekId,
-        weekStart: monday,
+        weekStart: pmWeek,
         projectId: p26002?.projectId,
         decision: "approve",
       });
-      const lineInbox = await get(al, `/approvals?weekStart=${monday}`);
+      const lineInbox = await get(al, `/approvals?weekStart=${pmWeek}`);
       const item = lineInbox.items.find((i: { user: { id: string } }) => i.user.id === ekId);
-      expect(item.pmPending).toBe(1);
+      expect(item.pmPending).toBe(projectCount - 2);
       expect((await post(al, `/approvals/${item.periodId}/approve`)).json().status).toBe("approved");
     } finally {
-      const item = (await get(al, `/approvals?weekStart=${monday}`)).items.find(
+      const item = (await get(al, `/approvals?weekStart=${pmWeek}`)).items.find(
         (i: { user: { id: string } }) => i.user.id === ekId,
       );
       if (item?.status === "approved")
         await post(al, `/approvals/${item.periodId}/reopen`, { reason: "Testoprydning" });
-      else if (item?.status === "submitted") await post(ek, `/timesheet/week/${monday}/reopen`);
+      else if (item?.status === "submitted") await post(ek, `/timesheet/week/${pmWeek}/reopen`);
       else if (item?.status === "partially_approved" || item?.status === "rejected") {
         await post(al, `/approvals/${item.periodId}/approve`).catch(() => undefined);
         await post(al, `/approvals/${item.periodId}/reopen`, { reason: "Testoprydning" });
       }
-      expect((await get(ek, `/timesheet/week/${monday}`)).status).toBe("open");
+      expect((await get(ek, `/timesheet/week/${pmWeek}`)).status).toBe("open");
     }
   });
 });

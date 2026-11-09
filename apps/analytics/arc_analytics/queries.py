@@ -90,7 +90,9 @@ DATASETS: dict[str, str] = {
     # Flat tables for Power BI / Excel. Hours as decimals and money in kroner, because that is what BI tools expect.
     "time_entries": """
         select e.date, u.initials as employee, p.number as project_number, p.name as project, t.name as task,
-               a.code as absence_code, e.hours::float as hours, e.billable, e.status::text as status
+               -- sickness privacy (OQ-21, D-025): only Finance sees the reason; others see FRAVÆR
+               case when a.sensitive and not %(reasons)s then 'FRAVÆR' else a.code end as absence_code,
+               e.hours::float as hours, e.billable, e.status::text as status
         from time_entries e join users u on u.id = e.user_id
         left join projects p on p.id = e.project_id left join tasks t on t.id = e.task_id
         left join absence_codes a on a.id = e.absence_code_id
@@ -109,7 +111,10 @@ DATASETS: dict[str, str] = {
 }
 
 
-def dataset(cur: psycopg.Cursor, name: str, date_from: str, date_to: str) -> list[dict[str, Any]]:
-    """Rows of one flat dataset (see DATASETS); raises KeyError for an unknown name."""
-    cur.execute(DATASETS[name], {"f": date_from, "t": date_to})
+def dataset(cur: psycopg.Cursor, name: str, date_from: str, date_to: str, sees_reasons: bool = False) -> list[dict[str, Any]]:
+    """Rows of one flat dataset (see DATASETS); raises KeyError for an unknown name.
+
+    sees_reasons: True only for Finance — sensitive absence codes are shown as FRAVÆR to everyone else.
+    """
+    cur.execute(DATASETS[name], {"f": date_from, "t": date_to, "reasons": sees_reasons})
     return cur.fetchall()

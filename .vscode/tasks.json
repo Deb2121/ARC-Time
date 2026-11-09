@@ -45,9 +45,9 @@
     },
     {
       "label": "Nulstil demo-data",
-      "detail": "Sletter databasen og opretter friske demo-data",
+      "detail": "Tager en backup, sletter databasen og opretter friske demo-data",
       "type": "shell",
-      "command": "docker compose down -v; docker compose up -d db; Start-Sleep 5; pnpm.cmd db:migrate; pnpm.cmd db:seed",
+      "command": "node scripts/db-backup.mjs; docker compose down -v; docker compose up -d db; Start-Sleep 5; pnpm.cmd db:migrate; pnpm.cmd db:seed",
       "options": {
         "shell": {
           "executable": "powershell.exe",
@@ -68,6 +68,41 @@
         }
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Tag backup",
+      "detail": "Gemmer en backup af databasen i mappen backups (de 14 nyeste beholdes)",
+      "type": "shell",
+      "command": "node scripts/db-backup.mjs",
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Gendan seneste backup",
+      "detail": "Overskriver databasen med den nyeste backup (stop appen først)",
+      "type": "shell",
+      "command": "if ('${input:confirmRestore}' -eq 'Ja, overskriv databasen') { node scripts/db-restore.mjs --yes } else { 'Afbrudt.' }",
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "confirmRestore",
+      "type": "pickString",
+      "description": "Gendannelse overskriver den nuværende database (der tages en sikkerhedsbackup først). Fortsæt?",
+      "options": ["Nej", "Ja, overskriv databasen"],
+      "default": "Nej"
     }
   ]
 }

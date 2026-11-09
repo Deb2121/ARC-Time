@@ -1,4 +1,5 @@
 export * from "./absence-codes.ts";
+export * from "./access.ts";
 export * from "./budget.ts";
 export * from "./calendar-import.ts";
 export * from "./completion.ts";
@@ -6,6 +7,7 @@ export * from "./data-import.ts";
 export * from "./dates.ts";
 export * from "./expenses.ts";
 export * from "./flex.ts";
+export * from "./gdpr.ts";
 export * from "./holidays-dk.ts";
 export * from "./hours.ts";
 export * from "./invoicing.ts";

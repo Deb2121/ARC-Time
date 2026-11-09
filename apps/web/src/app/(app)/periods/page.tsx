@@ -1,13 +1,12 @@
 "use client";
 
-import { hasRole } from "@arc-tid/domain";
 import { Badge, Button, Card } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, can } from "@/lib/api";
 import { fmtDay, fmtHours, fmtKr, fmtPct } from "@/lib/format";
 
 interface Period {
@@ -49,7 +48,7 @@ export default function PeriodsPage() {
   const { t, locale } = useI18n();
   const me = useMe();
   const qc = useQueryClient();
-  const canClose = hasRole(me.roles, "finance", "admin");
+  const canClose = can(me, "period.close");
   const periods = useQuery({ queryKey: ["periods"], queryFn: () => api<Period[]>("/periods") });
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState<{ id: string; warnings: { code: string; count: number }[] } | null>(

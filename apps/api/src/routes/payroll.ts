@@ -15,7 +15,7 @@ import { schema, writeAudit } from "@arc-tid/db";
 import { asc, eq } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { requireRole } from "../auth/plugin.ts";
+import { requireCapability } from "../auth/plugin.ts";
 import { AppError } from "../services/errors.ts";
 import {
   exportPayroll,
@@ -31,27 +31,27 @@ const monthParams = z.object({ month });
 /** Registers the payroll endpoints under /api/v1. */
 export const payrollRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get("/payroll/periods", async (req) => {
-    const auth = requireRole(req, "finance");
+    const auth = requireCapability(req, "payroll.export");
     return req.withTenant((tx) => payPeriods(tx, auth));
   });
 
   app.get("/payroll/periods/:month", { schema: { params: monthParams } }, async (req) => {
-    const auth = requireRole(req, "finance");
+    const auth = requireCapability(req, "payroll.export");
     return req.withTenant((tx) => payrollPreview(tx, auth, req.params.month));
   });
 
   app.post("/payroll/periods/:month/export", { schema: { params: monthParams } }, async (req) => {
-    const auth = requireRole(req, "finance");
+    const auth = requireCapability(req, "payroll.export");
     return req.withTenant((tx) => exportPayroll(tx, auth, req.params.month));
   });
 
   app.post("/payroll/periods/:month/lock", { schema: { params: monthParams } }, async (req) => {
-    const auth = requireRole(req, "finance");
+    const auth = requireCapability(req, "payroll.export");
     return req.withTenant((tx) => lockPayPeriod(tx, auth, req.params.month));
   });
 
   app.get("/payroll/periods/:month/file.csv", { schema: { params: monthParams } }, async (req, reply) => {
-    requireRole(req, "finance");
+    requireCapability(req, "payroll.export");
     const f = await req.withTenant((tx) => payrollFile(tx, req.params.month));
     return reply
       .header("content-type", "text/csv; charset=utf-8")
@@ -60,7 +60,7 @@ export const payrollRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   app.get("/payroll/salary-codes", async (req) => {
-    requireRole(req, "finance", "admin");
+    requireCapability(req, "payroll.setup");
     return req.withTenant(async (tx) => ({
       codes: await tx.select().from(schema.salaryCodes).orderBy(asc(schema.salaryCodes.code)),
       absenceCodes: await tx
@@ -88,7 +88,7 @@ export const payrollRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "payroll.setup");
       return req.withTenant(async (tx) => {
         const [before] = await tx
           .select()
@@ -122,7 +122,7 @@ export const payrollRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "payroll.setup");
       return req.withTenant(async (tx) => {
         if (req.body.salaryCodeId) {
           const [c] = await tx

@@ -5,13 +5,13 @@
  * choose the file, check the dry run (create / update / errors per row), then import — all rows or none.
  * Files saved by Danish Excel as "CSV (semikolonsepareret)" are Windows-1252; that is detected and read correctly.
  */
-import { hasRole, type ImportKind, importTemplate } from "@arc-tid/domain";
+import { type ImportKind, importTemplate } from "@arc-tid/domain";
 import { Badge, Button, Card } from "@arc-tid/ui";
 import { useState } from "react";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, can } from "@/lib/api";
 
 interface Preview {
   missingColumns: string[];
@@ -33,7 +33,7 @@ async function readText(file: File): Promise<string> {
 export default function ImportPage() {
   const { t } = useI18n();
   const me = useMe();
-  const kinds: ImportKind[] = hasRole(me.roles, "admin")
+  const kinds: ImportKind[] = can(me, "people.import")
     ? ["customers", "projects", "employees"]
     : ["customers", "projects"];
   const [kind, setKind] = useState<ImportKind>("customers");

@@ -37,6 +37,8 @@
 - 2026-11-08 · **M4 Payroll export** (D-023) — Løn page for Finance: monthly preview per employee and salary code with warnings, CSV file, lock; late changes become corrections next month; salary codes and absence mapping; payroll numbers on employees. Tested against spec AC1–AC4 and AC7 inside a rolled-back transaction.
 - 2026-11-08 · **M4 Data import** (D-024) — Import page for customers, projects and employees from Excel CSV with templates, dry run and all-or-nothing import; tested in a rolled-back transaction and with a Windows-1252 file in E2E.
 
+- 2026-11-09 · **Review fixes** (D-025–D-027) — one `AccessPolicy` for the role matrix (Admin configures, Finance books/closes/exports; project creation needs a right); sickness shown as "Fravær" outside employee/line manager/Finance; audit-log screen; GDPR export, erasure, deactivation and nightly retention sweep; processing inventory; local backups with verified restore; operations guide (hosting proposal, mail, moving out of OneDrive); date-independent tests (CI had turned red on a new week).
+
 ## Next — M4 (prioritised with the product owner, 2026-11-08)
 
 1. ~~Payroll export~~ (done as generic CSV; provider adapters later).

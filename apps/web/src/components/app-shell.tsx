@@ -5,7 +5,7 @@
  * Navigation items are declared in NAV; each lists the roles that see it. Server-side checks still apply.
  */
 
-import { hasRole, type Role } from "@arc-tid/domain";
+import { type Capability, hasRole, type Role } from "@arc-tid/domain";
 import { Wordmark } from "@arc-tid/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -21,6 +21,7 @@ interface NavItem {
   href: string;
   label: MessageKey;
   roles?: Role[]; // visible to anyone with one of these roles; undefined = everyone
+  capability?: Capability; // or: visible when the role matrix allows this action (D-025)
   ready: boolean; // false = placeholder until its milestone ships
 }
 
@@ -49,8 +50,9 @@ const NAV: NavItem[] = [
   },
   { href: "/invoicing", label: "nav.invoicing", roles: ["finance", "admin", "project_manager"], ready: true },
   { href: "/periods", label: "nav.periods", roles: ["finance", "admin", "management"], ready: true },
-  { href: "/payroll", label: "nav.payroll", roles: ["finance"], ready: true },
-  { href: "/admin/import", label: "nav.import", roles: ["admin", "finance"], ready: true },
+  { href: "/payroll", label: "nav.payroll", capability: "payroll.export", ready: true },
+  { href: "/admin/import", label: "nav.import", capability: "data.import", ready: true },
+  { href: "/admin/audit", label: "nav.audit", capability: "audit.read", ready: true },
   { href: "/reports", label: "nav.reports", ready: true },
   { href: "/admin/settings", label: "nav.settings", roles: ["admin", "finance"], ready: true },
   {
@@ -82,7 +84,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.replace("/login");
   }
 
-  const items = NAV.filter((n) => !n.roles || hasRole(me.roles, ...n.roles));
+  const items = NAV.filter((n) =>
+    n.capability ? me.capabilities.includes(n.capability) : !n.roles || hasRole(me.roles, ...n.roles),
+  );
 
   return (
     <div className="min-h-screen">

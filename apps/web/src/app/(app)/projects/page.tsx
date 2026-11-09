@@ -1,6 +1,5 @@
 "use client";
 
-import { hasRole } from "@arc-tid/domain";
 import { Badge, Button } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -10,7 +9,7 @@ import { HealthDot, Progress } from "@/components/progress";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { api } from "@/lib/api";
+import { api, can } from "@/lib/api";
 import { fmtHours, fmtKr, fmtPct } from "@/lib/format";
 
 export interface ProjectSummary {
@@ -38,7 +37,7 @@ export default function ProjectsPage() {
   const { t, locale } = useI18n();
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => api<ProjectSummary[]>("/projects") });
   const me = useMe();
-  const canCreate = hasRole(me.roles, "admin", "finance", "project_manager");
+  const canCreate = can(me, "project.create");
   const [creating, setCreating] = useState(false);
 
   return (

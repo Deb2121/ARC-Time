@@ -29,6 +29,7 @@ import { calendarRoutes } from "./routes/calendar.ts";
 import { dataImportRoutes } from "./routes/data-import.ts";
 import { expenseRoutes } from "./routes/expenses.ts";
 import { financeRoutes } from "./routes/finance.ts";
+import { governanceRoutes } from "./routes/governance.ts";
 import { invoicingRoutes } from "./routes/invoicing.ts";
 import { payrollRoutes } from "./routes/payroll.ts";
 import { planningRoutes } from "./routes/planning.ts";
@@ -124,6 +125,7 @@ export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
       await v1.register(planningRoutes);
       await v1.register(payrollRoutes);
       await v1.register(dataImportRoutes);
+      await v1.register(governanceRoutes);
       await v1.register(calendarRoutes, { provider: calendar });
     },
     { prefix: "/api/v1" },

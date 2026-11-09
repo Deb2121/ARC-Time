@@ -83,12 +83,32 @@ describe("timesheet", () => {
     expect(future.statusCode).toBe(422);
     expect(future.json().error).toBe("future_date");
 
-    const tooMuch = await send("LV", "PUT", "/api/v1/timesheet/entries", {
-      date: week,
-      taskId: t.taskId,
-      hours: 24,
-    });
-    expect(tooMuch.json().error).toBe("day_over_24");
+    // 1 h on another task first, so 24 h more is always over the limit — whatever the day already holds.
+    const other = tasks.find(
+      (x: { taskId: string; commentRequired: boolean }) => x.taskId !== t.taskId && !x.commentRequired,
+    );
+    const day = addDays(lastWeek, 6); // last Sunday: in the past, normally empty
+    const before = (await get("LV", `/api/v1/timesheet/week/${lastWeek}`)).json();
+    const otherBefore =
+      before.rows.find((r: { key: string }) => r.key === `t:${other.taskId}`)?.cells[day]?.hours ?? 0;
+    if (before.editable) {
+      await send("LV", "PUT", "/api/v1/timesheet/entries", {
+        date: day,
+        taskId: other.taskId,
+        hours: otherBefore + 1,
+      });
+      const tooMuch = await send("LV", "PUT", "/api/v1/timesheet/entries", {
+        date: day,
+        taskId: t.taskId,
+        hours: 24,
+      });
+      expect(tooMuch.json().error).toBe("day_over_24");
+      await send("LV", "PUT", "/api/v1/timesheet/entries", {
+        date: day,
+        taskId: other.taskId,
+        hours: otherBefore,
+      });
+    }
 
     const all = (await get("IS", "/api/v1/timesheet/tasks")).json();
     const foreign = all.find((x: { projectNumber: string }) => x.projectNumber === "26003");

@@ -3,11 +3,11 @@
  * Admin edits everything; finance may edit rates. Every change is audited.
  */
 import { schema, writeAudit } from "@arc-tid/db";
-import { danishPublicHolidays, defaultCompanyDays, hasRole, kr } from "@arc-tid/domain";
+import { danishPublicHolidays, defaultCompanyDays, kr } from "@arc-tid/domain";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { type AuthContext, requireRole } from "../auth/plugin.ts";
+import { type AuthContext, policyOf, requireCapability } from "../auth/plugin.ts";
 import { AppError } from "../services/errors.ts";
 import { approvalMode } from "../services/project-approval.ts";
 
@@ -21,7 +21,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
     "/admin/settings",
     { schema: { querystring: z.object({ year: z.coerce.number().int().min(2000).max(2100).optional() }) } },
     async (req) => {
-      requireRole(req, "admin", "finance");
+      requireCapability(req, "settings.read");
       const year = req.query.year ?? new Date().getFullYear();
       return req.withTenant(async (tx) => ({
         year,
@@ -44,7 +44,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
     "/admin/approval-mode",
     { schema: { body: z.object({ mode: z.enum(["none", "line_manager", "pm_then_line_manager"]) }) } },
     async (req) => {
-      requireRole(req, "admin");
+      requireCapability(req, "settings.manage");
       const auth = req.auth as AuthContext;
       return req.withTenant(async (tx) => {
         const before = await approvalMode(tx, auth.tenantId);
@@ -76,7 +76,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "admin");
+      const auth = requireCapability(req, "settings.manage");
       return req.withTenant(async (tx) => {
         const [row] = await tx
           .insert(schema.normPatterns)
@@ -112,7 +112,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "admin");
+      const auth = requireCapability(req, "settings.manage");
       const { year } = req.body;
       return req.withTenant(async (tx) => {
         const rows = [
@@ -152,7 +152,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "admin");
+      const auth = requireCapability(req, "settings.manage");
       return req.withTenant(async (tx) => {
         const [row] = await tx
           .insert(schema.holidays)
@@ -183,7 +183,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
     "/admin/holidays/:id",
     { schema: { params: z.object({ id: z.string().uuid() }) } },
     async (req) => {
-      const auth = requireRole(req, "admin");
+      const auth = requireCapability(req, "settings.manage");
       return req.withTenant(async (tx) => {
         const [before] = await tx
           .delete(schema.holidays)
@@ -218,7 +218,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "admin");
+      const auth = requireCapability(req, "settings.manage");
       return req.withTenant(async (tx) => {
         const [before] = await tx
           .select()
@@ -250,7 +250,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
     "/admin/employees/:id",
     { schema: { params: z.object({ id: z.string().uuid() }) } },
     async (req) => {
-      requireRole(req, "admin", "finance");
+      requireCapability(req, "settings.read");
       return req.withTenant(async (tx) => {
         const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, req.params.id));
         if (!u) throw new AppError(404, "not_found");
@@ -277,6 +277,16 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           flexOpening: u.flexOpening,
           vacationOpening: u.vacationOpening,
           payrollNumber: u.payrollNumber,
+          active: u.active,
+          canCreateProjects:
+            (
+              await tx
+                .select()
+                .from(schema.userRights)
+                .where(
+                  and(eq(schema.userRights.userId, u.id), eq(schema.userRights.right, "create_projects")),
+                )
+            ).length > 0,
           norms,
         };
       });
@@ -299,17 +309,22 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           vacationOpening: z.number().min(-99).max(99).optional(),
           /** employee number in the payroll system; empty string clears it */
           payrollNumber: z.string().trim().max(20).optional(),
+          /** false = deactivated: cannot sign in, sessions revoked at once (spec R8); history stays */
+          active: z.boolean().optional(),
+          /** extra right for project managers to create projects (D-025) */
+          canCreateProjects: z.boolean().optional(),
         }),
       },
     },
     async (req) => {
       const auth = req.auth as AuthContext;
       const b = req.body;
-      // Finance may change rates and payroll numbers; everything else is admin only.
-      const ratesOnly = Object.keys(b).every(
+      // Finance may change rates and payroll numbers (finance settings); everything else is Admin only.
+      const financeFieldsOnly = Object.keys(b).every(
         (k) => k === "salesRate" || k === "costRate" || k === "payrollNumber",
       );
-      if (!hasRole(auth.roles, "admin") && !(ratesOnly && hasRole(auth.roles, "finance")))
+      const policy = policyOf(auth);
+      if (!policy.can("settings.manage") && !(financeFieldsOnly && policy.can("settings.read")))
         throw new AppError(403, "forbidden");
       return req.withTenant(async (tx) => {
         const [before] = await tx.select().from(schema.users).where(eq(schema.users.id, req.params.id));
@@ -324,10 +339,27 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
             ...(b.flexOpening !== undefined ? { flexOpening: b.flexOpening } : {}),
             ...(b.vacationOpening !== undefined ? { vacationOpening: b.vacationOpening } : {}),
             ...(b.payrollNumber !== undefined ? { payrollNumber: b.payrollNumber || null } : {}),
+            ...(b.active !== undefined ? { active: b.active } : {}),
             updatedAt: new Date(),
           })
           .where(eq(schema.users.id, before.id))
           .returning();
+        if (b.active === false) {
+          // Deactivation revokes access immediately (spec administration.md R8).
+          await tx.delete(schema.sessions).where(eq(schema.sessions.userId, before.id));
+          await tx.delete(schema.graphTokens).where(eq(schema.graphTokens.userId, before.id));
+        }
+        if (b.canCreateProjects !== undefined) {
+          await tx
+            .delete(schema.userRights)
+            .where(
+              and(eq(schema.userRights.userId, before.id), eq(schema.userRights.right, "create_projects")),
+            );
+          if (b.canCreateProjects)
+            await tx
+              .insert(schema.userRights)
+              .values({ tenantId: auth.tenantId, userId: before.id, right: "create_projects" });
+        }
         const pick = (u: typeof before | undefined) =>
           u && {
             priceGroupId: u.priceGroupId,
@@ -337,6 +369,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
             flexOpening: u.flexOpening,
             vacationOpening: u.vacationOpening,
             payrollNumber: u.payrollNumber,
+            active: u.active,
           };
         await writeAudit(tx, {
           tenantId: auth.tenantId,
@@ -345,7 +378,10 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           action: "update",
           userId: auth.userId,
           before: pick(before),
-          after: pick(after),
+          after: {
+            ...pick(after),
+            ...(b.canCreateProjects !== undefined ? { canCreateProjects: b.canCreateProjects } : {}),
+          },
         });
         return { ok: true };
       });
@@ -362,7 +398,7 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "admin");
+      const auth = requireCapability(req, "settings.manage");
       return req.withTenant(async (tx) => {
         const [row] = await tx
           .insert(schema.employeeNorms)

@@ -1,7 +1,7 @@
 /**
  * Thin client for the ARCnordic Tid API. Sends the session cookie and echoes the CSRF token on mutations.
  */
-import type { Role } from "@arc-tid/domain";
+import type { Capability, Right, Role } from "@arc-tid/domain";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 /** Base URL of the Python analytics service (KPI Excel export, Power BI datasets). */
@@ -56,7 +56,14 @@ export interface Person {
 export interface Me extends Person {
   tenantId: string;
   csrfToken: string;
+  rights: Right[];
+  /** actions the server's role matrix allows (packages/domain/src/access.ts) */
+  capabilities: Capability[];
 }
+
+/** True when the signed-in person may do the action — the single check the web uses (D-025). */
+export const can = (me: Pick<Me, "capabilities">, capability: Capability): boolean =>
+  me.capabilities.includes(capability);
 
 /** Metadata of an uploaded file (receipt) as returned by POST /files. */
 export interface UploadedFile {

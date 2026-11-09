@@ -30,7 +30,7 @@ import {
 import { todayCopenhagen } from "@arc-tid/domain";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { type AuthContext, requireRole } from "../auth/plugin.ts";
+import { type AuthContext, requireCapability } from "../auth/plugin.ts";
 import { AppError } from "../services/errors.ts";
 import { htmlToPdf, invoiceHtml } from "../services/invoice-document.ts";
 import {
@@ -94,7 +94,7 @@ export const invoicingRoutes: FastifyPluginAsyncZod = async (app) => {
     "/invoices/bulk-drafts",
     { schema: { body: z.object({ upTo: isoDate, invoiceDate: isoDate, grouping }) } },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "invoice.prepare_all");
       return req.withTenant(async (tx) => {
         const created: string[] = [];
         for (const p of await activeCustomerProjects(tx)) {
@@ -233,7 +233,7 @@ export const invoicingRoutes: FastifyPluginAsyncZod = async (app) => {
   );
 
   app.post("/invoices/:id/book", { schema: { params: idParams } }, async (req) => {
-    const auth = requireRole(req, "finance", "admin");
+    const auth = requireCapability(req, "invoice.book");
     return req.withTenant(async (tx) => ({
       number: await bookInvoice(tx, auth.tenantId, auth.userId, req.params.id),
     }));
@@ -252,7 +252,7 @@ export const invoicingRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "invoice.credit");
       return req.withTenant(async (tx) => ({
         id: await createCreditNote(tx, auth.tenantId, auth.userId, req.params.id, {
           lineIds: req.body.lineIds,

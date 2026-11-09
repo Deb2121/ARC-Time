@@ -12,15 +12,17 @@ import {
   fromDecimal,
   isLocked,
   type LocalDate,
+  MASKED_ABSENCE,
   startOfIsoWeek,
   summariseWeek,
   todayCopenhagen,
   validateEntry,
 } from "@arc-tid/domain";
 import { and, asc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
-import type { AuthContext } from "../auth/plugin.ts";
+import { type AuthContext, policyOf } from "../auth/plugin.ts";
 import { flexBalance, loadEmployee, normContext, summaryEntries } from "./calendar.ts";
 import { AppError } from "./errors.ts";
+import { relationTo } from "./people.ts";
 import { approvalMode } from "./project-approval.ts";
 
 /** Timesheet period statuses in which the employee can no longer edit entries. */
@@ -126,30 +128,40 @@ export async function weekView(tx: Tx, auth: AuthContext, userId: string, weekSt
     string,
     { key: string; kind: "task" | "absence"; ref: Record<string, unknown>; cells: Record<string, Cell> }
   >();
+  // Sickness privacy (OQ-21, D-025): viewers who may not see the reason get one neutral "Fravær" row instead of
+  // the sensitive codes, with hours summed per day and comments removed.
+  const hideReason = !policyOf(auth).seesAbsenceReason(await relationTo(tx, auth, userId));
+  const allCodes = await tx.select().from(schema.absenceCodes);
+  const masked = (absenceCodeId: string | null) =>
+    hideReason && Boolean(allCodes.find((c) => c.id === absenceCodeId)?.sensitive);
   for (const e of entries) {
-    const key = e.taskId ? `t:${e.taskId}` : `a:${e.absenceCodeId}`;
+    const hidden = masked(e.absenceCodeId);
+    const key = e.taskId ? `t:${e.taskId}` : hidden ? "a:masked" : `a:${e.absenceCodeId}`;
     if (!rows.has(key)) {
       const code = codes.find((x) => x.id === e.absenceCodeId);
       const ref = e.taskId
         ? (taskInfo.find((t) => t.taskId === e.taskId) ?? { taskId: e.taskId })
-        : {
-            absenceCodeId: e.absenceCodeId,
-            code: code?.code,
-            nameDa: code?.nameDa,
-            nameEn: code?.nameEn,
-            countsTowardNorm: code?.countsTowardNorm,
-          };
+        : hidden
+          ? { absenceCodeId: null, ...MASKED_ABSENCE, countsTowardNorm: true }
+          : {
+              absenceCodeId: e.absenceCodeId,
+              code: code?.code,
+              nameDa: code?.nameDa,
+              nameEn: code?.nameEn,
+              countsTowardNorm: code?.countsTowardNorm,
+            };
       rows.set(key, { key, kind: e.taskId ? "task" : "absence", ref, cells: {} });
     }
     const row = rows.get(key);
-    if (row)
-      row.cells[e.date] = {
-        id: e.id,
-        hours: e.hours,
-        comment: e.comment,
-        status: e.status,
-        billable: e.billable,
-      };
+    if (!row) continue;
+    const prev = hidden ? row.cells[e.date] : undefined;
+    row.cells[e.date] = {
+      id: e.id,
+      hours: (prev?.hours ?? 0) + e.hours,
+      comment: hidden ? null : e.comment,
+      status: e.status,
+      billable: e.billable,
+    };
   }
 
   const summary = summariseWeek(weekStart, await summaryEntries(tx, userId, weekStart, sunday), (d) =>

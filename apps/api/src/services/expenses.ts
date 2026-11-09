@@ -15,7 +15,7 @@ import {
   vatSplit,
 } from "@arc-tid/domain";
 import { and, asc, desc, eq, gte, inArray, lt, lte, ne, sql } from "drizzle-orm";
-import type { AuthContext } from "../auth/plugin.ts";
+import { type AuthContext, policyOf } from "../auth/plugin.ts";
 import { AppError } from "./errors.ts";
 import { approveeIds, canApproveUser } from "./people.ts";
 
@@ -250,9 +250,9 @@ export async function submitExpenses(tx: Tx, auth: AuthContext, ids?: string[]) 
   return { submitted: rows.length };
 }
 
-/** Submitted expenses waiting for the caller: their reports' (line manager) or everyone's (Finance/Admin). */
+/** Submitted expenses waiting for the caller: their reports' (line manager) or everyone's (Finance, D-025). */
 export async function expenseApprovalQueue(tx: Tx, auth: AuthContext) {
-  const all = hasRole(auth.roles, "finance", "admin");
+  const all = policyOf(auth).can("expense.approve_any");
   const ids = all ? null : await approveeIds(tx, auth);
   if (ids && !ids.length) return [];
   return expenseQuery(tx)
@@ -265,11 +265,11 @@ export async function expenseApprovalQueue(tx: Tx, auth: AuthContext) {
     .orderBy(asc(schema.users.fullName), asc(schema.expenses.date));
 }
 
-/** Loads a submitted expense the caller may decide on (line manager of the employee, or Finance/Admin — never own). */
+/** Loads a submitted expense the caller may decide on (line manager of the employee, or Finance — never own). */
 async function loadForDecision(tx: Tx, auth: AuthContext, id: string) {
   const [e] = await tx.select().from(schema.expenses).where(eq(schema.expenses.id, id));
   if (!e) throw new AppError(404, "not_found");
-  const finance = hasRole(auth.roles, "finance", "admin") && e.userId !== auth.userId;
+  const finance = policyOf(auth).can("expense.approve_any") && e.userId !== auth.userId;
   if (!finance && !(await canApproveUser(tx, auth, e.userId))) throw new AppError(403, "forbidden");
   if (e.status !== "submitted") throw new AppError(409, "not_submitted");
   await assertOpenDate(tx, e.date);

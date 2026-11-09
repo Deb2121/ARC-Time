@@ -148,6 +148,20 @@
       "when": 1794146620688,
       "tag": "0020_rls_m4a",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794218617913,
+      "tag": "0021_access_rights",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794218619068,
+      "tag": "0022_rls_access",
+      "breakpoints": true
     }
   ]
 }

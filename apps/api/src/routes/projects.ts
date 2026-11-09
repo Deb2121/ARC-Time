@@ -13,7 +13,7 @@
 import { hasRole } from "@arc-tid/domain";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { type AuthContext, requireRole } from "../auth/plugin.ts";
+import { type AuthContext, requireCapability } from "../auth/plugin.ts";
 import { createCustomer, listCustomers } from "../services/customers.ts";
 import { AppError } from "../services/errors.ts";
 import { addTask, createProject, updateTask } from "../services/project-setup.ts";
@@ -61,7 +61,8 @@ export const projectRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "admin", "finance", "project_manager");
+      // "create if right" (D-025): Finance/Admin, or a project manager with the create_projects right.
+      const auth = requireCapability(req, "project.create");
       return req.withTenant((tx) => createProject(tx, auth, req.body));
     },
   );

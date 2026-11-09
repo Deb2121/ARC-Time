@@ -19,7 +19,7 @@ import {
   utilisation,
 } from "@arc-tid/domain";
 import { and, eq, gte, inArray, isNotNull, lte, ne, sql } from "drizzle-orm";
-import type { AuthContext } from "../auth/plugin.ts";
+import { type AuthContext, policyOf } from "../auth/plugin.ts";
 import { loadEmployee, normContext } from "./calendar.ts";
 import { approveeIds, visibleUserIds } from "./people.ts";
 import { projectSummaries } from "./projects.ts";
@@ -116,7 +116,7 @@ async function approverTodos(tx: Tx, auth: AuthContext): Promise<Todo[]> {
       );
     if (ts?.n) todos.push({ kind: "approve_timesheets", href: "/approval", count: ts.n, severity: "info" });
   }
-  const financeAll = hasRole(auth.roles, "finance", "admin");
+  const financeAll = policyOf(auth).can("expense.approve_any");
   if (ids.length || financeAll) {
     const [ex] = await tx
       .select({ n: sql<number>`count(*)::int` })
@@ -287,7 +287,7 @@ export async function dashboard(tx: Tx, auth: AuthContext, today: LocalDate) {
   const todos = [...(await employeeTodos(tx, auth, today))];
   if (hasRole(auth.roles, "line_manager", "finance", "admin")) todos.push(...(await approverTodos(tx, auth)));
   if (hasRole(auth.roles, "project_manager")) todos.push(...(await projectManagerTodos(tx, auth, today)));
-  if (hasRole(auth.roles, "finance", "admin")) todos.push(...(await financeTodos(tx, today)));
+  if (policyOf(auth).can("invoice.book")) todos.push(...(await financeTodos(tx, today)));
 
   let kpis: {
     scope: "team" | "company";

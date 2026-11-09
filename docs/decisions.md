@@ -151,3 +151,28 @@ employees have no password and sign in with Microsoft; they get the employee rol
 full-time norm unless another pattern is named, and departments are created when missing. New projects get one task
 "Generelt" so hours can be registered at once. Customers/projects: Admin or Finance; employees: Admin. Max 2.000
 rows per file. Time entries and invoices are not imported (opening balances for flex and vacation are). · accepted
+
+**D-025 · 2026-11-09 · Access policy and segregation of duties** — The role matrix (docs/spec/overview.md §3) lives
+in one class, `AccessPolicy` (packages/domain/src/access.ts); routes call `requireCapability`, the web reads the
+capabilities from `/me`. Deliberate choice after review: **Admin configures but does not transact** — only Finance
+books and credits invoices, closes/reopens accounting periods, exports payroll, prepares invoices for all projects
+and approves anyone's expenses; Admin keeps settings, people, price lists and payroll _setup_. People without a line
+manager are approved by Finance (not Admin). Project managers create projects only with the extra right
+`create_projects` (spec "create if right", granted per person in Medarbejdere). Sickness privacy (OQ-21): the reason
+behind sensitive absence codes is shown only to the employee, their line manager (direct or indirect) and Finance;
+everyone else sees "Fravær" without comment — in the week view, the time-entry report and the analytics datasets.
+The audit log has a read screen (Revisionsspor): Finance sees financial entities, Management and Admin everything.
+· accepted
+
+**D-026 · 2026-11-09 · GDPR** — Data-subject export as one JSON file (spec says ZIP of JSON+CSV; JSON is enough for
+now). Erasure = pseudonymisation of former employees (inactive, not PM on active projects, no reports): profile
+identifiers replaced, comments cleared, non-bookkeeping data deleted; bookkeeping data kept 5 years after the fiscal
+year (assumed calendar year, OQ-39). Deactivating an employee signs them out at once (R8). A nightly sweep removes
+expired sessions/tokens and logs older than 13 months and _reports_ bookkeeping data past retention; deleting
+accounting records is left to a deliberate Finance action after confirming with the accountant. Processing
+inventory: docs/gdpr/processing-inventory.md. · accepted
+
+**D-027 · 2026-11-09 · Operations** — Local daily backups (pg_dump, 14 kept) before migrations, VS Code tasks for
+backup/restore, restore verified. Hosting proposal for go-live (Azure EU: Container Apps + managed Postgres with
+point-in-time restore + Key Vault + Blob for receipts), M365 mail, and steps to move the working copy out of OneDrive
+are in docs/operations.md; they need owner decisions. · proposed

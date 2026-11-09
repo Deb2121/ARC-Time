@@ -1,6 +1,6 @@
 "use client";
 
-import { hasRole, todayCopenhagen } from "@arc-tid/domain";
+import { todayCopenhagen } from "@arc-tid/domain";
 import { Badge, Button } from "@arc-tid/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { Suspense, useState } from "react";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, can } from "@/lib/api";
 import { fmtDay, fmtHours, fmtKr } from "@/lib/format";
 
 interface BasisRow {
@@ -97,7 +97,7 @@ function Basis() {
     queryFn: () => api<BasisRow[]>(`/invoicing/basis?upTo=${upTo}`),
   });
   const rows = basis.data ?? [];
-  const isFinance = hasRole(me.roles, "finance", "admin");
+  const isFinance = can(me, "invoice.prepare_all");
 
   const create = useMutation({
     mutationFn: async () => {

@@ -1036,3 +1036,19 @@ export const payrollLines = pgTable(
   },
   (t) => [index("payroll_lines_run_idx").on(t.runId)],
 );
+
+/* ───────────────────────────── Access: extra rights ───────────────────────────── */
+
+/** Extra rights on top of roles (D-025), e.g. a project manager who may create projects ("create if right"). */
+export const userRights = pgTable(
+  "user_rights",
+  {
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    right: text("right").notNull(),
+    grantedAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.right] })],
+);

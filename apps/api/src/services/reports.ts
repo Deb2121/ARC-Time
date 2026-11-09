@@ -4,12 +4,19 @@
  * Visibility follows `services/people.ts` (time entries) and `services/projects.ts` (projects).
  */
 import { schema, type Tx } from "@arc-tid/db";
-import { formatHours, formatMinor, type LocalDate, todayCopenhagen } from "@arc-tid/domain";
+import {
+  formatHours,
+  formatMinor,
+  hasRole,
+  type LocalDate,
+  MASKED_ABSENCE,
+  todayCopenhagen,
+} from "@arc-tid/domain";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
-import type { AuthContext } from "../auth/plugin.ts";
+import { type AuthContext, policyOf } from "../auth/plugin.ts";
 import { flexBalance, loadEmployee, vacationBalance } from "./calendar.ts";
 import { AppError } from "./errors.ts";
-import { visibleUserIds } from "./people.ts";
+import { reportIds, visibleUserIds } from "./people.ts";
 import { projectSummaries, visibleProjectIds } from "./projects.ts";
 import { tenantGoLive } from "./timesheet.ts";
 
@@ -113,7 +120,9 @@ export async function timeEntryRows(tx: Tx, auth: AuthContext, f: TimeEntryFilte
       projectName: schema.projects.name,
       wbs: schema.tasks.wbs,
       task: schema.tasks.name,
+      userId: schema.timeEntries.userId,
       absence: schema.absenceCodes.nameDa,
+      sensitive: schema.absenceCodes.sensitive,
       hours: schema.timeEntries.hours,
       billable: schema.timeEntries.billable,
       status: schema.timeEntries.status,
@@ -135,9 +144,18 @@ export async function timeEntryRows(tx: Tx, auth: AuthContext, f: TimeEntryFilte
       ),
     )
     .orderBy(asc(schema.timeEntries.date), asc(schema.users.initials));
-  // Sickness privacy (D-013): every caller here passed the visibility check (self, manager, finance/admin/management),
-  // all of whom may see the absence reason, so reasons are included as-is.
-  return rows;
+  // Sickness privacy (OQ-21, D-025): the reason behind a sensitive absence is shown only to the employee, their line
+  // manager and Finance; Management/Admin see "Fravær" without the comment.
+  const policy = policyOf(auth);
+  const reports = hasRole(auth.roles, "line_manager")
+    ? new Set(await reportIds(tx, auth.userId))
+    : new Set<string>();
+  return rows.map(({ userId, sensitive, ...r }) => {
+    const relation = userId === auth.userId ? "self" : reports.has(userId) ? "line_manager" : "other";
+    return sensitive && !policy.seesAbsenceReason(relation)
+      ? { ...r, absence: MASKED_ABSENCE.nameDa, comment: null }
+      : r;
+  });
 }
 
 /** Time entries as a Danish CSV document. */

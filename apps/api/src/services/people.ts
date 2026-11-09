@@ -4,7 +4,7 @@
 import { schema, type Tx } from "@arc-tid/db";
 import { hasRole } from "@arc-tid/domain";
 import { eq, sql } from "drizzle-orm";
-import type { AuthContext } from "../auth/plugin.ts";
+import { type AuthContext, policyOf } from "../auth/plugin.ts";
 
 /** Direct and indirect reports of a manager. */
 export async function reportIds(tx: Tx, managerId: string): Promise<string[]> {
@@ -25,6 +25,21 @@ export async function visibleUserIds(tx: Tx, auth: AuthContext): Promise<string[
   return ids;
 }
 
+/**
+ * How the caller relates to an employee, for privacy rules (AccessPolicy.seesAbsenceReason): the employee
+ * themself, their line manager (direct or indirect), or anyone else.
+ */
+export async function relationTo(
+  tx: Tx,
+  auth: AuthContext,
+  userId: string,
+): Promise<"self" | "line_manager" | "other"> {
+  if (userId === auth.userId) return "self";
+  if (hasRole(auth.roles, "line_manager") && (await reportIds(tx, auth.userId)).includes(userId))
+    return "line_manager";
+  return "other";
+}
+
 /** True if the caller may read the user's time data (self, a report of a line manager, or Admin/Finance/Management). */
 export async function canViewUser(tx: Tx, auth: AuthContext, userId: string): Promise<boolean> {
   const v = await visibleUserIds(tx, auth);
@@ -32,8 +47,8 @@ export async function canViewUser(tx: Tx, auth: AuthContext, userId: string): Pr
 }
 
 /**
- * Approver rule (D-013): the direct line manager approves. People without a manager (e.g. the CEO) are approved
- * by an admin or finance user other than themselves. Nobody approves their own timesheet.
+ * Approver rule (D-013, D-025): the direct line manager approves. People without a manager (e.g. the CEO) are
+ * approved by Finance (never by themselves). Nobody approves their own timesheet.
  */
 export async function canApproveUser(tx: Tx, auth: AuthContext, userId: string): Promise<boolean> {
   if (userId === auth.userId) return false;
@@ -43,7 +58,7 @@ export async function canApproveUser(tx: Tx, auth: AuthContext, userId: string):
     .where(eq(schema.users.id, userId));
   if (!u) return false;
   if (u.managerId) return u.managerId === auth.userId;
-  return hasRole(auth.roles, "admin", "finance");
+  return policyOf(auth).can("timesheet.approve_unmanaged");
 }
 
 /** Users the caller approves (for the inbox). */
@@ -53,7 +68,7 @@ export async function approveeIds(tx: Tx, auth: AuthContext): Promise<string[]> 
     .from(schema.users)
     .where(eq(schema.users.managerId, auth.userId));
   const ids = direct.map((d) => d.id);
-  if (hasRole(auth.roles, "admin", "finance")) {
+  if (policyOf(auth).can("timesheet.approve_unmanaged")) {
     const top = await tx.execute<{ id: string }>(
       sql`select id from users where manager_id is null and id <> ${auth.userId}`,
     );

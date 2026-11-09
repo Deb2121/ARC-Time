@@ -4,19 +4,25 @@
  * `x-csrf-token` header (synchroniser token; cookie is SameSite=Lax as defence in depth).
  */
 import { type Db, schema, type Tx, withTenant } from "@arc-tid/db";
-import type { Role } from "@arc-tid/domain";
+import { AccessPolicy, type Capability, type Right, type Role } from "@arc-tid/domain";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { AppError } from "../services/errors.ts";
 import { readSession, SESSION_COOKIE, safeEqual } from "./session.ts";
 
+/** The signed-in person for one request. */
 export interface AuthContext {
   userId: string;
   tenantId: string;
   roles: Role[];
+  /** extra rights on top of roles (D-025); absent = none */
+  rights?: Right[];
   csrfToken: string;
 }
+
+/** The access policy for a request's person (the role matrix lives in packages/domain/src/access.ts). */
+export const policyOf = (auth: AuthContext): AccessPolicy => new AccessPolicy(auth.roles, auth.rights ?? []);
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -48,13 +54,19 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: { db: Db }) => {
     if (raw) {
       const s = await readSession(db, raw);
       if (s) {
-        const roles = await withTenant(db, s.tenantId, (tx) =>
-          tx
-            .select({ role: schema.userRoles.role })
-            .from(schema.userRoles)
-            .where(eq(schema.userRoles.userId, s.userId)),
+        const [roles, rights] = await withTenant(db, s.tenantId, (tx) =>
+          Promise.all([
+            tx
+              .select({ role: schema.userRoles.role })
+              .from(schema.userRoles)
+              .where(eq(schema.userRoles.userId, s.userId)),
+            tx
+              .select({ right: schema.userRights.right })
+              .from(schema.userRights)
+              .where(eq(schema.userRights.userId, s.userId)),
+          ]),
         );
-        req.auth = { ...s, roles: roles.map((r) => r.role) };
+        req.auth = { ...s, roles: roles.map((r) => r.role), rights: rights.map((r) => r.right as Right) };
       }
     }
     if (req.routeOptions.config?.public) return;
@@ -73,5 +85,13 @@ export function requireRole(req: FastifyRequest, ...roles: Role[]): AuthContext 
   const a = req.auth;
   if (!a) throw new AppError(401, "unauthenticated");
   if (!roles.some((r) => a.roles.includes(r))) throw new AppError(403, "forbidden");
+  return a;
+}
+
+/** Throws 401/403 unless the caller's access policy allows the capability; returns the auth context. */
+export function requireCapability(req: FastifyRequest, capability: Capability): AuthContext {
+  const a = req.auth;
+  if (!a) throw new AppError(401, "unauthenticated");
+  if (!policyOf(a).can(capability)) throw new AppError(403, "forbidden");
   return a;
 }

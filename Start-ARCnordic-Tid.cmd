@@ -62,6 +62,9 @@ if errorlevel 1 (
   goto :waitdb
 )
 
+REM Daily safety backup before any migration (backups\, newest 14 kept - D-027).
+call node scripts\db-backup.mjs --daily
+
 echo Opdaterer databasen og demo-data...
 call pnpm.cmd db:migrate || goto :fail
 call pnpm.cmd db:seed || goto :fail

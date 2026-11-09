@@ -1,11 +1,12 @@
 /**
  * Process entry point for the API (`pnpm dev` / `pnpm start`): builds the app, listens on API_PORT, runs the
- * outbox delivery loop every 30 s, and shuts down cleanly on SIGINT/SIGTERM.
+ * outbox delivery loop every 30 s, weekly reminders, a daily retention sweep, and shuts down cleanly on SIGINT/SIGTERM.
  */
 import { createDb } from "@arc-tid/db";
 import { economicFromEnv } from "@arc-tid/integrations";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
+import { runRetentionSweep } from "./services/gdpr.ts";
 import { processOutbox } from "./services/outbox.ts";
 import { mailerFromEnv, runWeeklyReminders } from "./services/reminders.ts";
 
@@ -42,3 +43,12 @@ const reminderTimer = setInterval(() => {
     .catch((e) => app.log.error(e));
 }, 15 * 60_000);
 reminderTimer.unref();
+
+// Retention sweep (D-026): removes short-lived personal data and logs what has passed bookkeeping retention.
+// Runs shortly after start and then once a day.
+const sweep = () =>
+  runRetentionSweep(db)
+    .then((r) => app.log.info({ retention: r }, "retention sweep done"))
+    .catch((e) => app.log.error(e));
+setTimeout(sweep, 60_000).unref();
+setInterval(sweep, 24 * 3600_000).unref();

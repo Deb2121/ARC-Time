@@ -24,6 +24,7 @@ import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 import { createDb, type Tx, withTenant } from "./client.ts";
 import * as s from "./schema.ts";
+import { seedAccess } from "./seed-access.ts";
 import { seedExpenses } from "./seed-expenses.ts";
 import { seedMoney } from "./seed-money.ts";
 import { seedPayroll } from "./seed-payroll.ts";
@@ -510,6 +511,8 @@ if (existing.length > 0) {
   const tenantId = existing[0]?.id as string;
   const added = await withTenant(db, tenantId, (tx) => seedPayroll(tx, tenantId));
   if (added) console.log("added payroll setup (salary codes, payroll numbers) to the existing demo tenant");
+  if (await withTenant(db, tenantId, (tx) => seedAccess(tx, tenantId)))
+    console.log("added extra rights (project creation for AL and PD) to the existing demo tenant");
   console.log(
     "demo tenant already seeded — run `pnpm db:reset; pnpm db:migrate; pnpm db:seed` for a clean database",
   );
@@ -933,6 +936,7 @@ await db.transaction(async (tx: Tx) => {
   await seedExpenses(tx, tenantId, today);
   await seedPlanning(tx, tenantId, today);
   await seedPayroll(tx, tenantId);
+  await seedAccess(tx, tenantId);
 });
 
 const [{ count } = { count: 0 }] = await db.execute<{ count: number }>(

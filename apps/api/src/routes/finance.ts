@@ -14,7 +14,7 @@ import { hasRole, kr, todayCopenhagen } from "@arc-tid/domain";
 import { asc, eq, inArray } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { type AuthContext, requireRole } from "../auth/plugin.ts";
+import { type AuthContext, requireCapability } from "../auth/plugin.ts";
 import { AppError } from "../services/errors.ts";
 import { canEditProject } from "../services/projects.ts";
 
@@ -26,7 +26,7 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
   /* ───────── accounting periods ───────── */
 
   app.get("/periods", async (req) => {
-    const auth = requireRole(req, "finance", "admin", "management");
+    const auth = requireCapability(req, "period.view");
     return req.withTenant(async (tx) => {
       const [entity] = await tx.select().from(schema.legalEntities).limit(1);
       const [tenant] = await tx.select().from(schema.tenants).where(eq(schema.tenants.id, auth.tenantId));
@@ -44,7 +44,7 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   app.get("/periods/:month/report", { schema: { params: z.object({ month: monthParam }) } }, async (req) => {
-    requireRole(req, "finance", "admin", "management");
+    requireCapability(req, "period.view");
     return req.withTenant((tx) => monthEndReport(tx, req.params.month));
   });
 
@@ -57,7 +57,7 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "period.close");
       return req.withTenant((tx) =>
         closeMonth(tx, auth.tenantId, auth.userId, req.params.id, req.body.acknowledge),
       );
@@ -73,7 +73,7 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "period.close");
       return req.withTenant(async (tx) => {
         await reopenMonth(tx, auth.tenantId, auth.userId, req.params.id, req.body.reason);
         return { status: "open" };
@@ -143,7 +143,7 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "pricelist.manage");
       return req.withTenant(async (tx) => {
         const [row] = await tx
           .insert(schema.priceListRates)
@@ -171,7 +171,7 @@ export const financeRoutes: FastifyPluginAsyncZod = async (app) => {
     "/price-list-rates/:id",
     { schema: { params: z.object({ id: z.string().uuid() }) } },
     async (req) => {
-      const auth = requireRole(req, "finance", "admin");
+      const auth = requireCapability(req, "pricelist.manage");
       return req.withTenant(async (tx) => {
         const [before] = await tx
           .delete(schema.priceListRates)
