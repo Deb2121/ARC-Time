@@ -31,7 +31,8 @@ export type IconName =
   | "shield"
   | "users"
   | "cog"
-  | "upload";
+  | "upload"
+  | "grid";
 
 /** One place in the app. */
 export interface NavItem {
@@ -50,6 +51,7 @@ export interface NavItem {
 /** All places, in sidebar order within each category. */
 export const NAV: NavItem[] = [
   { href: "/", label: "nav.home", description: "nav.home", category: "home", icon: "home" },
+  { href: "/menu", label: "nav.menu", description: "navd.menu", category: "home", icon: "grid" },
   {
     href: "/timesheet",
     label: "nav.timesheet",
@@ -162,7 +164,10 @@ export const NAV: NavItem[] = [
   },
 ];
 
-/** The places the signed-in person may see, grouped by category (empty categories left out). */
+/**
+ * The places the signed-in person may see: `top` (Forside, Alle funktioner) and the rest grouped by category
+ * (empty categories left out).
+ */
 export function useNavigation() {
   const me = useMe();
   const visible = NAV.filter((n) =>
@@ -172,7 +177,7 @@ export function useNavigation() {
     category,
     items: visible.filter((n) => n.category === category),
   })).filter((g) => g.items.length > 0);
-  return { home: visible.find((n) => n.category === "home"), groups };
+  return { top: visible.filter((n) => n.category === "home"), groups };
 }
 
 /** SVG path data per icon (24×24, stroke-based, in the style of the design system). */
@@ -194,6 +199,7 @@ const PATHS: Record<IconName, string> = {
     "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6",
   cog: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
   upload: "M12 16V4M7 9l5-5 5 5M4 20h16",
+  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
 };
 
 /** A small line icon for navigation (decorative — the text next to it is the label). */

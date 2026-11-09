@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * "Hvad vil du gøre?" on the home page: every place the person may use, grouped in category cards with an icon,
+ * "Hvad vil du gøre?" on the "Alle funktioner" page (/menu): every place the person may use, grouped in category cards with an icon,
  * a name and one line about what it is for. Reads the same list as the sidebar (navigation.tsx), so it only shows
  * what the server's role matrix allows.
  */
@@ -15,10 +15,7 @@ export function HomeLauncher() {
   const { t } = useI18n();
   const { groups } = useNavigation();
   return (
-    <section aria-labelledby="launcher-title" className="flex flex-col gap-3">
-      <h2 id="launcher-title" className="text-lg font-medium">
-        {t("home.launcher")}
-      </h2>
+    <section aria-label={t("home.launcher")} className="flex flex-col gap-3">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {groups.map((g) => (
           <div key={g.category} className="rounded-lg border border-line bg-surface p-4">

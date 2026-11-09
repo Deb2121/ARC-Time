@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.replace("/login");
   }
 
-  const { home, groups } = useNavigation();
+  const { top, groups } = useNavigation();
   const link = (n: NavItem) => {
     const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
     return (
@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-label={t("nav.main")}
           className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-surface p-3 md:block"
         >
-          {home && <ul className="mb-2 flex flex-col gap-0.5">{link(home)}</ul>}
+          <ul className="mb-2 flex flex-col gap-0.5">{top.map(link)}</ul>
           {groups.map((g) => (
             <div key={g.category} className="mb-2">
               <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
