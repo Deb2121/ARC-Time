@@ -49,6 +49,8 @@ export function PowerBiAccess() {
   const day = (iso: string) =>
     fmtDay(iso.slice(0, 10), locale, { day: "numeric", month: "short", year: "numeric" });
   const year = new Date().getFullYear();
+  const active = (tokens.data ?? []).filter((tk) => !tk.revokedAt);
+  const revokedCount = (tokens.data ?? []).length - active.length;
 
   async function create() {
     try {
@@ -72,7 +74,7 @@ export function PowerBiAccess() {
       <ul className="mb-4 flex flex-col gap-1 text-xs">
         {DATASETS.map((d) => (
           <li key={d} className="flex flex-wrap gap-2">
-            <span className="w-28 font-semibold text-ink-900">{t(`pbi.ds.${d}` as MessageKey)}</span>
+            <span className="w-40 shrink-0 font-semibold text-ink-900">{t(`pbi.ds.${d}` as MessageKey)}</span>
             <code className="break-all text-ink-700">{`${ANALYTICS_URL}/v1/datasets/${d}?from=${year - 1}-01-01&to=${year}-12-31`}</code>
           </li>
         ))}
@@ -100,7 +102,7 @@ export function PowerBiAccess() {
         </div>
       )}
       <ul className="mb-3 divide-y divide-line text-sm">
-        {(tokens.data ?? []).map((tk) => (
+        {active.map((tk) => (
           <li key={tk.id} className="flex flex-wrap items-center gap-3 py-2">
             <span className="flex-1">
               <span className="font-semibold text-ink-900">{tk.name}</span>{" "}
@@ -128,13 +130,17 @@ export function PowerBiAccess() {
           </li>
         ))}
       </ul>
+      {active.length === 0 && <p className="mb-3 text-sm text-ink-500">{t("pbi.none")}</p>}
+      {revokedCount > 0 && (
+        <p className="mb-3 text-xs text-ink-500">{t("pbi.revokedCount", { count: revokedCount })}</p>
+      )}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-semibold text-ink-900">{t("pbi.name")}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-10 rounded-[var(--radius-control)] border border-line bg-surface px-3"
+            className="h-10 w-72 rounded-[var(--radius-control)] border border-line bg-surface px-3"
           />
         </label>
         <Button disabled={name.trim().length < 2} onClick={() => void create()}>

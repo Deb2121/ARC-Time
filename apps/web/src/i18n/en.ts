@@ -721,4 +721,6 @@ export const en: Record<MessageKey, string> = {
   "pbi.create": "Create token",
   "pbi.hint": "Revoke a token if it was shared by mistake or is no longer used. Tokens expire after a year.",
   "err.too_many_tokens": "You already have 10 active tokens. Revoke one first.",
+  "pbi.none": "You have no active tokens yet.",
+  "pbi.revokedCount": "Revoked tokens (hidden): {count}",
 };

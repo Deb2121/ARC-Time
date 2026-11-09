@@ -721,6 +721,8 @@ export const da = {
   "pbi.hint":
     "Tilbagekald en nøgle, hvis den er delt ved en fejl eller ikke bruges mere. Nøgler udløber efter et år.",
   "err.too_many_tokens": "Du har allerede 10 aktive nøgler. Tilbagekald en først.",
+  "pbi.none": "Du har ingen aktive nøgler endnu.",
+  "pbi.revokedCount": "Tilbagekaldte nøgler (vises ikke): {count}",
 } as const;
 
 export type MessageKey = keyof typeof da;
