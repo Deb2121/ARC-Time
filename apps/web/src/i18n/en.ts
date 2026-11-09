@@ -622,4 +622,10 @@ export const en: Record<MessageKey, string> = {
   "err.import_has_errors": "The import has errors. Fix them and try again.",
   "err.import_empty": "The file has no rows.",
   "err.import_too_large": "The file has too many rows (max 2,000).",
+  "errpage.title": "Something went wrong",
+  "errpage.body":
+    "The page could not be shown right now. Your registrations are saved. Try again or go to the home page.",
+  "errpage.retry": "Try again",
+  "errpage.home": "Go to home",
+  "errpage.ref": "Reference for support: {ref}",
 };

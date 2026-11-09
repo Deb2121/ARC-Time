@@ -14,7 +14,9 @@ Status: **M3 Operations done; M4 payroll export and data import done** — next:
    _Terminal → Run Task… → Start ARCnordic Tid_ (eller `Ctrl+Shift+B`).
 3. Browseren åbner **http://localhost:3000**. Log ind med fx `lv@demo.arcnordic.test` / `demo1234`.
 
-Stop med `Ctrl+C` i vinduet. Frisk demo-data: _Run Task… → Nulstil demo-data_. Tests: _Run Task… → Kør tests_.
+Det starter **testudgaven** — præcis som brugerne ser systemet, uden udviklerværktøjer eller tekniske fejlbokse
+(første start bygger appen, ca. et minut). Udviklere bruger _Run Task… → Start ARCnordic Tid (udvikler)_
+(hot reload og Next.js-udviklerværktøjer). Stop med `Ctrl+C` i vinduet. Frisk demo-data: _Run Task… → Nulstil demo-data_. Tests: _Run Task… → Kør tests_.
 
 ## Run locally (developer details)
 

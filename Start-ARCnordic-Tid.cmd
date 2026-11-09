@@ -69,11 +69,19 @@ call pnpm.cmd db:seed || goto :fail
 REM Open the browser as soon as the web app answers.
 start "" /b powershell -NoProfile -WindowStyle Hidden -Command "for ($i=0; $i -lt 90; $i++) { try { Invoke-WebRequest http://localhost:3000/login -UseBasicParsing -TimeoutSec 2 | Out-Null; Start-Process 'http://localhost:3000'; break } catch { Start-Sleep 1 } }"
 
+REM Default: test version (production build - no developer tools or technical error overlays, as users see it).
+REM "Start-ARCnordic-Tid.cmd dev" starts developer mode with hot reload and Next.js dev tools (developers only).
 echo.
 echo  ARCnordic Tid starter paa http://localhost:3000   (log ind: lv@demo.arcnordic.test / demo1234)
 echo  Stop med Ctrl+C.
 echo.
-call pnpm.cmd dev
+if /i "%~1"=="dev" (
+  echo  Udviklertilstand - kun til udviklere.
+  call pnpm.cmd dev
+) else (
+  echo  Bygger testudgaven, det tager et minuts tid...
+  call pnpm.cmd serve
+)
 exit /b 0
 
 :fail

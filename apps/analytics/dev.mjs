@@ -3,6 +3,7 @@
  * Launcher for the Python analytics service, so `pnpm dev` / `pnpm test` work without manual Python setup.
  *
  *   node dev.mjs dev    create .venv if needed, install requirements when they change, run uvicorn on :8000
+ *   node dev.mjs start  the same without auto-reload (test version)
  *   node dev.mjs test   same setup, then run pytest
  *
  * When Python 3.12+ is not installed, `dev` prints a friendly note and exits 0 (the rest of the app still runs);
@@ -70,4 +71,6 @@ if (!existsSync(stamp) || readFileSync(stamp, "utf8") !== reqHash) {
 }
 
 if (mode === "test") process.exit(run(venvPython, ["-m", "pytest", "-q"]));
-process.exit(run(venvPython, ["-m", "uvicorn", "arc_analytics.main:app", "--reload", "--port", "8000"]));
+// "start" (test/production) runs without auto-reload; "dev" reloads on code changes.
+const reload = mode === "dev" ? ["--reload"] : [];
+process.exit(run(venvPython, ["-m", "uvicorn", "arc_analytics.main:app", ...reload, "--port", "8000"]));

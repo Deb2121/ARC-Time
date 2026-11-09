@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node dev.mjs dev",
+    "start": "node dev.mjs start",
     "test": "node dev.mjs test"
   }
 }

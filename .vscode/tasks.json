@@ -3,21 +3,57 @@
   "tasks": [
     {
       "label": "Start ARCnordic Tid",
-      "detail": "Starter database, API og web på http://localhost:3000",
+      "detail": "Testudgaven (som brugerne ser den) på http://localhost:3000",
       "type": "shell",
       "command": "& '${workspaceFolder}\\Start-ARCnordic-Tid.cmd'",
-      "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } },
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      },
       "isBackground": true,
       "problemMatcher": [],
-      "presentation": { "panel": "dedicated", "reveal": "always", "clear": true },
-      "group": { "kind": "build", "isDefault": true }
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "clear": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Start ARCnordic Tid (udvikler)",
+      "detail": "Kun udviklere: hot reload og Next.js-udviklerværktøjer",
+      "type": "shell",
+      "command": "& '${workspaceFolder}\\Start-ARCnordic-Tid.cmd' dev",
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "clear": true
+      }
     },
     {
       "label": "Nulstil demo-data",
       "detail": "Sletter databasen og opretter friske demo-data",
       "type": "shell",
       "command": "docker compose down -v; docker compose up -d db; Start-Sleep 5; pnpm.cmd db:migrate; pnpm.cmd db:seed",
-      "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } },
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      },
       "problemMatcher": []
     },
     {
@@ -25,7 +61,12 @@
       "detail": "Lint, typecheck og alle unit/integrationstests",
       "type": "shell",
       "command": "pnpm.cmd check",
-      "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } },
+      "options": {
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-Command"]
+        }
+      },
       "problemMatcher": []
     }
   ]

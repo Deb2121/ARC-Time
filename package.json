@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel --filter ./apps/* dev",
+    "serve": "pnpm --filter @arc-tid/web build && pnpm -r --parallel --filter ./apps/* start",
     "build": "pnpm -r build",
     "lint": "biome check .",
     "format": "biome check --write .",

@@ -619,6 +619,12 @@ export const da = {
   "err.import_has_errors": "Importen har fejl. Ret dem og prøv igen.",
   "err.import_empty": "Filen indeholder ingen rækker.",
   "err.import_too_large": "Filen har for mange rækker (højst 2.000).",
+  "errpage.title": "Noget gik galt",
+  "errpage.body":
+    "Siden kunne ikke vises lige nu. Dine registreringer er gemt. Prøv igen, eller gå til forsiden.",
+  "errpage.retry": "Prøv igen",
+  "errpage.home": "Til forsiden",
+  "errpage.ref": "Reference til support: {ref}",
 } as const;
 
 export type MessageKey = keyof typeof da;

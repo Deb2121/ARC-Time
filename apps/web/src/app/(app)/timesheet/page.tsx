@@ -111,9 +111,9 @@ function Timesheet() {
             .map((n) => n.padStart(3, "0"))
             .join(".")}`
         : `1 ${r.ref.code}`;
-    return [...server, ...extraRows.filter((r) => !keys.has(r.key))].sort((a, b) =>
-      sortKey(a).localeCompare(sortKey(b)),
-    );
+    // Each row key once: server rows win, and an extra row added twice is kept only once.
+    const extras = extraRows.filter((r) => !keys.has(r.key) && keys.add(r.key));
+    return [...server, ...extras].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   }, [data, extraRows]);
   const rowKeys = useMemo(
     () => new Set(rows.flatMap((r) => (r.kind === "task" ? [r.ref.taskId] : []))),
@@ -319,7 +319,7 @@ function Timesheet() {
             value=""
             onChange={(e) => {
               const c = data.absenceCodes.find((x) => x.id === e.target.value);
-              if (c)
+              if (c && !rows.some((r) => r.key === absenceRowKey(c.id)))
                 setExtraRows((r) => [
                   ...r,
                   {
@@ -332,11 +332,13 @@ function Timesheet() {
             }}
           >
             <option value="">+ {t("ts.addAbsence")}</option>
-            {data.absenceCodes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {locale === "da" ? c.nameDa : c.nameEn}
-              </option>
-            ))}
+            {data.absenceCodes
+              .filter((c) => !rows.some((r) => r.key === absenceRowKey(c.id)))
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {locale === "da" ? c.nameDa : c.nameEn}
+                </option>
+              ))}
           </select>
           <Button variant="ghost" onClick={() => copyRows.mutate()} disabled={copyRows.isPending}>
             ⧉ {t("ts.copyLastWeek")}
