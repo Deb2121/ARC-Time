@@ -1,5 +1,5 @@
 export const da = {
-  "app.name": "ARCnordic Tid",
+  "app.name": "ARCtime",
   "app.skipToContent": "Spring til indhold",
   "nav.home": "Forside",
   "nav.timesheet": "Min uge",
@@ -723,6 +723,19 @@ export const da = {
   "err.too_many_tokens": "Du har allerede 10 aktive nøgler. Tilbagekald en først.",
   "pbi.none": "Du har ingen aktive nøgler endnu.",
   "pbi.revokedCount": "Tilbagekaldte nøgler (vises ikke): {count}",
+  "ts.changeType": "Skift årsag",
+  "ts.changeTypeFor": "Skift fraværsårsag for {row}",
+  "ts.changeTo": "Skift til…",
+  "ts.removeRow": "Fjern",
+  "ts.removeRowFor": "Fjern fraværsrækken {row}",
+  "ts.removeConfirm": "Fjern {hours} t fravær?",
+  "ts.removeYes": "Ja, fjern",
+  "navc.time": "Min tid",
+  "navc.team": "Godkendelse og planlægning",
+  "navc.projects": "Projekter og kunder",
+  "navc.finance": "Økonomi",
+  "navc.insight": "Rapporter og indsigt",
+  "navc.admin": "Administration",
 } as const;
 
 export type MessageKey = keyof typeof da;

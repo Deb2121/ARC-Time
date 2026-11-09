@@ -22,12 +22,17 @@ export interface Selected {
   date: string;
 }
 
+/** What the employee can do with an absence row (the page owns saving). */
+export type RowAction = { type: "remove"; row: Row } | { type: "change"; row: Row; toCodeId: string };
+
 interface Props {
   week: WeekData;
   rows: Row[];
   selected: Selected | null;
   onSelect: (s: Selected) => void;
   onCommentNeeded: (s: Selected, hours: number) => void;
+  /** remove an absence row / move its hours to another absence type; omitted = no row actions */
+  onRowAction?: (a: RowAction) => Promise<void>;
 }
 
 /** Human-readable label for a timesheet row (used for accessible cell names and panels). */
@@ -42,7 +47,7 @@ export const rowLabel = (r: Row, locale: "da" | "en") =>
  * Keyboard-first weekly timesheet grid. Tab/Shift+Tab moves, ↑↓ change row, ←→ change day at the caret edge,
  * Enter saves and moves down, Esc reverts. Saves on blur with the same validation rules as the API.
  */
-export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded }: Props) {
+export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRowAction }: Props) {
   const { t, locale } = useI18n();
   const qc = useQueryClient();
   const gridRef = useRef<HTMLTableElement>(null);
@@ -50,6 +55,21 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded }: Pr
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [announce, setAnnounce] = useState("");
   const readOnly = !week.editable;
+  // Absence row actions: which row asks "really remove?" or shows the "change to" list.
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const [changing, setChanging] = useState<string | null>(null);
+  const [busyRow, setBusyRow] = useState<string | null>(null);
+  async function act(a: RowAction) {
+    if (!onRowAction) return;
+    setBusyRow(a.row.key);
+    try {
+      await onRowAction(a);
+    } finally {
+      setBusyRow(null);
+      setConfirmRemove(null);
+      setChanging(null);
+    }
+  }
 
   const save = useMutation({
     mutationFn: (body: { date: string; taskId?: string; absenceCodeId?: string; hours: number }) =>
@@ -217,9 +237,95 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded }: Pr
                       </span>
                     </>
                   ) : (
-                    <span className="block font-semibold text-ink-900">
-                      {label} <span className="text-xs font-normal text-ink-500">({r.ref.code})</span>
-                    </span>
+                    <>
+                      <span className="block font-semibold text-ink-900">
+                        {label} <span className="text-xs font-normal text-ink-500">({r.ref.code})</span>
+                      </span>
+                      {!readOnly && onRowAction && r.ref.absenceCodeId && (
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                          {confirmRemove === r.key ? (
+                            <>
+                              <span className="text-ink-700">
+                                {t("ts.removeConfirm", { hours: total(rowTotal) })}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={busyRow === r.key}
+                                className="font-semibold text-danger hover:underline"
+                                onClick={() => void act({ type: "remove", row: r })}
+                              >
+                                {t("ts.removeYes")}
+                              </button>
+                              <button
+                                type="button"
+                                className="text-ink-500 hover:underline"
+                                onClick={() => setConfirmRemove(null)}
+                              >
+                                {t("common.cancel")}
+                              </button>
+                            </>
+                          ) : changing === r.key ? (
+                            <>
+                              <label className="sr-only" htmlFor={`change-${r.key}`}>
+                                {t("ts.changeTo")}
+                              </label>
+                              <select
+                                id={`change-${r.key}`}
+                                // biome-ignore lint/a11y/noAutofocus: opened by the user's "change reason" action
+                                autoFocus
+                                disabled={busyRow === r.key}
+                                className="h-7 rounded border border-line bg-surface px-1 text-xs"
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value)
+                                    void act({ type: "change", row: r, toCodeId: e.target.value });
+                                }}
+                              >
+                                <option value="">{t("ts.changeTo")}</option>
+                                {week.absenceCodes
+                                  .filter((c) => c.id !== r.ref.absenceCodeId)
+                                  .map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {locale === "da" ? c.nameDa : c.nameEn}
+                                    </option>
+                                  ))}
+                              </select>
+                              <button
+                                type="button"
+                                className="text-ink-500 hover:underline"
+                                onClick={() => setChanging(null)}
+                              >
+                                {t("common.cancel")}
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {rowTotal > 0 && (
+                                <button
+                                  type="button"
+                                  className="text-brand-700 hover:underline"
+                                  onClick={() => setChanging(r.key)}
+                                  aria-label={t("ts.changeTypeFor", { row: label })}
+                                >
+                                  ⇄ {t("ts.changeType")}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="text-ink-500 hover:text-danger hover:underline"
+                                onClick={() => {
+                                  if (rowTotal > 0) setConfirmRemove(r.key);
+                                  else void act({ type: "remove", row: r });
+                                }}
+                                aria-label={t("ts.removeRowFor", { row: label })}
+                              >
+                                ✕ {t("ts.removeRow")}
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </>
                   )}
                 </th>
                 {week.days.map((d, ci) => {

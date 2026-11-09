@@ -28,7 +28,10 @@ test("project manager step can be switched on and shows the project manager's ta
   await page.getByRole("button", { name: "Log ud" }).click();
 
   await login(page, "pd"); // project manager of 26002 and 26008, not a line manager
-  await page.getByRole("link", { name: "Godkendelse" }).click();
+  await page
+    .getByRole("navigation", { name: "Hovedmenu" })
+    .getByRole("link", { name: "Godkendelse" })
+    .click();
   await expect(page.getByRole("tab", { name: "Mine projekter" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Udlæg og kørsel" })).toHaveCount(0);
   await expect(page.getByText(/Ingen timer venter på dig|Timer på dine projekter/)).toBeVisible();

@@ -12,7 +12,10 @@ test("payroll preview and salary codes", async ({ page }) => {
   await page.getByLabel("E-mail").fill("jf@demo.arcnordic.test");
   await page.getByLabel("Adgangskode").fill("demo1234");
   await page.getByRole("button", { name: "Log ind" }).click();
-  await page.getByRole("link", { name: "Løn", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Hovedmenu" })
+    .getByRole("link", { name: "Løn", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: "Lønoverførsel" })).toBeVisible();
 
   // September has approved vacation in the seed.
@@ -31,5 +34,7 @@ test("payroll preview and salary codes", async ({ page }) => {
   await page.getByLabel("Adgangskode").fill("demo1234");
   await page.getByRole("button", { name: "Log ind" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Løn", exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation", { name: "Hovedmenu" }).getByRole("link", { name: "Løn", exact: true }),
+  ).toHaveCount(0);
 });

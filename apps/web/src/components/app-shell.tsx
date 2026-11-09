@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * Application frame: top bar (wordmark, language, user, sign out) and the role-filtered main navigation.
- * Navigation items are declared in NAV; each lists the roles that see it. Server-side checks still apply.
+ * Application frame: top bar (wordmark, language, user, sign out) and the main navigation, grouped by category.
+ * The places themselves (and who sees them) are declared once in navigation.tsx. Server-side checks still apply.
  */
 
-import { type Capability, hasRole, type Role } from "@arc-tid/domain";
 import { Wordmark } from "@arc-tid/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -15,59 +14,8 @@ import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
 import { api, setCsrfToken } from "@/lib/api";
 import { LanguageSwitch } from "./language-switch";
+import { NavIcon, type NavItem, useNavigation } from "./navigation";
 import { useMe } from "./session";
-
-interface NavItem {
-  href: string;
-  label: MessageKey;
-  roles?: Role[]; // visible to anyone with one of these roles; undefined = everyone
-  capability?: Capability; // or: visible when the role matrix allows this action (D-025)
-  ready: boolean; // false = placeholder until its milestone ships
-}
-
-const NAV: NavItem[] = [
-  { href: "/", label: "nav.home", ready: true },
-  { href: "/timesheet", label: "nav.timesheet", ready: true },
-  { href: "/expenses", label: "nav.expenses", ready: true },
-  {
-    href: "/approval",
-    label: "nav.approval",
-    roles: ["line_manager", "admin", "finance", "project_manager"],
-    ready: true,
-  },
-  { href: "/projects", label: "nav.projects", ready: true },
-  {
-    href: "/customers",
-    label: "nav.customers",
-    roles: ["project_manager", "finance", "admin", "management"],
-    ready: true,
-  },
-  {
-    href: "/planning",
-    label: "nav.planning",
-    roles: ["project_manager", "line_manager", "admin", "finance", "management"],
-    ready: true,
-  },
-  { href: "/invoicing", label: "nav.invoicing", roles: ["finance", "admin", "project_manager"], ready: true },
-  { href: "/periods", label: "nav.periods", roles: ["finance", "admin", "management"], ready: true },
-  { href: "/payroll", label: "nav.payroll", capability: "payroll.export", ready: true },
-  { href: "/admin/import", label: "nav.import", capability: "data.import", ready: true },
-  { href: "/admin/audit", label: "nav.audit", capability: "audit.read", ready: true },
-  { href: "/reports", label: "nav.reports", ready: true },
-  { href: "/admin/settings", label: "nav.settings", roles: ["admin", "finance"], ready: true },
-  {
-    href: "/admin/price-lists",
-    label: "nav.priceLists",
-    roles: ["finance", "admin", "project_manager", "management"],
-    ready: true,
-  },
-  {
-    href: "/admin/people",
-    label: "nav.people",
-    roles: ["admin", "finance", "management", "line_manager"],
-    ready: true,
-  },
-];
 
 /** Wraps every signed-in page with the top bar, navigation and a skip-to-content link. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -84,9 +32,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.replace("/login");
   }
 
-  const items = NAV.filter((n) =>
-    n.capability ? me.capabilities.includes(n.capability) : !n.roles || hasRole(me.roles, ...n.roles),
-  );
+  const { top, groups } = useNavigation();
+  const link = (n: NavItem) => {
+    const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
+    return (
+      <li key={n.href}>
+        <Link
+          href={n.href}
+          aria-current={active ? "page" : undefined}
+          className={`relative flex items-center gap-2.5 rounded-[var(--radius-control)] px-3 py-1.5 text-sm font-semibold ${
+            active ? "bg-brand-50 text-brand-800" : "text-ink-700 hover:bg-surface-alt"
+          }`}
+        >
+          {active && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded bg-brand-600" />}
+          <NavIcon
+            name={n.icon}
+            className={`h-4 w-4 shrink-0 ${active ? "text-brand-700" : "text-ink-500"}`}
+          />
+          {t(n.label)}
+        </Link>
+      </li>
+    );
+  };
 
   return (
     <div className="min-h-screen">
@@ -116,40 +83,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex">
         <nav
           aria-label={t("nav.main")}
-          className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-line bg-surface p-3 md:block"
+          className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-surface p-3 md:block"
         >
-          <ul className="flex flex-col gap-0.5">
-            {items.map((n) => {
-              const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
-              if (!n.ready) {
-                return (
-                  <li key={n.href}>
-                    <span
-                      aria-disabled="true"
-                      className="flex items-center justify-between rounded-[var(--radius-control)] px-3 py-2 text-sm text-ink-500"
-                    >
-                      {t(n.label)}
-                      <span className="text-[10px] uppercase tracking-wide">{t("nav.comingSoon")}</span>
-                    </span>
-                  </li>
-                );
-              }
-              return (
-                <li key={n.href}>
-                  <Link
-                    href={n.href}
-                    aria-current={active ? "page" : undefined}
-                    className={`relative block rounded-[var(--radius-control)] px-3 py-2 text-sm font-semibold ${
-                      active ? "bg-brand-50 text-brand-800" : "text-ink-700 hover:bg-surface-alt"
-                    }`}
-                  >
-                    {active && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded bg-brand-600" />}
-                    {t(n.label)}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className="mb-2 flex flex-col gap-0.5">{top.map(link)}</ul>
+          {groups.map((g) => (
+            <div key={g.category} className="mb-2">
+              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-brand-700/75">
+                {t(`navc.${g.category}` as MessageKey)}
+              </p>
+              <ul className="flex flex-col gap-0.5">{g.items.map(link)}</ul>
+            </div>
+          ))}
         </nav>
         <main id="main" className="min-w-0 flex-1 p-6 lg:p-10">
           {children}

@@ -1,7 +1,7 @@
 import type { MessageKey } from "./da";
 
 export const en: Record<MessageKey, string> = {
-  "app.name": "ARCnordic Tid",
+  "app.name": "ARCtime",
   "app.skipToContent": "Skip to content",
   "nav.home": "Home",
   "nav.timesheet": "My week",
@@ -723,4 +723,17 @@ export const en: Record<MessageKey, string> = {
   "err.too_many_tokens": "You already have 10 active tokens. Revoke one first.",
   "pbi.none": "You have no active tokens yet.",
   "pbi.revokedCount": "Revoked tokens (hidden): {count}",
+  "ts.changeType": "Change reason",
+  "ts.changeTypeFor": "Change absence reason for {row}",
+  "ts.changeTo": "Change to…",
+  "ts.removeRow": "Remove",
+  "ts.removeRowFor": "Remove the absence row {row}",
+  "ts.removeConfirm": "Remove {hours} h of absence?",
+  "ts.removeYes": "Yes, remove",
+  "navc.time": "My time",
+  "navc.team": "Approval and planning",
+  "navc.projects": "Projects and customers",
+  "navc.finance": "Finance",
+  "navc.insight": "Reports and insight",
+  "navc.admin": "Administration",
 };

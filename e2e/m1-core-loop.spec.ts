@@ -63,7 +63,7 @@ test.afterAll(async ({ playwright }) => {
 test("register → submit → approve", async ({ page, browser }) => {
   // 1. Laura registers 1,5 h on Monday using the keyboard and submits.
   await login(page, "LV");
-  await page.getByRole("link", { name: "Min uge" }).click();
+  await page.getByRole("navigation", { name: "Hovedmenu" }).getByRole("link", { name: "Min uge" }).click();
   await expect(page.getByRole("heading", { name: /Min uge/ })).toBeVisible();
 
   const cell = page.getByRole("textbox", { name: new RegExp(`${TASK}, man`) });
@@ -114,7 +114,7 @@ test("register → submit → approve", async ({ page, browser }) => {
 
 test("project manager sees budget vs actual and the WBS", async ({ page }) => {
   await login(page, "AL");
-  await page.getByRole("link", { name: "Projekter" }).click();
+  await page.getByRole("navigation", { name: "Hovedmenu" }).getByRole("link", { name: "Projekter" }).click();
   await page.getByRole("link", { name: "Lyngparken – facaderenovering" }).click();
   await expect(page.getByRole("heading", { name: /Lyngparken – facaderenovering/ })).toBeVisible();
   await expect(page.getByText("Færdiggørelse")).toBeVisible();
