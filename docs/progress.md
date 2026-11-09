@@ -42,7 +42,3 @@
 1. ~~Payroll export~~ (done as generic CSV; provider adapters later).
 2. ~~Data import~~ (done).
 3. Later, if needed: multi-entity and multi-currency, PWA, project templates, Gantt, CRM pipeline, API tokens.
-
-## Waiting on product owner
-
-- GitHub push: run `git push -u origin main` once in the terminal so Windows can store the GitHub login.
