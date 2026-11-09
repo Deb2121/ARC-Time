@@ -5,7 +5,7 @@
  */
 import { createDb, schema, type Tx, withTenant } from "@arc-tid/db";
 import { startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "./app.ts";
@@ -95,7 +95,18 @@ describe("sickness privacy (OQ-21)", () => {
     const lv = await login("lv");
     const ob = await login("ob"); // used as an unrelated viewer
     const jf = await login("jf");
-    const week = startOfIsoWeek("2026-09-15");
+    // Laura's most recent sick day in the seed (the seed is relative to the day it ran, so look it up).
+    const [sick] = await withTenant(db, lv.me.tenantId, (tx) =>
+      tx
+        .select({ date: schema.timeEntries.date })
+        .from(schema.timeEntries)
+        .innerJoin(schema.absenceCodes, eq(schema.absenceCodes.id, schema.timeEntries.absenceCodeId))
+        .where(and(eq(schema.timeEntries.userId, lv.me.id), eq(schema.absenceCodes.code, "SYG")))
+        .orderBy(desc(schema.timeEntries.date))
+        .limit(1),
+    );
+    expect(sick).toBeTruthy();
+    const week = startOfIsoWeek(sick?.date as string);
     await withTenant(db, lv.me.tenantId, async (tx) => {
       const mgmt: AuthContext = {
         userId: ob.me.id,

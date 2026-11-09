@@ -51,7 +51,9 @@ export function lateDeltas(current: PayrollLine[], exported: PayrollLine[]): Pay
     const e = done.get(k);
     const base = (c ?? e) as PayrollLine;
     const quantity = (c?.quantity ?? 0) - (e?.quantity ?? 0);
-    const amount = c?.amount === null && e?.amount === null ? null : (c?.amount ?? 0) - (e?.amount ?? 0);
+    // Only lines that exist carry an amount; a missing side is "nothing", not 0 kr (day/hour codes have no amount).
+    const sides = [c, e].filter((l): l is PayrollLine => l !== undefined);
+    const amount = sides.every((l) => l.amount === null) ? null : (c?.amount ?? 0) - (e?.amount ?? 0);
     if (quantity !== 0 || (amount ?? 0) !== 0)
       out.push({
         ...base,

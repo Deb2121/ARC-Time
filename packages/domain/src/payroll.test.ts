@@ -20,6 +20,15 @@ describe("payroll export rules", () => {
     expect(
       lateDeltas([{ ...base, quantity: 200, sourceCount: 2 }], [{ ...base, quantity: 200, sourceCount: 2 }]),
     ).toEqual([]);
+    // nothing exported for that month before → the late line keeps "no amount" (not 0,00 kr) — found by CI
+    expect(lateDeltas([{ ...base, quantity: 100, sourceCount: 1 }], [])).toEqual([
+      { ...base, quantity: 100, sourceCount: 1 },
+    ]);
+    // mileage keeps its amount
+    const km = { ...base, salaryCodeId: "km" };
+    expect(lateDeltas([{ ...km, quantity: 4_000, amount: 15_240, sourceCount: 1 }], [])[0]?.amount).toBe(
+      15_240,
+    );
     // a day removed after export → negative correction
     expect(lateDeltas([], [{ ...base, quantity: 100, sourceCount: 1 }])[0]?.quantity).toBe(-100);
   });

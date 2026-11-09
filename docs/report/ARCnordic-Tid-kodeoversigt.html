@@ -41,13 +41,13 @@ pre { background: #f4f4f4; border-left: 3px solid var(--brand); padding: 3mm; fo
     <h1>Kodeoversigt og funktioner</h1>
     <p style="font-size:12pt">Arkitektur, GRASP og OOP, moduler og funktioner, datamodel, sikkerhed, test og vedligeholdelse</p>
     <div class="kpis">
-      <div class="kpi"><b>23.647</b><span>linjer kildekode</span></div>
+      <div class="kpi"><b>23.649</b><span>linjer kildekode</span></div>
       <div class="kpi"><b>388</b><span>dokumenterede funktioner/typer</span></div>
       <div class="kpi"><b>205</b><span>automatiske tests</span></div>
       <div class="kpi"><b>103</b><span>API-endpoints</span></div>
     </div>
   </div>
-  <div class="muted">Udarbejdet 9. november 2026 · version 1bda6a3 (28 commits) · github.com/Deb2121/ARC-Time<br>
+  <div class="muted">Udarbejdet 9. november 2026 · version ec6633f (29 commits) · github.com/Deb2121/ARC-Time<br>
   Genereres fra koden med <span class="mono">node scripts/code-report.mjs</span> — inventarlisterne passer altid med koden.</div>
 </section>
 
@@ -63,7 +63,7 @@ pre { background: #f4f4f4; border-left: 3px solid var(--brand); padding: 3mm; fo
 
 <h2 style="margin-top:8mm">1. Resumé</h2>
 <p><b>ARCnordic Tid</b> er et PSA-system (tid, projekter, budget, godkendelse, fakturering, udlæg, fravær og flex, ressourceplanlægning, løneksport og rapportering) bygget som en ren genimplementering. Systemet er bygget i faser: M0 fundament, M1 tidsregistrering og godkendelse, M2 fakturering og perioder, M3 drift (udlæg, ressourceplan, dashboard, Outlook, analyse), M4 løneksport og import, samt rettelser efter kodegennemgang (adgangspolitik, privatliv, revisionsspor, GDPR, backup).</p>
-<div class="kpis"><div class="kpi"><b>1.895</b><span>packages/domain · 35 filer</span></div><div class="kpi"><b>3.823</b><span>packages/db · 15 filer</span></div><div class="kpi"><b>297</b><span>packages/integrations · 6 filer</span></div><div class="kpi"><b>130</b><span>packages/ui · 1 filer</span></div><div class="kpi"><b>7.644</b><span>apps/api · 54 filer</span></div><div class="kpi"><b>9.419</b><span>apps/web · 44 filer</span></div><div class="kpi"><b>439</b><span>apps/analytics · 9 filer</span></div></div>
+<div class="kpis"><div class="kpi"><b>1.897</b><span>packages/domain · 35 filer</span></div><div class="kpi"><b>3.823</b><span>packages/db · 15 filer</span></div><div class="kpi"><b>297</b><span>packages/integrations · 6 filer</span></div><div class="kpi"><b>130</b><span>packages/ui · 1 filer</span></div><div class="kpi"><b>7.644</b><span>apps/api · 54 filer</span></div><div class="kpi"><b>9.419</b><span>apps/web · 44 filer</span></div><div class="kpi"><b>439</b><span>apps/analytics · 9 filer</span></div></div>
 <p><b>Teknologi:</b> TypeScript overalt (Node 26, pnpm-monorepo), Next.js 16 og React 19 til web, Fastify 5 og Zod til API, Drizzle ORM og PostgreSQL 17 med row-level security, Python 3.12 og FastAPI til analyse. Biome (lint og format), Vitest, pytest og Playwright til test. Alt kører lokalt i Docker (D-017); driftsforslag ligger i <span class="mono">docs/operations.md</span>.</p>
 <p><b>Designprincipper:</b> forretningsregler er rene funktioner i domænelaget; alle eksterne systemer sidder bag adaptere og er slået fra som standard; al adgangslogik bor ét sted (<span class="mono">AccessPolicy</span>); hver fil har en forklarende header og hver eksporteret funktion en JSDoc/docstring, håndhævet automatisk.</p>
 </section>
