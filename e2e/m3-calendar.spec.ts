@@ -8,7 +8,7 @@ test("calendar panel explains that the Outlook import is not switched on", async
   await page.getByLabel("E-mail").fill("lv@demo.arcnordic.test");
   await page.getByLabel("Adgangskode").fill("demo1234");
   await page.getByRole("button", { name: "Log ind" }).click();
-  await page.getByRole("link", { name: "Min uge" }).click();
+  await page.getByRole("navigation", { name: "Hovedmenu" }).getByRole("link", { name: "Min uge" }).click();
   const toggle = page.getByRole("button", { name: /Fra min kalender/ });
   await toggle.waitFor({ timeout: 5000 }).catch(() => undefined);
   if (!(await toggle.isVisible())) test.skip(true, "this week is already submitted in the local database");

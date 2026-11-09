@@ -30,7 +30,10 @@ test("a line manager signs in, sees home and their team, and signs out", async (
   await expect(page.getByText("Nærmeste leder")).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/m0-home.png`, fullPage: true });
 
-  await page.getByRole("link", { name: "Medarbejdere" }).click();
+  await page
+    .getByRole("navigation", { name: "Hovedmenu" })
+    .getByRole("link", { name: "Medarbejdere" })
+    .click();
   await expect(page.getByRole("heading", { name: "Medarbejdere" })).toBeVisible();
   await expect(page.getByRole("row")).toHaveCount(5); // header + AL, PD, LV, EK
   if (shots) await page.screenshot({ path: `${shots}/m0-people.png`, fullPage: true });
@@ -46,7 +49,9 @@ test("a line manager signs in, sees home and their team, and signs out", async (
 test("a plain employee does not see the people menu", async ({ page }) => {
   await login(page, "LV");
   await expect(page.getByRole("heading", { name: "Hej Laura" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Medarbejdere" })).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation", { name: "Hovedmenu" }).getByRole("link", { name: "Medarbejdere" }),
+  ).toHaveCount(0);
 });
 
 test("login works with the keyboard only", async ({ page }) => {

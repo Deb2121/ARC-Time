@@ -13,7 +13,7 @@ test("an absence type can only be added once to the week", async ({ page }) => {
   await page.getByLabel("E-mail").fill("ek@demo.arcnordic.test");
   await page.getByLabel("Adgangskode").fill("demo1234");
   await page.getByRole("button", { name: "Log ind" }).click();
-  await page.getByRole("link", { name: "Min uge" }).click();
+  await page.getByRole("navigation", { name: "Hovedmenu" }).getByRole("link", { name: "Min uge" }).click();
   const select = page.locator("#absence-select");
   await select.waitFor({ timeout: 5000 }).catch(() => undefined);
   if (!(await select.isVisible())) test.skip(true, "this week is already submitted in the local database");

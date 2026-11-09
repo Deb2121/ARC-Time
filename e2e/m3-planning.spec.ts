@@ -8,7 +8,10 @@ test("resource planner heatmap and competence filter", async ({ page }) => {
   await page.getByLabel("E-mail").fill("al@demo.arcnordic.test");
   await page.getByLabel("Adgangskode").fill("demo1234");
   await page.getByRole("button", { name: "Log ind" }).click();
-  await page.getByRole("link", { name: "Ressourceplan" }).click();
+  await page
+    .getByRole("navigation", { name: "Hovedmenu" })
+    .getByRole("link", { name: "Ressourceplan" })
+    .click();
   await expect(page.getByRole("heading", { name: "Ressourceplan" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Peter Dahl/ })).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/m3-planning.png`, fullPage: true });

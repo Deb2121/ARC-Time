@@ -15,7 +15,7 @@ test("customer import dry run with errors blocks the import", async ({ page }) =
   await page.getByLabel("E-mail").fill("kh@demo.arcnordic.test");
   await page.getByLabel("Adgangskode").fill("demo1234");
   await page.getByRole("button", { name: "Log ind" }).click();
-  await page.getByRole("link", { name: "Import" }).click();
+  await page.getByRole("navigation", { name: "Hovedmenu" }).getByRole("link", { name: "Import" }).click();
   await expect(page.getByRole("heading", { name: "Import af data" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Medarbejdere" })).toBeVisible();
 

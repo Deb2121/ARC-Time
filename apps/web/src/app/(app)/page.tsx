@@ -5,6 +5,7 @@ import { Badge, Card } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { type DashboardData, KpiPanel, TodoList } from "@/components/dashboard";
+import { HomeLauncher } from "@/components/home-launcher";
 import { useMe } from "@/components/session";
 import type { WeekData } from "@/components/timesheet/types";
 import { useI18n } from "@/i18n";
@@ -49,6 +50,8 @@ export default function HomePage() {
       </header>
 
       {dash.data && <TodoList todos={dash.data.todos} />}
+
+      <HomeLauncher />
 
       <div className="grid gap-5 md:grid-cols-3">
         <Card title={t("home.week")} className="md:col-span-2">

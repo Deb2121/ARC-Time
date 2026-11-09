@@ -18,7 +18,10 @@ async function login(page: Page, initials: string) {
 test("register expense with receipt → submit → line manager approves", async ({ page, browser }) => {
   const description = `Parkering E2E ${Date.now()}`;
   await login(page, "LV");
-  await page.getByRole("link", { name: "Udlæg og kørsel" }).click();
+  await page
+    .getByRole("navigation", { name: "Hovedmenu" })
+    .getByRole("link", { name: "Udlæg og kørsel" })
+    .click();
   await page.getByRole("button", { name: "+ Nyt udlæg" }).click();
   await page.getByLabel("Type").selectOption({ label: "Parkering" });
   await page.getByLabel("Beskrivelse").fill(description);

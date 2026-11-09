@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMe } from "@/components/session";
+import { changeAbsenceType, removeAbsenceRow } from "@/components/timesheet/absence-actions";
 import { CalendarPanel } from "@/components/timesheet/calendar-panel";
 import { DayView } from "@/components/timesheet/day-view";
 import { TaskPicker } from "@/components/timesheet/task-picker";
@@ -17,7 +18,7 @@ import {
   taskRowKey,
   type WeekData,
 } from "@/components/timesheet/types";
-import { rowLabel, type Selected, WeekGrid } from "@/components/timesheet/week-grid";
+import { type RowAction, rowLabel, type Selected, WeekGrid } from "@/components/timesheet/week-grid";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
 import { ApiError, api, type Person } from "@/lib/api";
@@ -158,6 +159,25 @@ function Timesheet() {
     onSuccess: () => void refresh(),
     onError: showError,
   });
+
+  /** Removes an absence row, or moves its hours to another absence type (wrong reason chosen). */
+  async function rowAction(a: RowAction) {
+    setActionError(null);
+    try {
+      if (a.type === "remove") await removeAbsenceRow(a.row);
+      else
+        await changeAbsenceType(
+          a.row,
+          a.toCodeId,
+          rows.find((r) => r.key === absenceRowKey(a.toCodeId)),
+        );
+      setExtraRows((x) => x.filter((r) => r.key !== a.row.key));
+      setSelected(null);
+    } catch (e) {
+      showError(e);
+    }
+    await refresh();
+  }
 
   const selRow = rows.find((r) => r.key === selected?.rowKey);
 
@@ -384,6 +404,7 @@ function Timesheet() {
                 setSelected(sel);
                 openPanel(sel, hours);
               }}
+              onRowAction={isOwn ? rowAction : undefined}
             />
           )}
           {view === "week" && <p className="text-xs text-ink-500">{t("ts.keyboardHelp")}</p>}

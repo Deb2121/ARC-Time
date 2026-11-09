@@ -17,7 +17,10 @@ async function login(page: Page, initials: string) {
 
 test("audit log: Admin sees who changed what, with before → after", async ({ page }) => {
   await login(page, "kh");
-  await page.getByRole("link", { name: "Revisionsspor" }).click();
+  await page
+    .getByRole("navigation", { name: "Hovedmenu" })
+    .getByRole("link", { name: "Revisionsspor" })
+    .click();
   await expect(page.getByRole("heading", { name: "Revisionsspor" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Hvem" })).toBeVisible();
   await page.getByRole("cell").getByRole("button").first().click();
@@ -27,7 +30,10 @@ test("audit log: Admin sees who changed what, with before → after", async ({ p
 
 test("GDPR: export link and erasure explained for an active employee", async ({ page }) => {
   await login(page, "kh");
-  await page.getByRole("link", { name: "Medarbejdere" }).click();
+  await page
+    .getByRole("navigation", { name: "Hovedmenu" })
+    .getByRole("link", { name: "Medarbejdere" })
+    .click();
   await page
     .getByRole("button", { name: /Laura Vinther/ })
     .first()
