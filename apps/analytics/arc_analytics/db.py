@@ -61,17 +61,30 @@ def tenant_cursor(tenant_id: str) -> Iterator[psycopg.Cursor]:
             yield cur
 
 
-def caller_from_session(raw_token: str) -> Caller | None:
-    """Resolves a raw session cookie to the caller (None when missing, expired or the user is inactive)."""
+def _caller(user_id: str, tenant_id: str) -> Caller:
+    """Builds the Caller with the person's roles (read under row-level security)."""
+    with tenant_cursor(tenant_id) as cur:
+        cur.execute("select role::text from user_roles where user_id = %s", (user_id,))
+        roles = frozenset(r["role"] for r in cur.fetchall())
+    return Caller(user_id, tenant_id, roles)
+
+
+def _lookup(sql: str, raw_token: str) -> Caller | None:
+    """Hashes the raw token, resolves it with a SECURITY DEFINER function and returns the caller (or None)."""
     if not raw_token:
         return None
     digest = hashlib.sha256(raw_token.encode()).hexdigest()
     with psycopg.connect(database_url(), row_factory=dict_row) as conn, conn.cursor() as cur:
-        cur.execute("select user_id::text, tenant_id::text from auth_get_session(%s)", (digest,))
+        cur.execute(sql, (digest,))
         row = cur.fetchone()
-    if not row:
-        return None
-    with tenant_cursor(row["tenant_id"]) as cur:
-        cur.execute("select role::text from user_roles where user_id = %s", (row["user_id"],))
-        roles = frozenset(r["role"] for r in cur.fetchall())
-    return Caller(row["user_id"], row["tenant_id"], roles)
+    return _caller(row["user_id"], row["tenant_id"]) if row else None
+
+
+def caller_from_session(raw_token: str) -> Caller | None:
+    """Resolves a raw session cookie to the caller (None when missing, expired or the user is inactive)."""
+    return _lookup("select user_id::text, tenant_id::text from auth_get_session(%s)", raw_token)
+
+
+def caller_from_api_token(raw_token: str) -> Caller | None:
+    """Resolves a personal API token (Power BI / Excel, D-028) to its owner; None when unknown, revoked or expired."""
+    return _lookup("select user_id::text, tenant_id::text from auth_use_api_token(%s, 'analytics')", raw_token)

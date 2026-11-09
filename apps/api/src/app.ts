@@ -24,6 +24,7 @@ import { authPlugin } from "./auth/plugin.ts";
 import { authRoutes } from "./auth/routes.ts";
 import type { Config } from "./config.ts";
 import { adminRoutes } from "./routes/admin.ts";
+import { apiTokenRoutes } from "./routes/api-tokens.ts";
 import { approvalRoutes } from "./routes/approval.ts";
 import { calendarRoutes } from "./routes/calendar.ts";
 import { dataImportRoutes } from "./routes/data-import.ts";
@@ -126,6 +127,7 @@ export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
       await v1.register(payrollRoutes);
       await v1.register(dataImportRoutes);
       await v1.register(governanceRoutes);
+      await v1.register(apiTokenRoutes);
       await v1.register(calendarRoutes, { provider: calendar });
     },
     { prefix: "/api/v1" },

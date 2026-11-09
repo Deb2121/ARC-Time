@@ -111,6 +111,50 @@ DATASETS: dict[str, str] = {
 }
 
 
+KPI_DATASETS = ("project_kpis", "employee_kpis")
+
+
+def kpi_dataset(cur: psycopg.Cursor, name: str, date_from: str, date_to: str) -> list[dict[str, Any]]:
+    """Project or employee KPIs as a flat table in BI-friendly units: hours and kroner as decimals, shares as fractions."""
+
+    def h(v: int | None) -> float | None:
+        return None if v is None else v / 100
+
+    def pct(v: int | None) -> float | None:
+        return None if v is None else v / 10_000
+
+    if name == "project_kpis":
+        return [
+            {
+                "project_number": r["number"],
+                "project": r["name"],
+                "customer": r["customer"],
+                "hours": h(r["hours"]),
+                "billable_hours": h(r["billable"]),
+                "billable_share": pct(r["billable_bp"]),
+                "cost_dkk": h(r["cost"]),
+                "invoiced_dkk": h(r["revenue"]),
+                "invoiced_hours": h(r["invoiced_hours"]),
+                "effective_rate_dkk": h(r["effective_rate"]),
+                "margin_dkk": h(r["margin"]),
+                "margin_share": pct(r["margin_bp"]),
+            }
+            for r in project_kpis(cur, date_from, date_to)
+        ]
+    return [
+        {
+            "employee": r["initials"],
+            "full_name": r["full_name"],
+            "department": r["department"],
+            "work_hours": h(r["work"]),
+            "billable_hours": h(r["billable"]),
+            "absence_hours": h(r["absence"]),
+            "billable_share": pct(r["billable_bp"]),
+        }
+        for r in employee_kpis(cur, date_from, date_to)
+    ]
+
+
 def dataset(cur: psycopg.Cursor, name: str, date_from: str, date_to: str, sees_reasons: bool = False) -> list[dict[str, Any]]:
     """Rows of one flat dataset (see DATASETS); raises KeyError for an unknown name.
 

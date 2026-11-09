@@ -1052,3 +1052,31 @@ export const userRights = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.right] })],
 );
+
+/* ───────────────────────────── API tokens (Power BI / Excel) ───────────────────────────── */
+
+/**
+ * Personal read-only tokens for the analytics service (spec integrations R10, decision D-028), e.g. Power BI's
+ * Web connector. Only the SHA-256 hash is stored; the raw token is shown once. Revocable; expire after a year.
+ */
+export const apiTokens = pgTable(
+  "api_tokens",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** first characters of the token, so the owner can recognise it ("arct_ab12…") */
+    prefix: text("prefix").notNull(),
+    /** analytics = read-only datasets and KPI export */
+    scope: text("scope").notNull().default("analytics"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("api_tokens_hash_uq").on(t.tokenHash), index("api_tokens_user_idx").on(t.userId)],
+);

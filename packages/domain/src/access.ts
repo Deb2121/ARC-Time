@@ -35,6 +35,7 @@ export const CAPABILITIES = [
   "people.import",
   "data.import",
   "kpi.company",
+  "analytics.token",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -72,6 +73,8 @@ const MATRIX: Record<Capability, Rule> = {
   "people.import": { roles: ["admin"] },
   "data.import": { roles: ["admin", "finance"] },
   "kpi.company": { roles: ["finance", "management", "admin"] },
+  // Personal read-only tokens for Power BI / Excel (D-028) — same people who may read company KPIs.
+  "analytics.token": { roles: ["finance", "management", "admin"] },
 };
 
 /** Audit entities Finance may read ("financial" in the role matrix); Management and Admin read everything. */

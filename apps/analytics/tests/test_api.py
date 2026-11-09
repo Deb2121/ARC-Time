@@ -79,3 +79,24 @@ def test_sickness_is_masked_for_management_but_not_finance(client: TestClient) -
     client.cookies.set("arc_sid", session("jf"))  # Finance
     codes = {r["absence_code"] for r in client.get("/v1/datasets/time_entries", params=PERIOD).json()}
     assert "SYG" in codes and "FRAVÆR" not in codes
+
+
+def test_power_bi_token_works_until_revoked() -> None:
+    """D-028: Power BI sends `Authorization: Bearer arct_…`; a revoked token is refused."""
+    try:
+        login = httpx.post(f"{API}/auth/dev-login", json={"email": "jf@demo.arcnordic.test", "password": "demo1234"}, timeout=5)
+    except httpx.HTTPError:
+        pytest.skip("API not running on :4000")
+    headers = {"x-csrf-token": login.json()["csrfToken"]}
+    created = httpx.post(f"{API}/api-tokens", json={"name": "Power BI test"}, cookies=login.cookies, headers=headers, timeout=5).json()
+    token = created["token"]
+    assert token.startswith("arct_")
+    client = TestClient(app)
+    bearer = {"Authorization": f"Bearer {token}"}
+    rows = client.get("/v1/datasets/project_kpis", params=PERIOD, headers=bearer)
+    assert rows.status_code == 200
+    assert rows.json() and {"project_number", "hours", "billable_share", "invoiced_dkk"} <= rows.json()[0].keys()
+    assert client.get("/v1/datasets/employee_kpis", params=PERIOD, headers=bearer).status_code == 200
+    httpx.delete(f"{API}/api-tokens/{created['id']}", cookies=login.cookies, headers=headers, timeout=5)
+    assert client.get("/v1/datasets/projects", params=PERIOD, headers=bearer).status_code == 401
+    assert client.get("/v1/datasets/projects", params=PERIOD, headers={"Authorization": "Bearer arct_unknown"}).status_code == 401

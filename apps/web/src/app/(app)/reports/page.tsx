@@ -4,6 +4,7 @@ import { addDays, todayCopenhagen } from "@arc-tid/domain";
 import { Card, TextField } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { PowerBiAccess } from "@/components/power-bi-access";
 import { HealthDot } from "@/components/progress";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
@@ -154,6 +155,8 @@ export default function ReportsPage() {
         </div>
         {seesKpis && <p className="mt-3 text-xs text-ink-500">{t("rp.kpiExcelHint")}</p>}
       </Card>
+
+      {can(me, "analytics.token") && <PowerBiAccess />}
     </div>
   );
 }

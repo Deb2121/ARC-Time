@@ -698,6 +698,29 @@ export const da = {
     "Medarbejderen er projektleder på aktive projekter. Skift projektleder først.",
   "gdpr.block.manages_people": "Andre medarbejdere har vedkommende som leder. Skift leder først.",
   "gdpr.block.already_erased": "Personoplysningerne er allerede slettet.",
+  "pbi.title": "Power BI og Excel",
+  "pbi.intro":
+    "Hent tal direkte ind i Power BI eller Excel (Power Query). Brug datasæt-adresserne nedenfor og en personlig nøgle. Nøglen giver kun læseadgang til de samme tal, som du selv kan se.",
+  "pbi.datasets": "Datasæt",
+  "pbi.ds.time_entries": "Timer",
+  "pbi.ds.project_kpis": "Projektnøgletal",
+  "pbi.ds.employee_kpis": "Medarbejdernøgletal",
+  "pbi.ds.projects": "Projekter",
+  "pbi.ds.employees": "Medarbejdere",
+  "pbi.ds.invoices": "Fakturaer",
+  "pbi.tokens": "Dine nøgler",
+  "pbi.copyNow": "Kopiér nøglen nu – den vises kun denne ene gang.",
+  "pbi.copy": "Kopiér",
+  "pbi.copied": "Kopieret ✓",
+  "pbi.meta": "Oprettet {created} · udløber {expires} · sidst brugt {used}",
+  "pbi.never": "aldrig",
+  "pbi.revoked": "Tilbagekaldt {date}",
+  "pbi.revoke": "Tilbagekald",
+  "pbi.name": "Navn på nøglen",
+  "pbi.create": "Opret nøgle",
+  "pbi.hint":
+    "Tilbagekald en nøgle, hvis den er delt ved en fejl eller ikke bruges mere. Nøgler udløber efter et år.",
+  "err.too_many_tokens": "Du har allerede 10 aktive nøgler. Tilbagekald en først.",
 } as const;
 
 export type MessageKey = keyof typeof da;

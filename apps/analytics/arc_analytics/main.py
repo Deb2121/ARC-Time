@@ -4,9 +4,11 @@ caller, opens a tenant-scoped read-only cursor and delegates to queries.py / exc
     GET /health                                        liveness
     GET /v1/kpi?from=&to=                              project and employee KPIs as JSON
     GET /v1/kpi.xlsx?from=&to=                         the same as an Excel workbook
-    GET /v1/datasets/{name}?from=&to=                  flat table for Power BI (time_entries, projects, employees, invoices)
+    GET /v1/datasets/{name}?from=&to=                  flat table for Power BI (time_entries, projects, employees,
+                                                       invoices, project_kpis, employee_kpis)
 
-Access: Finance, Management and Admin, identified by the normal sign-in cookie (arc_sid). Run with `pnpm dev`
+Access: Finance, Management and Admin, identified by the sign-in cookie (arc_sid) or a personal API token sent as
+`Authorization: Bearer arct_…` (Power BI, Excel — D-028). Run with `pnpm dev`
 (apps/analytics/dev.mjs starts uvicorn on port 8000).
 """
 
@@ -16,7 +18,7 @@ import os
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Query
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -35,9 +37,14 @@ app.add_middleware(
 )
 
 
-def current_caller(arc_sid: Annotated[str | None, Cookie()] = None) -> db.Caller:
-    """Resolves the signed-in caller from the session cookie; 401 without a session, 403 without a KPI role."""
-    caller = db.caller_from_session(arc_sid or "")
+def current_caller(
+    arc_sid: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> db.Caller:
+    """Resolves the caller from `Authorization: Bearer <API token>` (Power BI, Excel) or the browser session cookie;
+    401 without valid credentials, 403 without a KPI role."""
+    bearer = authorization[7:].strip() if authorization and authorization.lower().startswith("bearer ") else ""
+    caller = db.caller_from_api_token(bearer) if bearer else db.caller_from_session(arc_sid or "")
     if caller is None:
         raise HTTPException(status_code=401, detail="unauthenticated")
     if not caller.roles & ALLOWED_ROLES:
@@ -94,7 +101,9 @@ def kpis_excel(caller: CallerDep, p: PeriodDep) -> Response:
 @app.get("/v1/datasets/{name}")
 def get_dataset(name: str, caller: CallerDep, p: PeriodDep) -> list[dict[str, Any]]:
     """A flat dataset for Power BI's Web connector or Excel's Power Query."""
-    if name not in queries.DATASETS:
+    if name not in queries.DATASETS and name not in queries.KPI_DATASETS:
         raise HTTPException(status_code=404, detail="unknown_dataset")
     with db.tenant_cursor(caller.tenant_id) as cur:
+        if name in queries.KPI_DATASETS:
+            return queries.kpi_dataset(cur, name, *p)
         return queries.dataset(cur, name, *p, sees_reasons="finance" in caller.roles)

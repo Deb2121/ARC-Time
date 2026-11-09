@@ -176,3 +176,12 @@ inventory: docs/gdpr/processing-inventory.md. · accepted
 backup/restore, restore verified. Hosting proposal for go-live (Azure EU: Container Apps + managed Postgres with
 point-in-time restore + Key Vault + Blob for receipts), M365 mail, and steps to move the working copy out of OneDrive
 are in docs/operations.md; they need owner decisions. · proposed
+
+**D-028 · 2026-11-09 · Power BI / Excel access with personal tokens** — The analytics datasets were only reachable
+with the browser sign-in, which Power BI cannot use. Finance, Management and Admin now create personal, read-only
+tokens (Rapporter → Power BI og Excel); Power BI sends them as `Authorization: Bearer arct_…`. Only the SHA-256 hash
+is stored, the token is shown once, expires after a year, can be revoked, stops working when the person is
+deactivated, and creation/revocation is audited. A token sees exactly what its owner may see (incl. sickness
+masking). Two flat KPI datasets were added (project_kpis, employee_kpis) in BI units (hours/kroner as decimals,
+shares as fractions). Scheduled refresh in the Power BI service needs the analytics service hosted on HTTPS
+(D-027); until then Power BI Desktop refreshes locally. Guide: docs/guides/Power-BI-vejledning.pdf. · accepted
