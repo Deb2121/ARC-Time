@@ -17,6 +17,7 @@
     "db:migrate": "pnpm --filter @arc-tid/db migrate",
     "db:seed": "pnpm --filter @arc-tid/db seed",
     "check": "pnpm lint && pnpm docs:check && pnpm typecheck && pnpm test",
+    "report": "node scripts/code-report.mjs",
     "db:backup": "node scripts/db-backup.mjs",
     "db:restore": "node scripts/db-restore.mjs",
     "db:reset": "docker compose down -v && docker compose up -d db",
