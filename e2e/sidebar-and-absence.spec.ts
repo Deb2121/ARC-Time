@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 
 /**
- * "Alle funktioner" page (categorised "Hvad vil du gøre?" shortcuts, kept off the home page) and grouped sidebar, and absence row actions: change the
- * reason of a wrongly chosen absence type, and remove an absence row. The absence test cleans up after itself.
+ * Grouped sidebar (categories filtered by role, ARCtime wordmark) and absence row actions: change the reason of a
+ * wrongly chosen absence type, and remove an absence row. The absence test cleans up after itself.
  */
 const shots = process.env.E2E_SCREENSHOT_DIR;
 
@@ -14,33 +14,20 @@ async function login(page: Page, initials: string) {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }
 
-async function openMenu(page: Page) {
-  await page
-    .getByRole("navigation", { name: "Hovedmenu" })
-    .getByRole("link", { name: "Alle funktioner" })
-    .click();
-  await expect(page.getByRole("heading", { level: 1, name: "Alle funktioner" })).toBeVisible();
-}
-
-test("all features page: shortcuts grouped by category, filtered by role; home stays calm", async ({
-  page,
-}) => {
+test("sidebar: places grouped by category and filtered by role", async ({ page }) => {
   await login(page, "jf");
-  await expect(page.getByRole("region", { name: "Hvad vil du gøre?" })).toHaveCount(0);
-  await openMenu(page);
-  const launcher = page.getByRole("region", { name: "Hvad vil du gøre?" });
-  await expect(launcher.getByRole("heading", { name: "Økonomi" })).toBeVisible();
-  await expect(launcher.getByRole("link", { name: /Løn.*lønsystemet/ })).toBeVisible();
-  if (shots) await page.screenshot({ path: `${shots}/home-launcher.png`, fullPage: true });
-  await launcher.getByRole("link", { name: /Fakturering/ }).click();
-  await expect(page).toHaveURL(/\/invoicing/);
+  await expect(page).toHaveTitle("ARCtime");
+  await expect(page.getByRole("img", { name: "ARCtime" })).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Hovedmenu" });
+  await expect(nav.getByText("Økonomi", { exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Løn" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Alle funktioner" })).toHaveCount(0);
+  if (shots) await page.screenshot({ path: `${shots}/sidebar.png`, fullPage: true });
 
   await page.getByRole("button", { name: "Log ud" }).click();
   await login(page, "lv");
-  await openMenu(page);
-  const lv = page.getByRole("region", { name: "Hvad vil du gøre?" });
-  await expect(lv.getByRole("heading", { name: "Min tid" })).toBeVisible();
-  await expect(lv.getByRole("heading", { name: "Økonomi" })).toHaveCount(0);
+  await expect(nav.getByText("Min tid", { exact: true })).toBeVisible();
+  await expect(nav.getByText("Økonomi", { exact: true })).toHaveCount(0);
 });
 
 test("absence: change a wrongly chosen reason, then remove the row", async ({ page }) => {

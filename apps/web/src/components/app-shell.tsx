@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ul className="mb-2 flex flex-col gap-0.5">{top.map(link)}</ul>
           {groups.map((g) => (
             <div key={g.category} className="mb-2">
-              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-brand-700/75">
                 {t(`navc.${g.category}` as MessageKey)}
               </p>
               <ul className="flex flex-col gap-0.5">{g.items.map(link)}</ul>

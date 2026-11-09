@@ -5,7 +5,7 @@ import { LOCALE_COOKIE, type Locale } from "@/i18n";
 import { Providers } from "./providers";
 import "./globals.css";
 
-export const metadata: Metadata = { title: "ARCnordic Tid" };
+export const metadata: Metadata = { title: "ARCtime" };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const stored = (await cookies()).get(LOCALE_COOKIE)?.value;

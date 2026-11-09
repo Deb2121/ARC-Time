@@ -107,22 +107,19 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
   );
 }
 
-/** Product wordmark echoing the ARCnordic logo: "ARC" in brand red, "nordic" in ink, product name after. */
-export function Wordmark({ product = "Tid", className }: { product?: string; className?: string }) {
+/** Product wordmark "ARCtime": "ARC" in brand red (as in the ARCnordic logo), "time" in ink. */
+export function Wordmark({ className }: { className?: string }) {
   return (
     <span
       role="img"
-      aria-label={`ARCnordic ${product}`}
+      aria-label="ARCtime"
       className={cx("font-[family-name:var(--font-display)] text-xl tracking-tight", className)}
     >
-      <span aria-hidden="true" className="font-medium text-brand-600">
+      <span aria-hidden="true" className="font-semibold text-brand-600">
         ARC
       </span>
-      <span aria-hidden="true" className="font-normal text-ink-900">
-        nordic
-      </span>
-      <span aria-hidden="true" className="ml-1.5 font-light text-ink-500">
-        {product}
+      <span aria-hidden="true" className="font-light text-ink-900">
+        time
       </span>
     </span>
   );

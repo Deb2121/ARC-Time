@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * The one list of places in the app (GRASP Information Expert for navigation): each item has a category, a short
- * description and an icon, and says who sees it (roles, or a capability from the server's role matrix — D-025).
- * The sidebar (app-shell.tsx) and the home page shortcuts (home-launcher.tsx) both read it, so they never drift.
+ * The one list of places in the app (GRASP Information Expert for navigation): each item has a category and an
+ * icon, and says who sees it (roles, or a capability from the server's role matrix — D-025). The sidebar
+ * (app-shell.tsx) renders it grouped by category.
  * Server-side checks still apply; this only decides what is shown.
  */
 import { type Capability, hasRole, type Role } from "@arc-tid/domain";
 import type { MessageKey } from "@/i18n/da";
 import { useMe } from "./session";
 
-/** Groups in the sidebar and on the home page, in display order. */
+/** Groups in the sidebar, in display order. */
 export const CATEGORIES = ["time", "team", "projects", "finance", "insight", "admin"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
@@ -31,15 +31,12 @@ export type IconName =
   | "shield"
   | "users"
   | "cog"
-  | "upload"
-  | "grid";
+  | "upload";
 
 /** One place in the app. */
 export interface NavItem {
   href: string;
   label: MessageKey;
-  /** one line for the home page shortcut */
-  description: MessageKey;
   category: Category | "home";
   icon: IconName;
   /** visible to anyone with one of these roles; undefined = everyone */
@@ -50,26 +47,22 @@ export interface NavItem {
 
 /** All places, in sidebar order within each category. */
 export const NAV: NavItem[] = [
-  { href: "/", label: "nav.home", description: "nav.home", category: "home", icon: "home" },
-  { href: "/menu", label: "nav.menu", description: "navd.menu", category: "home", icon: "grid" },
+  { href: "/", label: "nav.home", category: "home", icon: "home" },
   {
     href: "/timesheet",
     label: "nav.timesheet",
-    description: "navd.timesheet",
     category: "time",
     icon: "clock",
   },
   {
     href: "/expenses",
     label: "nav.expenses",
-    description: "navd.expenses",
     category: "time",
     icon: "receipt",
   },
   {
     href: "/approval",
     label: "nav.approval",
-    description: "navd.approval",
     category: "team",
     icon: "check",
     roles: ["line_manager", "admin", "finance", "project_manager"],
@@ -77,7 +70,6 @@ export const NAV: NavItem[] = [
   {
     href: "/planning",
     label: "nav.planning",
-    description: "navd.planning",
     category: "team",
     icon: "calendar",
     roles: ["project_manager", "line_manager", "admin", "finance", "management"],
@@ -85,14 +77,12 @@ export const NAV: NavItem[] = [
   {
     href: "/projects",
     label: "nav.projects",
-    description: "navd.projects",
     category: "projects",
     icon: "folder",
   },
   {
     href: "/customers",
     label: "nav.customers",
-    description: "navd.customers",
     category: "projects",
     icon: "building",
     roles: ["project_manager", "finance", "admin", "management"],
@@ -100,7 +90,6 @@ export const NAV: NavItem[] = [
   {
     href: "/invoicing",
     label: "nav.invoicing",
-    description: "navd.invoicing",
     category: "finance",
     icon: "invoice",
     roles: ["finance", "admin", "project_manager"],
@@ -108,7 +97,6 @@ export const NAV: NavItem[] = [
   {
     href: "/periods",
     label: "nav.periods",
-    description: "navd.periods",
     category: "finance",
     icon: "lock",
     capability: "period.view",
@@ -116,7 +104,6 @@ export const NAV: NavItem[] = [
   {
     href: "/payroll",
     label: "nav.payroll",
-    description: "navd.payroll",
     category: "finance",
     icon: "wallet",
     capability: "payroll.export",
@@ -124,16 +111,14 @@ export const NAV: NavItem[] = [
   {
     href: "/admin/price-lists",
     label: "nav.priceLists",
-    description: "navd.priceLists",
     category: "finance",
     icon: "tag",
     roles: ["finance", "admin", "project_manager", "management"],
   },
-  { href: "/reports", label: "nav.reports", description: "navd.reports", category: "insight", icon: "chart" },
+  { href: "/reports", label: "nav.reports", category: "insight", icon: "chart" },
   {
     href: "/admin/audit",
     label: "nav.audit",
-    description: "navd.audit",
     category: "insight",
     icon: "shield",
     capability: "audit.read",
@@ -141,7 +126,6 @@ export const NAV: NavItem[] = [
   {
     href: "/admin/people",
     label: "nav.people",
-    description: "navd.people",
     category: "admin",
     icon: "users",
     roles: ["admin", "finance", "management", "line_manager"],
@@ -149,7 +133,6 @@ export const NAV: NavItem[] = [
   {
     href: "/admin/settings",
     label: "nav.settings",
-    description: "navd.settings",
     category: "admin",
     icon: "cog",
     capability: "settings.read",
@@ -157,7 +140,6 @@ export const NAV: NavItem[] = [
   {
     href: "/admin/import",
     label: "nav.import",
-    description: "navd.import",
     category: "admin",
     icon: "upload",
     capability: "data.import",
@@ -165,7 +147,7 @@ export const NAV: NavItem[] = [
 ];
 
 /**
- * The places the signed-in person may see: `top` (Forside, Alle funktioner) and the rest grouped by category
+ * The places the signed-in person may see: `top` (Forside) and the rest grouped by category
  * (empty categories left out).
  */
 export function useNavigation() {
@@ -199,7 +181,6 @@ const PATHS: Record<IconName, string> = {
     "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6",
   cog: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
   upload: "M12 16V4M7 9l5-5 5 5M4 20h16",
-  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
 };
 
 /** A small line icon for navigation (decorative — the text next to it is the label). */
