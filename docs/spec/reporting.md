@@ -89,7 +89,9 @@ Period = selected range; hours = approved unless "include submitted" ticked. [Br
 - **AC5** Given a PM, Then budget vs actual lists only own projects. [Brief]
 - **AC6** Drill-down entries sum exactly to the clicked cell. [Brief]
 - **AC7** 1M entries, utilisation per department over 12 months → p95 < 3 s. [Brief]
-- **AC8** CSV: decimal comma, da-DK or ISO dates (setting), UTF-8 with BOM, totals match screen. [Assumed]
+- **AC8** Export (D-033): every report downloads as Excel (.xlsx: column widths 8–60, real dates dd-mm-åååå, hours and
+  amounts as numbers with 2 decimals, codes such as project no./WBS as text, frozen bold header, autofilter, totals row,
+  Danish values) and as CSV for import (UTF-8 with BOM, `;`, decimal comma, dd-mm-åååå). Totals match the screen.
 - **AC9** March closed → March WIP equals the month-end snapshot. [Assumed]
 
 ## 8. Open points

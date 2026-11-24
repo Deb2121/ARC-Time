@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 import { NewProject } from "@/components/new-project";
-import { HealthDot, Progress } from "@/components/progress";
+import { HealthDot, healthTip, Progress } from "@/components/progress";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
@@ -18,6 +18,8 @@ export interface ProjectSummary {
   name: string;
   status: string;
   customerName: string | null;
+  /** "Viderefaktureres til kunden" — false for offers, warranty and internal cases (D-034) */
+  billable: boolean;
   managerName: string | null;
   managerInitials: string | null;
   contractTypes: string[];
@@ -31,6 +33,10 @@ export interface ProjectSummary {
   contributionMargin: number;
   marginBp: number | null;
   health: string;
+  /** phases (top-level tasks) over their own budget */
+  phasesOverBudget: number;
+  /** the warning threshold used for health, basis points (Finance's setting, D-032) */
+  warningBp: number;
 }
 
 export default function ProjectsPage() {
@@ -91,6 +97,11 @@ export default function ProjectsPage() {
                     >
                       {p.name}
                     </Link>
+                    {p.status === "completed" && (
+                      <span className="ml-2">
+                        <Badge>{t("lc.completedBadge")}</Badge>
+                      </span>
+                    )}
                     <span className="block text-xs text-ink-500">{p.customerName ?? t("pr.internal")}</span>
                   </td>
                   <td className="px-4 py-3">
@@ -112,13 +123,25 @@ export default function ProjectsPage() {
                     </span>
                     <Progress
                       bp={p.hoursConsumptionBp}
+                      health={p.health}
                       label={`${p.name}: ${fmtPct(p.hoursConsumptionBp, locale)}`}
                     />
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{fmtKr(p.usedValue, locale)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{fmtPct(p.marginBp, locale)}</td>
                   <td className="px-4 py-3">
-                    <HealthDot health={p.health} label={t(`pr.health.${p.health}` as MessageKey)} />
+                    <HealthDot
+                      health={p.health}
+                      label={t(`pr.health.${p.health}` as MessageKey)}
+                      title={healthTip(p, t, locale)}
+                    />
+                    {p.phasesOverBudget > 0 && (
+                      <span className="mt-1 block text-xs font-semibold text-[#c2410c]">
+                        {t(p.phasesOverBudget === 1 ? "pr.phaseOver" : "pr.phasesOver", {
+                          count: p.phasesOverBudget,
+                        })}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

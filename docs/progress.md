@@ -39,6 +39,8 @@
 
 - 2026-11-09 · **Review fixes** (D-025–D-027) — one `AccessPolicy` for the role matrix (Admin configures, Finance books/closes/exports; project creation needs a right); sickness shown as "Fravær" outside employee/line manager/Finance; audit-log screen; GDPR export, erasure, deactivation and nightly retention sweep; processing inventory; local backups with verified restore; operations guide (hosting proposal, mail, moving out of OneDrive); date-independent tests (CI had turned red on a new week).
 
+- 2026-11-10 · **Sagsøkonomi** (D-029, branch `feature/sagsokonomi`, awaiting owner review) — Sagsoversigt (honorarform, timer, forbrugt, faktureret, ikke faktureret, honorar/rest, næste rate, status; cards, filters, sorting, totals of visible rows, Excel export), Faktureringsplan on the case page (100 % rule, afventer → planlagt → klar → faktureret, Fakturér rate, phase templates, optional a conto), ekstraarbejde phases, Debitorliste (ageing, payments, reminders, e-conomic payment status via the adapter). Finance gets people import and the full audit log. All spec acceptance tests as domain unit tests, API tests in rolled-back transactions, read-only E2E. Demo: docs/demo/sagsokonomi.md.
+
 ## Next — M4 (prioritised with the product owner, 2026-11-08)
 
 1. ~~Payroll export~~ (done as generic CSV; provider adapters later).

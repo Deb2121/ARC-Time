@@ -108,7 +108,6 @@ describe("calendar import", () => {
 
     const tasks = (await app.inject({ url: "/api/v1/timesheet/tasks", headers: h })).json() as {
       taskId: string;
-      commentRequired?: boolean;
     }[];
     const taskId = tasks[0]?.taskId as string;
     const before = (await app.inject({ url: `/api/v1/timesheet/week/${monday}`, headers: h })).json();

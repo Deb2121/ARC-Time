@@ -31,7 +31,9 @@ export type IconName =
   | "shield"
   | "users"
   | "cog"
-  | "upload";
+  | "upload"
+  | "briefcase"
+  | "coins";
 
 /** One place in the app. */
 export interface NavItem {
@@ -61,6 +63,12 @@ export const NAV: NavItem[] = [
     icon: "receipt",
   },
   {
+    href: "/leave",
+    label: "nav.leave",
+    category: "time",
+    icon: "calendar",
+  },
+  {
     href: "/approval",
     label: "nav.approval",
     category: "team",
@@ -88,11 +96,25 @@ export const NAV: NavItem[] = [
     roles: ["project_manager", "finance", "admin", "management"],
   },
   {
+    href: "/case-finance",
+    label: "nav.caseFinance",
+    category: "finance",
+    icon: "briefcase",
+    capability: "case_finance.view",
+  },
+  {
     href: "/invoicing",
     label: "nav.invoicing",
     category: "finance",
     icon: "invoice",
     roles: ["finance", "admin", "project_manager"],
+  },
+  {
+    href: "/debtors",
+    label: "nav.debtors",
+    category: "finance",
+    icon: "coins",
+    capability: "case_finance.view",
   },
   {
     href: "/periods",
@@ -181,6 +203,9 @@ const PATHS: Record<IconName, string> = {
     "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6",
   cog: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
   upload: "M12 16V4M7 9l5-5 5 5M4 20h16",
+  briefcase: "M3 8h18v12H3zM8 8V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v3M3 13h18",
+  coins:
+    "M9 10a6 3 0 1 0 0-.01zM3 10v4c0 1.7 2.7 3 6 3M15 13a6 3 0 1 0 0-.01zM9 17v2c0 1.7 2.7 3 6 3s6-1.3 6-3v-6",
 };
 
 /** A small line icon for navigation (decorative — the text next to it is the label). */

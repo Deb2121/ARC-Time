@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
+import { setApprovalMode } from "./approval-mode.ts";
 
 /**
  * Brief §9 E2E: register → submit → approve → invoice → close period.
@@ -38,6 +39,10 @@ async function apiAs(request: APIRequestContext, initials: string) {
 
 let bookedInvoiceId: string | null = null;
 let closedPeriodId: string | null = null;
+
+test.beforeAll(async ({ playwright }) => {
+  await setApprovalMode(playwright, "line_manager");
+});
 
 test.afterAll(async ({ playwright }) => {
   const jf = await playwright.request.newContext();
@@ -80,6 +85,7 @@ test.afterAll(async ({ playwright }) => {
       data: { date: week, taskId: tasks[0].taskId, hours: 0 },
     });
   await Promise.all([jf.dispose(), al.dispose(), lv.dispose()]);
+  await setApprovalMode(playwright, "finance");
 });
 
 test("register → submit → approve → invoice → close period", async ({ page, browser }) => {

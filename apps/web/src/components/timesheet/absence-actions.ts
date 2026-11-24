@@ -1,6 +1,6 @@
 /**
- * Absence row actions for the employee's own week: remove a wrongly chosen absence type, or move its hours to the
- * right one. Both go through the normal cell endpoint (PUT /timesheet/entries), so every timesheet rule still
+ * Row actions for the employee's own week: remove a wrongly chosen task or absence row, or move absence hours to
+ * the right absence type. Both go through the normal cell endpoint (PUT /timesheet/entries), so every timesheet rule still
  * applies (locked weeks, closed months, 24 h per day). Used by the timesheet page; the buttons live in WeekGrid.
  */
 import { api } from "@/lib/api";
@@ -12,14 +12,20 @@ export const filledDays = (r: Row): [string, number][] =>
     .filter(([, c]) => (c?.hours ?? 0) > 0)
     .map(([d, c]) => [d, c?.hours ?? 0]);
 
-/** Clears every saved cell of an absence row (the row disappears once it has no hours). */
-export async function removeAbsenceRow(r: Row): Promise<void> {
-  if (r.kind !== "absence" || !r.ref.absenceCodeId) return;
+/**
+ * Clears every saved cell of a task or absence row (the row disappears once it has no hours). A row that was just
+ * added and has no hours needs no call — the page simply drops it.
+ */
+export async function removeRow(r: Row): Promise<void> {
+  const target =
+    r.kind === "task"
+      ? { taskId: r.ref.taskId }
+      : r.ref.absenceCodeId
+        ? { absenceCodeId: r.ref.absenceCodeId }
+        : null;
+  if (!target) return;
   for (const [date] of filledDays(r))
-    await api("/timesheet/entries", {
-      method: "PUT",
-      body: JSON.stringify({ date, absenceCodeId: r.ref.absenceCodeId, hours: 0 }),
-    });
+    await api("/timesheet/entries", { method: "PUT", body: JSON.stringify({ date, ...target, hours: 0 }) });
 }
 
 /**

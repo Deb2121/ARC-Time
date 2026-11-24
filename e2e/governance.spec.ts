@@ -44,12 +44,9 @@ test("GDPR: export link and erasure explained for an active employee", async ({ 
   if (shots) await page.screenshot({ path: `${shots}/gdpr.png`, fullPage: true });
 });
 
-test("segregation of duties: Admin does not get 'Luk måned'; Finance does", async ({ page }) => {
-  await login(page, "kh");
-  await page.goto("/periods");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Luk måned" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Log ud" }).click();
+// A pure Admin cannot close a month (D-025); that is covered in apps/api/src/governance.test.ts. The demo has no pure
+// Admin any more: Karen holds Admin and Finance (D-030), so she gets the button like Jonas.
+test("segregation of duties: Finance gets 'Luk måned'", async ({ page }) => {
   await login(page, "jf");
   await page.goto("/periods");
   await expect(page.getByRole("button", { name: "Luk måned" })).toBeVisible();

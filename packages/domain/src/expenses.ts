@@ -64,6 +64,35 @@ export function mileageAmount(metres: number, metresBefore: number, rate: Mileag
   return divRound(high * rate.highRate + low * rate.lowRate, 1000);
 }
 
+/**
+ * What the customer is charged for a re-invoiced trip: km × the customer km price (Finance: 4,50 kr/km), the same
+ * for own car and company car. Independent of the employee's allowance.
+ * @example mileageBillAmount(120_000, 450) // 120 km × 4,50 = 540,00 kr → 54_000 øre
+ */
+export function mileageBillAmount(metres: number, customerRate: Minor): Minor {
+  return divRound(metres * customerRate, 1000);
+}
+
+/** Which car a trip was driven in. */
+export type Vehicle = "own" | "company";
+
+/**
+ * Value of a mileage claim. Own car: the tax-free allowance with the yearly threshold (paid through payroll).
+ * Company car: no allowance to the employee, but the trip keeps a value (km × the high rate, no threshold — the
+ * threshold is per person for their own car) so it can be re-invoiced and counted in the case cost.
+ * @example tripValue(42_500, 0, rate2026, "company") // 42,5 km × 3,94 = 167,45 kr → 16_745 øre, allowance 0
+ */
+export function tripValue(
+  metres: number,
+  metresBefore: number,
+  rate: MileageRate,
+  vehicle: Vehicle,
+): { value: Minor; allowance: Minor } {
+  if (vehicle === "company") return { value: divRound(metres * rate.highRate, 1000), allowance: 0 };
+  const allowance = mileageAmount(metres, metresBefore, rate);
+  return { value: allowance, allowance };
+}
+
 /** Expense lifecycle — the same as time entries (brief §4.7). */
 export const EXPENSE_STATUSES = ["draft", "submitted", "approved", "rejected", "invoiced"] as const;
 /** One of EXPENSE_STATUSES. */

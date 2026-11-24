@@ -5,7 +5,15 @@
  * rate on every entry so later rate changes never alter history (brief §4.9, decision D-014).
  */
 import { closedMonths, schema, snapshotRates, type Tx, writeAudit } from "@arc-tid/db";
-import { addDays, dailyNorm, dayAnomalies, isLocked, type LocalDate, summariseWeek } from "@arc-tid/domain";
+import {
+  addDays,
+  dailyNorm,
+  dayAnomalies,
+  hasRole,
+  isLocked,
+  type LocalDate,
+  summariseWeek,
+} from "@arc-tid/domain";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { AuthContext } from "../auth/plugin.ts";
 import { loadEmployee, normContext, summaryEntries } from "./calendar.ts";
@@ -27,10 +35,32 @@ async function assertWeekOpen(tx: Tx, weekStart: LocalDate) {
     throw new AppError(409, "period_closed");
 }
 
+/**
+ * Who approves a person's WEEK. Mode "finance" (D-040): Finance approves everyone except themselves; line managers
+ * and project managers do not. Other modes: the line manager (people without one → Finance), as before. Expenses and
+ * leave planning keep their own rule (people.ts canApproveUser).
+ */
+export async function canApproveTimesheet(tx: Tx, auth: AuthContext, userId: string): Promise<boolean> {
+  if ((await approvalMode(tx, auth.tenantId)) === "finance")
+    return userId !== auth.userId && hasRole(auth.roles, "finance");
+  return canApproveUser(tx, auth, userId);
+}
+
+/** The people whose weeks the caller approves (approval inbox and the home page's to-do). */
+export async function timesheetApproveeIds(tx: Tx, auth: AuthContext): Promise<string[]> {
+  if ((await approvalMode(tx, auth.tenantId)) !== "finance") return approveeIds(tx, auth);
+  if (!hasRole(auth.roles, "finance")) return [];
+  const all = await tx
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.active, true));
+  return all.map((u) => u.id).filter((id) => id !== auth.userId);
+}
+
 /** Loads the period and checks that the caller is its approver and that the week is in an open accounting month. */
 async function loadForDecision(tx: Tx, auth: AuthContext, periodId: string) {
   const p = await loadPeriod(tx, periodId);
-  if (!(await canApproveUser(tx, auth, p.userId))) throw new AppError(403, "forbidden");
+  if (!(await canApproveTimesheet(tx, auth, p.userId))) throw new AppError(403, "forbidden");
   await assertWeekOpen(tx, p.weekStart);
   return p;
 }
@@ -49,7 +79,7 @@ const weekEntries = (userId: string, weekStart: LocalDate) =>
  */
 export async function approvalInbox(tx: Tx, auth: AuthContext, weekStart: LocalDate) {
   const sunday = addDays(weekStart, 6);
-  const ids = await approveeIds(tx, auth);
+  const ids = await timesheetApproveeIds(tx, auth);
   if (!ids.length) return { weekStart, items: [] };
   const people = await tx
     .select({ id: schema.users.id, fullName: schema.users.fullName, initials: schema.users.initials })

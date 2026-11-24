@@ -43,6 +43,8 @@ const expenseBody = z
     /** kr incl. VAT */
     amount: z.number().positive().max(1_000_000).optional(),
     km: z.number().positive().max(5000).optional(),
+    /** mileage: own car (default) or company car */
+    vehicle: z.enum(["own", "company"]).optional(),
     fromPlace: z.string().max(200).optional(),
     toPlace: z.string().max(200).optional(),
     billable: z.boolean().optional(),

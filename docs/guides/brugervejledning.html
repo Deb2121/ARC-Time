@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>ARCtime – brugervejledning</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+:root { --brand:#CA0538; --ink:#1f1f1f; --ink2:#4a4a4a; --ink3:#777; --line:#e3e3e3; --alt:#f6f6f6; --ok:#1a7f37; --warn:#9a6700; --bad:#b42318; --blue:#e8eef8; }
+* { box-sizing: border-box; }
+body { font-family: "Open Sans","Segoe UI",Arial,sans-serif; color: var(--ink); font-size: 9.8pt; line-height: 1.5; margin: 0; }
+h1 { font-size: 26pt; font-weight: 400; margin: 0 0 4mm; }
+h2 { font-size: 15pt; font-weight: 500; margin: 0 0 3mm; padding-top: 2mm; border-top: 3px solid var(--brand); break-after: avoid; }
+h3 { font-size: 11pt; font-weight: 600; margin: 5mm 0 1.5mm; break-after: avoid; }
+p { margin: 0 0 2.5mm; } ul, ol { margin: 0 0 3mm; padding-left: 6mm; } li { margin-bottom: 1.1mm; }
+.chapter { break-before: page; }
+table { width: 100%; border-collapse: collapse; margin: 1mm 0 4mm; font-size: 8.7pt; }
+th { text-align: left; background: var(--alt); color: var(--ink2); font-weight: 600; padding: 1.5mm 2mm; border-bottom: 1px solid var(--line); }
+td { padding: 1.3mm 2mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr { break-inside: avoid; }
+.c { text-align: center; }
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+.logo { font-size: 22pt; font-weight: 300; } .logo b { color: var(--brand); font-weight: 600; }
+.cover h1 { margin-top: 40mm; font-size: 32pt; } .muted { color: var(--ink3); }
+.note { border: 1px solid var(--line); background: var(--alt); padding: 2.6mm 3.5mm; border-radius: 2mm; margin: 2mm 0 4mm; break-inside: avoid; }
+.warn { border-left: 4px solid var(--warn); } .good { border-left: 4px solid var(--ok); } .tip { border-left: 4px solid var(--brand); }
+img.shot { display: block; width: auto; max-width: 100%; max-height: 84mm; border: 1px solid var(--line); border-radius: 2mm; margin: 1.5mm auto 3.5mm; break-inside: avoid; }
+figure { margin: 0; break-inside: avoid; } figcaption { font-size: 8pt; color: var(--ink3); margin: -2mm 0 4mm; }
+.flow { display: flex; align-items: stretch; gap: 1.5mm; margin: 3mm 0 5mm; break-inside: avoid; }
+.flow .box { flex: 1; border: 1px solid var(--line); border-top: 4px solid var(--brand); border-radius: 2mm; padding: 2.2mm; font-size: 8.3pt; }
+.flow .box b { display: block; font-size: 9pt; margin-bottom: .8mm; }
+.flow .arrow { align-self: center; color: var(--ink3); font-size: 13pt; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 3mm 0 5mm; }
+.kpi { border: 1px solid var(--line); border-radius: 2mm; padding: 3mm; font-size: 9pt; } .kpi b { display: block; font-size: 11pt; margin-bottom: 1mm; }
+.pill { display: inline-block; border-radius: 9px; padding: 0 2.2mm; font-size: 7.8pt; font-weight: 600; white-space: nowrap; }
+.p-red { background: #fbe9e7; color: var(--bad); } .p-or { background: #fdf0dc; color: var(--warn); } .p-brand { background: #fce8ee; color: #850324; }
+.p-green { background: #e3f3e8; color: var(--ok); } .p-grey { background: #efefef; color: #4a4a4a; }
+.toc { columns: 2; column-gap: 10mm; font-size: 10pt; } .toc li { margin-bottom: 1.6mm; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+dl { margin: 0 0 3mm; } dt { font-weight: 600; margin-top: 1.8mm; break-after: avoid; } dd { margin: 0 0 0 0; color: var(--ink2); }
+.gloss { columns: 2; column-gap: 8mm; } .gloss div { break-inside: avoid; margin-bottom: 2mm; } .gloss div > b:first-child { display: block; }
+figcaption { text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ───────────── Forside ───────────── -->
+<section class="cover">
+  <div class="logo"><b>ARC</b>time</div>
+  <div>
+    <h1>Brugervejledning</h1>
+    <p style="font-size:13pt">Hvad systemet kan, hvad de forskellige skærmbilleder viser, og hvad tallene betyder</p>
+    <div class="kpis">
+      <div class="kpi"><b>Tid og fravær</b>Ugeseddel, flex, ferie, udlæg og kørsel, godkendelse</div>
+      <div class="kpi"><b>Projekter og planlægning</b>Opgavestruktur, budget mod forbrug, kontrakter, ressourceplan</div>
+      <div class="kpi"><b>Økonomi</b>Sagsøkonomi, fakturering, debitorer, månedsluk, løn, rapporter</div>
+    </div>
+  </div>
+  <div class="muted">Til alle medarbejdere, projektledere, ledere og Økonomi · ARCtime · november 2026<br>
+  Skærmbillederne er fra demo-virksomheden “ARCnordic Demo ApS” – alle personer, kunder og tal er opdigtede.</div>
+</section>
+
+<section class="chapter">
+<h2>Indhold</h2>
+<ol class="toc">
+  <li>Kom godt i gang – login, menu, roller</li>
+  <li>Ordliste – de vigtigste begreber</li>
+  <li>Forside</li>
+  <li>Min uge – registrering af tid og fravær</li>
+  <li>Udlæg og kørsel</li>
+  <li>Godkendelse</li>
+  <li>Ressourceplan</li>
+  <li>Projekter og kunder</li>
+  <li>Sagsøkonomi og faktureringsplan</li>
+  <li>Fakturering</li>
+  <li>Debitorliste</li>
+  <li>Regnskabsperioder (månedsluk)</li>
+  <li>Løn</li>
+  <li>Prislister</li>
+  <li>Rapporter og Power BI</li>
+  <li>Revisionsspor</li>
+  <li>Administration – medarbejdere, indstillinger, import</li>
+  <li>Arbejdsgangen fra time til betaling</li>
+  <li>Spørgsmål og svar</li>
+</ol>
+<div class="note tip" style="margin-top:8mm"><b>Sådan bruger du vejledningen:</b> Kapitel 1–2 er for alle. Kapitel 3–7 handler om den daglige registrering og godkendelse. Kapitel 8–15 er for projektledere og Økonomi. Kapitel 16–17 er for administratorer. Kapitel 18 viser hele forløbet fra time til betaling på én side.</div>
+</section>
+
+<section class="chapter">
+<h2>1. Kom godt i gang</h2>
+<h3>Log ind</h3>
+<p>Åbn ARCtime i browseren og log ind. I drift logger man ind med sin Microsoft-konto fra firmaet (samme login og to-trinsbekræftelse som Outlook og Teams). I testversionen bruges e-mail og adgangskode.</p>
+<h3>Menuen</h3>
+<p>Menuen i venstre side er delt i grupper: <b>Min tid</b>, <b>Godkendelse og planlægning</b>, <b>Projekter og kunder</b>, <b>Økonomi</b>, <b>Rapporter og indsigt</b> og <b>Administration</b>. Du ser kun de punkter, din rolle giver adgang til – en medarbejder ser derfor en kort menu, Økonomi en lang. Øverst til højre skifter du mellem dansk (DA) og engelsk (EN) og logger ud.</p>
+<h3>Roller – hvem ser hvad</h3>
+<p>En person kan have flere roller (fx både projektleder og nærmeste leder). Alle er også “medarbejder” og kan registrere tid.</p>
+<table>
+<tr><th style="width:22%">Rolle</th><th>Typiske opgaver</th><th style="width:36%">Ser blandt andet</th></tr>
+<tr><td><b>Medarbejder</b></td><td>Registrere timer, fravær, udlæg og kørsel. Indsende ugen.</td><td>Egen uge, egne udlæg, projekter man er med på, egne rapporter</td></tr>
+<tr><td><b>Projektleder</b></td><td>Opbygge projekter og budgetter, godkende timer på egne projekter (hvis det er slået til), forberede fakturaer, styre faktureringsplanen.</td><td>Egne projekter, Sagsøkonomi og Debitorliste for <i>egne</i> sager, fakturakladder for egne projekter</td></tr>
+<tr><td><b>Nærmeste leder</b></td><td>Godkende ugesedler og udlæg for sine medarbejdere, planlægge ressourcer.</td><td>Godkendelse, Ressourceplan, eget teams nøgletal</td></tr>
+<tr><td><b>Økonomi</b></td><td>Fakturere og bogføre, kreditere, lukke måneder, lønoverførsel, prislister, betalinger og rykkere. Har desuden import af medarbejdere og hele revisionssporet.</td><td>Alt økonomi – alle sager, fakturaer og debitorer, virksomhedens nøgletal</td></tr>
+<tr><td><b>Ledelse</b></td><td>Følge forretningen.</td><td>Alle sager og nøgletal – læseadgang</td></tr>
+<tr><td><b>Administrator</b></td><td>Opsætning: normtid, helligdage, fraværskoder, godkendelsesform, roller, GDPR.</td><td>Indstillinger, Medarbejdere, Revisionsspor. (Bogfører ikke – det gør Økonomi.)</td></tr>
+</table>
+<div class="note tip"><b>Sygdom er privat:</b> Årsagen bag sygdom og barns sygedag kan kun ses af medarbejderen selv, nærmeste leder og Økonomi. Alle andre ser blot “Fravær”.</div>
+</section>
+
+<!-- ───────────── Ordliste ───────────── -->
+<section class="chapter">
+<h2>2. Ordliste – de vigtigste begreber</h2>
+<div class="gloss">
+<div><b>Normtid</b>De timer, du forventes at arbejde (fx 37 t/uge). Helligdage trækkes automatisk fra.</div>
+<div><b>Flex / Flekssaldo</b>Registreret tid minus normtid. Flex denne uge er ugens forskel; flekssaldoen er den samlede saldo til og med sidste søndag.</div>
+<div><b>Fakturerbar (faktureringsgrad)</b>Andelen af de registrerede timer, der kan faktureres til en kunde.</div>
+<div><b>Fravær</b>Ferie, sygdom, barns sygedag, kursus mv. Registreres i Min uge med en fraværskode.</div>
+<div><b>Ugeseddel</b>Ugens registreringer. Status: <span class="pill p-grey">Åben</span> → <span class="pill p-grey">Indsendt</span> → <span class="pill p-green">Godkendt</span> (eller <span class="pill p-red">Afvist</span> med begrundelse).</div>
+<div><b>Sag / projekt</b>Det samme: et projekt for en kunde med et nummer, fx 26001. Interne projekter har ingen kunde.</div>
+<div><b>Fase / opgave</b>Delene af et projekt (opgavestruktur, op til 5 niveauer), fx “Myndighedsprojekt”. Timer registreres på en opgave.</div>
+<div><b>Honorarform</b>Hvordan sagen afregnes: <b>medgået tid</b> eller <b>fast honorar</b>.</div>
+<div><b>Medgået tid</b>Kunden betaler for de timer, der bruges – timer × timepris.</div>
+<div><b>Fast honorar (fastpris)</b>En aftalt pris for opgaven, faktureret i rater efter en plan. Rammeaftaler (fast beløb pr. periode) vises også som fast honorar.</div>
+<div><b>Ekstraarbejde</b>Arbejde uden for det faste honorar. Faser markeret som ekstraarbejde faktureres som medgået tid.</div>
+<div><b>Rate</b>Én del af et fast honorar i faktureringsplanen, fx “Rate 2 · Projektforslag, 30 %”.</div>
+<div><b>A conto</b>Fakturering efter hvor langt en fase er (% færdig) i stedet for faste rater. Kan slås til af Økonomi.</div>
+<div><b>Forbrugt</b>Værdien af de brugte timer: timer × timepris (salgspris).</div>
+<div><b>Kostpris</b>Hvad timerne koster internt: timer × intern timesats.</div>
+<div><b>Faktureret</b>Hvad der er sendt faktura på (bogført, ekskl. moms, kreditnotaer trukket fra).</div>
+<div><b>Ikke faktureret / igangværende arbejde (IGV)</b>Godkendte timer på medgået tid, der endnu ikke er faktureret.</div>
+<div><b>Resthonorar</b>Fast honorar minus det, der er faktureret af honoraret.</div>
+<div><b>DB / DB-grad</b>Dækningsbidrag = værdi minus kostpris. DB-grad = DB i procent af værdien.</div>
+<div><b>Færdiggørelse og indtægtsført</b>På fastpris: brugte ÷ budgetterede timer (højst 100 %). Indtægtsført = pris × færdiggørelse – bruges i regnskabet.</div>
+<div><b>Kladde / bogført</b>En fakturakladde kan rettes. Når den bogføres, får den næste fakturanummer og kan ikke ændres – kun krediteres.</div>
+<div><b>Kreditnota</b>Annullerer en bogført faktura helt eller delvist.</div>
+<div><b>Debitor</b>En kunde, der skylder penge på en faktura.</div>
+<div><b>Forfald</b>Sidste betalingsdag. Efter forfald er fakturaen “forfalden”.</div>
+<div><b>Rykker</b>Påmindelse til kunden om en forfalden faktura (1., 2. og 3. rykker).</div>
+<div><b>Lukket måned</b>En regnskabsmåned, hvor timer og fakturaer er låst.</div>
+</div>
+</section>
+
+<!-- ───────────── Forside ───────────── -->
+<section class="chapter">
+<h2>3. Forside</h2>
+<p>Forsiden samler det, der er vigtigt for dig lige nu. Indholdet afhænger af din rolle.</p>
+<figure><img class="shot" src="img/guide-forside-okonomi.png" alt="Skærmbillede: Forsiden for Økonomi."><figcaption>Forsiden for Økonomi.</figcaption></figure>
+<table>
+<tr><th style="width:26%">Område</th><th>Hvad det viser</th></tr>
+<tr><td><b>Det venter på dig</b></td><td>Opgaver med et link til, hvor de klares: ugeseddel der skal indsendes, ugesedler og udlæg der skal godkendes, fakturaer klar til bogføring, måneder der ikke er lukket. En orange prik betyder, at noget haster.</td></tr>
+<tr><td><b>Min uge</b></td><td>Timer pr. dag i denne uge, registreret mod normtid og ugens status. “Åbn ugeseddel” fører til Min uge.</td></tr>
+<tr><td><b>Flekssaldo</b></td><td>Din samlede flex til og med sidste søndag (+ = du har timer til gode).</td></tr>
+<tr><td><b>Ferie tilbage</b></td><td>Feriedage tilbage i ferieåret – optjent, brugt og planlagt.</td></tr>
+<tr><td><b>Nøgletal</b></td><td>Ledere ser deres teams faktureringsgrad. Økonomi og Ledelse ser hele virksomhedens tal: faktureringsgrad, fakturerbar andel, faktureret omsætning sidste måned, effektiv timepris og udviklingen over 12 uger.</td></tr>
+</table>
+</section>
+
+<!-- ───────────── Min uge ───────────── -->
+<section class="chapter">
+<h2>4. Min uge – registrering af tid og fravær</h2>
+<figure><img class="shot" src="img/guide-min-uge.png" alt="Skærmbillede: Min uge set af en medarbejder."><figcaption>Min uge set af en medarbejder.</figcaption></figure>
+<h3>Sådan registrerer du</h3>
+<ol>
+<li><b>Tilføj en række:</b> søg efter projekt, opgave eller kunde i feltet “+ Søg projekt, opgave eller kunde…”. Favoritter og sidste uges rækker kan genbruges med <b>Kopiér sidste uges rækker</b>.</li>
+<li><b>Skriv timerne</b> i dagens felt (fx 7,5). Tastatur: Tab flytter, pil op/ned skifter række, Enter gemmer, Esc fortryder.</li>
+<li><b>Fravær:</b> vælg en fraværskode i “+ Tilføj fravær” (ferie, sygdom, kursus …) og skriv timerne. Har du valgt en forkert type, kan den skiftes eller fjernes fra rækken.</li>
+<li><b>Timer:</b> vælg en række og start timeren – den registrerer tiden, når du stopper.</li>
+<li><b>Fra min kalender:</b> hent møder fra Outlook som forslag (når kalenderimport er slået til).</li>
+<li><b>Indsend uge</b>, når ugen er færdig. Er du under normtid, bliver du spurgt, om du vil indsende alligevel.</li>
+</ol>
+<h3>Tallene i toppen</h3>
+<table>
+<tr><th style="width:24%">Felt</th><th>Betydning</th></tr>
+<tr><td>Normtid</td><td>Ugens forventede timer (helligdage er trukket fra).</td></tr>
+<tr><td>Registreret</td><td>Alle registrerede timer i ugen, inkl. fravær.</td></tr>
+<tr><td>Fakturerbar</td><td>Andel af timerne på fakturerbare opgaver.</td></tr>
+<tr><td>Flex denne uge</td><td>Registreret minus normtid. Orange/negativ = under normtid.</td></tr>
+<tr><td>Flekssaldo</td><td>Din samlede saldo.</td></tr>
+</table>
+<p>Under tabellen ses linjerne <b>Registreret</b>, <b>Normtid</b> og <b>Difference</b> pr. dag. Skiftet <b>Uge / Dag</b> giver en dagsvisning med kommentarfelter.</p>
+<div class="note warn"><b>Låste timer:</b> Når en uge er godkendt, kan den kun ændres, hvis lederen genåbner den. Timer i en lukket regnskabsmåned kan ikke ændres.</div>
+</section>
+
+<!-- ───────────── Udlæg ───────────── -->
+<section class="chapter">
+<h2>5. Udlæg og kørsel</h2>
+<figure><img class="shot" src="img/guide-udlaeg.png" alt="Skærmbillede: Udlæg og kørsel – én måned ad gangen."><figcaption>Udlæg og kørsel – én måned ad gangen.</figcaption></figure>
+<ul>
+<li><b>+ Nyt udlæg:</b> vælg type (taxa, parkering, materialer …), beløb og dato, og vedhæft kvitteringen som foto eller PDF. Momsen beregnes automatisk.</li>
+<li><b>+ Ny kørsel:</b> antal km og bil. <b>Egen bil</b>: beløbet er km × årets statens takst (høj takst op til 20.000 km om året) og udbetales via lønnen. <b>Firmabil</b>: ingen godtgørelse og intet i lønfilen, men kørslen kan stadig viderefaktureres.</li>
+<li><b>Fra Min uge:</b> rækken <b>Udlæg/kørsel</b> nederst i ugen viser dagens udlæg, og <b>+</b> under en dag åbner formularen med datoen udfyldt.</li>
+<li>Knyt udlægget til et <b>projekt</b>. Viderefaktureres sagen til kunden, er “Viderefaktureres til kunden” sat på forhånd – fjern fluebenet, hvis netop dette udlæg ikke skal faktureres.</li>
+<li><b>Indsend</b>, når måneden er klar. Nærmeste leder godkender, og godkendte udlæg sendes med lønoverførslen.</li>
+</ul>
+<p>Status pr. udlæg: <span class="pill p-grey">Kladde</span> <span class="pill p-grey">Indsendt</span> <span class="pill p-brand">Godkendt</span> <span class="pill p-red">Afvist</span>. “Se kvittering” åbner det vedhæftede bilag.</p>
+
+<h2 style="margin-top:8mm">6. Godkendelse</h2>
+<figure><img class="shot" src="img/guide-godkendelse.png" alt="Skærmbillede: Godkendelse af ugesedler for nærmeste leder."><figcaption>Godkendelse af ugesedler for nærmeste leder.</figcaption></figure>
+<p>Siden har tre faner:</p>
+<ul>
+<li><b>Ugesedler</b> – dine medarbejderes uger med normtid, registreret, fakturerbar andel og flex. “Fordeling på projekter” viser, hvor timerne er brugt, “Se uge” viser hele ugesedlen. Afvigelser (dage over/under norm) er markeret. Du kan <b>Godkende</b>, <b>Afvise</b> (begrundelse skal udfyldes) eller godkende flere på én gang. En godkendt uge kan <b>genåbnes</b> med en begrundelse.</li>
+<li><b>Mine projekter</b> – hvis godkendelsesformen er “projektleder, derefter nærmeste leder”, godkender projektlederen først timerne på sine projekter.</li>
+<li><b>Udlæg og kørsel</b> – udlæg til godkendelse med kvittering.</li>
+</ul>
+<div class="note tip">Ved godkendelse gemmes timeprisen og kostprisen på hver time. Derfor ændrer senere prisændringer ikke værdien af allerede godkendte timer.</div>
+</section>
+
+<!-- ───────────── Ressourceplan ───────────── -->
+<section class="chapter">
+<h2>7. Ressourceplan</h2>
+<figure><img class="shot" src="img/guide-ressourceplan.png" alt="Skærmbillede: Hvem har travlt, og hvem har plads."><figcaption>Hvem har travlt, og hvem har plads.</figcaption></figure>
+<p>Hver celle viser <b>planlagte timer / kapacitet</b> og belægningen i procent for en medarbejder og en uge. Kapacitet er normtid minus helligdage og fravær.</p>
+<table>
+<tr><th style="width:26%">Farve</th><th>Betydning</th></tr>
+<tr><td><span class="pill" style="background:var(--blue);color:#334">Blå</span></td><td>Under 70 % – der er plads.</td></tr>
+<tr><td><span class="pill p-green">Grøn</span></td><td>70–100 % – godt udnyttet.</td></tr>
+<tr><td><span class="pill p-or">Orange</span></td><td>Over 100 % – overbooket.</td></tr>
+<tr><td>Grå / 0</td><td>Ingen kapacitet (fx ferie).</td></tr>
+</table>
+<ul>
+<li>Søg på <b>kompetence</b> (fx DGNB, Revit, brand) for at finde den rette person. “Kun ledig kapacitet” skjuler fuldt bookede.</li>
+<li>Fold en medarbejder ud for at se bookingerne pr. projekt, og ret timerne direkte i cellen.</li>
+<li>Pilene og “Denne uge” flytter perioden.</li>
+</ul>
+</section>
+
+<!-- ───────────── Projekter ───────────── -->
+<section class="chapter">
+<h2>8. Projekter og kunder</h2>
+<h3>Projektlisten</h3>
+<figure><img class="shot" src="img/guide-projekter.png" alt="Skærmbillede: Projekter med kontrakttype, projektleder og forbrug mod budget."><figcaption>Projekter med kontrakttype, projektleder og forbrug mod budget.</figcaption></figure>
+<table>
+<tr><th style="width:22%">Kolonne</th><th>Betydning</th></tr>
+<tr><td>Kontrakt</td><td><span class="pill p-grey">Medgået tid</span> = timer × timepris, <span class="pill p-grey">Fastpris</span> = fast honorar. Nye sager oprettes som en af de to; ældre sager kan stadig vise <span class="pill p-grey">Rammeaftale</span> (fast beløb pr. periode). En sag kan have flere kontrakter (fx fastpris + ekstraarbejde på medgået tid).</td></tr>
+<tr><td>Forbrug</td><td>Brugte timer / budgetterede timer og procent. Bjælken bliver orange tæt på budget og rød over budget.</td></tr>
+<tr><td>Værdi</td><td>Brugte timer × timepris.</td></tr>
+<tr><td>DB-grad</td><td>Dækningsbidraget i procent af værdien.</td></tr>
+<tr><td>Status</td><td>● På sporet · ● Tæt på budget · ● Over budget · Intet budget.</td></tr>
+</table>
+<p><b>+ Nyt projekt</b> kan bruges af Økonomi, Admin og projektledere med rettigheden “opret projekter”. Vælg kontrakttype (<b>Medgået tid</b> eller <b>Fastpris</b>) og om sagen <b>viderefaktureres til kunden</b> (Ja/Nej – skal vælges). Ved Nej registreres timerne og tæller i kostprisen, men de har ingen fakturerbar værdi og kommer aldrig på en faktura. En intern sag uden kunde er altid Nej.</p>
+<h3>Projektsiden</h3>
+<figure><img class="shot" src="img/guide-projekt.png" alt="Skærmbillede: Projektside: nøgletal, opgavestruktur, kontrakter og faktureringsplan."><figcaption>Projektside: nøgletal, opgavestruktur, kontrakter og faktureringsplan.</figcaption></figure>
+<ul>
+<li><b>Nøgletal:</b> budget (timer), forbrug (timer og %), rest, værdi mod budgetbeløb, DB og DB-grad.</li>
+<li><b>Opgavestruktur:</b> faser og underopgaver med budget, forbrug, procentbjælke og værdi. Projektlederen tilføjer opgaver og underopgaver her.</li>
+<li><b>Kontrakter:</b> type, pris, timepris, eventuelt loft (maks. timer på medgået tid) og – på fastpris – færdiggørelse og indtægtsført.</li>
+<li><b>Faktureringsplan:</b> raterne på fast honorar (se kapitel 9). Linket “Sagsøkonomi →” fører til sagens økonomiside.</li>
+</ul>
+<h3>Kunder</h3>
+<figure><img class="shot" src="img/guide-kunder.png" alt="Skærmbillede: Kunder med CVR, EAN (til offentlige kunder), by og betalingsbetingelser."><figcaption>Kunder med CVR, EAN (til offentlige kunder), by og betalingsbetingelser.</figcaption></figure>
+<p>Betalingsbetingelsen (fx netto 30 dage) bestemmer fakturaens forfaldsdato. EAN-nummer bruges til elektronisk fakturering til offentlige kunder.</p>
+</section>
+
+<!-- ───────────── Sagsøkonomi ───────────── -->
+<section class="chapter">
+<h2>9. Sagsøkonomi og faktureringsplan</h2>
+<p>Sagsøkonomi giver Økonomi et samlet overblik over alle sager: honorarform, timer, forbrugt, faktureret, hvad der kan faktureres nu, og hvordan det går med de faste honorarer. Økonomi og Ledelse ser alle sager, en projektleder kun de sager, vedkommende er projektleder på. Medarbejdere ser ikke modulet.</p>
+<div class="note warn"><b>Ny funktion under afprøvning.</b> Sagsøkonomi og Debitorliste er bygget efter Økonomis ønsker og afprøves nu. Tal og navne kan blive justeret efter jeres tilbagemelding.</div>
+<h3>Sagsoversigten</h3>
+<figure><img class="shot" src="img/guide-sagsokonomi.png" alt="Skærmbillede: Sagsoversigt med kort, filtre og en totalrække."><figcaption>Sagsoversigt med kort, filtre og en totalrække.</figcaption></figure>
+<table>
+<tr><th style="width:26%">Kort øverst</th><th>Betydning</th></tr>
+<tr><td>Aktive sager</td><td>Antal sager med status aktiv (efter filtrene).</td></tr>
+<tr><td>Kan faktureres nu</td><td>Ikke fakturerede godkendte timer på medgået tid + rater, der er klar.</td></tr>
+<tr><td>Rater klar</td><td>Antal rater, der kan faktureres nu.</td></tr>
+<tr><td>Sager i risiko</td><td>Sager med Overskridelsesrisiko eller Honorar overskredet.</td></tr>
+</table>
+<table>
+<tr><th style="width:26%">Kolonne</th><th>Betydning</th></tr>
+<tr><td>Sagsnr. / sag</td><td>Nummer og navn, med honorarform og status som mærker under navnet.</td></tr>
+<tr><td>Kunde / projektleder</td><td>Kunden med projektlederen nedenunder.</td></tr>
+<tr><td>Timer</td><td>Alle registrerede timer på sagen (afviste tæller ikke).</td></tr>
+<tr><td>Forbrugt</td><td>Fakturerbare timer × timepris.</td></tr>
+<tr><td>Faktureret</td><td>Bogført på sagen, ekskl. moms, minus kreditnotaer.</td></tr>
+<tr><td>Ikke faktureret</td><td>Godkendte timer på medgået tid, der ikke er faktureret endnu. Tallet falder til 0, når fakturaen bogføres.</td></tr>
+<tr><td>Honorar / rest</td><td>Kun fast honorar: honoraret, resthonoraret og hvor stor en del af honoraret der er forbrugt.</td></tr>
+<tr><td>Næste rate</td><td>Dato og beløb for den næste rate, der ikke er faktureret.</td></tr>
+</table>
+<p>Alle beløb er i kr. ekskl. moms. Klik på en overskrift for at sortere (klik igen for omvendt rækkefølge). Filtrér på honorarform, projektleder, kunde og status. <b>Totalrækken nederst summerer altid de rækker, der vises.</b> <b>Hent som Excel (.xlsx)</b> giver de samme rækker og filtre som en Excel-fil med totalrække. <b>Hent som CSV</b> er til import i andre systemer.</p>
+<h3>Status pr. sag</h3>
+<table>
+<tr><th style="width:30%">Status</th><th>Hvornår</th></tr>
+<tr><td><span class="pill p-red">Honorar overskredet</span></td><td>Forbrugt er over alarmgrænsen (standard 100 % af det faste honorar).</td></tr>
+<tr><td><span class="pill p-or">Overskridelsesrisiko</span></td><td>Forbrugt har nået advarselsgrænsen (standard 75 %), fx “76 % af honorar forbrugt”.</td></tr>
+<tr><td><span class="pill p-brand">Rate klar</span></td><td>En rate i faktureringsplanen kan faktureres.</td></tr>
+<tr><td><span class="pill p-green">Kan faktureres</span></td><td>Der er godkendte, ikke fakturerede timer på medgået tid.</td></tr>
+<tr><td><span class="pill p-grey">Ajour</span></td><td>Intet at gøre lige nu.</td></tr>
+</table>
+<p>Har en sag flere ting på én gang, vises den mest alvorlige status (rækkefølgen ovenfor). Økonomi kan ændre de to grænser.</p>
+
+<h3>Rater klar til fakturering</h3>
+<figure><img class="shot" src="img/guide-sagsokonomi-rater.png" alt="Skærmbillede: Fanen “Rater klar til fakturering” samler alle rater, der kan faktureres, på tværs af sager."><figcaption>Fanen “Rater klar til fakturering” samler alle rater, der kan faktureres, på tværs af sager.</figcaption></figure>
+<p><b>Fakturér rate</b> opretter straks en fakturakladde med én linje for raten. Kladden findes under Fakturering → Kladder, hvor den gennemses og bogføres.</p>
+
+<h3>Sagens økonomiside</h3>
+<figure><img class="shot" style="max-height:66mm" src="img/guide-sag.png" alt="Skærmbillede: En sag med fast honorar og en fase med ekstraarbejde."><figcaption>En sag med fast honorar og en fase med ekstraarbejde.</figcaption></figure>
+<ul>
+<li><b>Advarslen</b> øverst viser, hvor meget af honoraret der er forbrugt, når en grænse er nået.</li>
+<li><b>Kortene:</b> timer (og kostpris), forbrugt, faktureret, ikke faktureret og resthonorar (med honorar og forbrugt i % af honoraret).</li>
+<li><b>Faseøkonomi:</b> budget, timer og forbrugt pr. fase. Faser kan markeres som <b>Ekstraarbejde</b> – så faktureres timerne som medgået tid uden for honoraret og tæller ikke med i forbruget af honoraret. Det kan ikke ændres, når fasens timer er faktureret.</li>
+<li><b>Timer pr. medarbejder:</b> hvem har brugt hvor mange timer, og hvad de er værd.</li>
+<li><b>Fakturahistorik:</b> sagens fakturaer og kladder med forfald, udestående og betalingsstatus.</li>
+</ul>
+<h3>Faktureringsplanen – sådan virker den</h3>
+<p>Planen deler det faste honorar op i rater. Hver rate har et navn, en andel (procent af honoraret eller et beløb), en planlagt dato og eventuelt en tilknyttet fase.</p>
+<ol>
+<li>Klik <b>Redigér plan</b>. Tilføj rater med <b>+ Tilføj rate</b>, eller brug skabelonerne: Dispositionsforslag, Projektforslag, Myndighedsprojekt, Udbudsprojekt, Udførelsesprojekt, Tilsyn.</li>
+<li>Skriv andelen i %. Sumlinjen viser, hvor mange procent af honoraret raterne giver – den bliver grøn ved præcis 100 %.</li>
+<li><b>Gem som kladde</b> kan bruges når som helst. <b>Gem som aktiv</b> kræver, at raterne giver præcis 100 % af honoraret (20/30/25/25 % kan gemmes, 20/30/25 % kan ikke).</li>
+</ol>
+<div class="flow">
+  <div class="box"><b><span class="pill p-grey">Afventer</span></b>Den forrige rate er ikke faktureret endnu.</div><div class="arrow">→</div>
+  <div class="box"><b><span class="pill p-grey">Planlagt</span></b>Næste i rækken, men datoen er ikke nået.</div><div class="arrow">→</div>
+  <div class="box"><b><span class="pill p-brand">Klar</span></b>Den forrige er faktureret og datoen er passeret – eller fasen er afsluttet.</div><div class="arrow">→</div>
+  <div class="box"><b><span class="pill p-green">Faktureret</span></b>Fakturaen med raten er bogført.</div>
+</div>
+<ul>
+<li>En rate bliver også klar, når projektlederen <b>afslutter den tilknyttede fase</b> – uanset datoen.</li>
+<li>Ligger raten på en kladde, vises “På kladde”. Slettes kladden, bliver raten klar igen.</li>
+<li>Fakturerede rater kan ikke ændres eller slettes – kun omdøbes.</li>
+<li><b>A conto</b> (kun hvis Økonomi har slået det til): projektlederen skriver % færdig pr. fase, og systemet foreslår fasens honorar × % minus det, der allerede er faktureret a conto.</li>
+</ul>
+</section>
+
+<!-- ───────────── Fakturering ───────────── -->
+<section class="chapter">
+<h2>10. Fakturering</h2>
+<figure><img class="shot" src="img/guide-fakturering.png" alt="Skærmbillede: Faktureringsgrundlaget: alt, der kan faktureres, pr. projekt."><figcaption>Faktureringsgrundlaget: alt, der kan faktureres, pr. projekt.</figcaption></figure>
+<p>Siden har tre faner. Feltet <b>Søg sag</b> øverst virker på alle tre: skriv et sagsnummer (fx 26010), et sagsnavn, en kunde eller et fakturanummer for at se netop de sager. Søgningen følger med, når du skifter fane.</p>
+<ul>
+<li><b>Faktureringsgrundlag</b> – pr. kunde og projekt: godkendte, ikke fakturerede timer (antal og kr.), rater klar til fakturering, fakturerbare udlæg og i alt. Vælg “Til og med”-dato, fakturadato og <b>gruppering</b> (fx pr. opgave eller pr. medarbejder). Opret kladder for de valgte projekter eller for alle.</li>
+<li><b>Kladder</b> – fakturaer under udarbejdelse. Her kan linjer rettes, nedskrives eller opskrives med begrundelse (det oprindelige beløb huskes), og der kan tilføjes fri tekst- og beløbslinjer. Marker kladden <b>Klar til bogføring</b>.</li>
+<li><b>Bogførte</b> – fakturaer og kreditnotaer med nummer. Herfra kan der laves <b>kreditnota</b> for hele fakturaen eller udvalgte linjer – eventuelt så timerne kan faktureres igen.</li>
+</ul>
+<div class="flow">
+  <div class="box"><b>Godkendte timer, rater, udlæg</b>Vises i faktureringsgrundlaget.</div><div class="arrow">→</div>
+  <div class="box"><b>Kladde</b>Reserverer timerne, så de ikke kommer med to gange. Kan rettes og slettes.</div><div class="arrow">→</div>
+  <div class="box"><b>Klar til bogføring</b>Gennemset – venter på Økonomi.</div><div class="arrow">→</div>
+  <div class="box"><b>Bogført</b>Får næste nummer, kan ikke ændres. Timerne bliver “faktureret”. Sendes til e-conomic, når integrationen er slået til.</div>
+</div>
+<div class="note tip">Projektledere kan oprette og rette kladder for egne projekter. Kun Økonomi bogfører og krediterer. Fakturanumre er fortløbende uden huller. Fakturaen kan ses som PDF med timespecifikation.</div>
+</section>
+
+<!-- ───────────── Debitorliste ───────────── -->
+<section class="chapter">
+<h2>11. Debitorliste</h2>
+<figure><img class="shot" style="max-height:68mm" src="img/guide-debitorliste.png" alt="Skærmbillede: Debitorliste med aldersfordeling, status og handlinger."><figcaption>Debitorliste med aldersfordeling, status og handlinger.</figcaption></figure>
+<p>Debitorlisten viser alle bogførte fakturaer med forfaldsdato, betaling og rykkere. Beløbene er i kr. <b>inkl. moms</b>. Kun Økonomi kan registrere betalinger og rykkere; projektledere ser fakturaerne på egne sager. Når integrationen til e-conomic er slået til, hentes betalingerne automatisk med <b>Hent betalinger fra e-conomic</b> – indtil da registreres de her.</p>
+<h3>Kortene (aldersfordeling)</h3>
+<p><b>Udestående i alt</b> fordelt på: Ikke forfaldent · 1–30 dage · 31–60 dage · 61–90 dage · Over 90 dage efter forfald. Røde tal betyder, at der er forfaldne beløb i gruppen.</p>
+<h3>Status pr. faktura</h3>
+<table>
+<tr><th style="width:30%">Status</th><th>Betydning</th></tr>
+<tr><td><span class="pill p-grey">Åben</span></td><td>Ikke betalt, men endnu ikke forfalden.</td></tr>
+<tr><td><span class="pill p-red">Forfalden 6 dage</span></td><td>Forfaldsdatoen er passeret, og intet er betalt. Fx forfald 4. nov. set 10. nov. = 6 dage (gruppen 1–30 dage).</td></tr>
+<tr><td><span class="pill p-or">Delvist betalt</span></td><td>En del er betalt – udestående er resten. Er den også forfalden, står antallet af dage nedenunder.</td></tr>
+<tr><td><span class="pill p-green">Betalt</span></td><td>Fuldt betalt.</td></tr>
+<tr><td><span class="pill p-grey">Krediteret</span></td><td>Udlignet med kreditnota – intet at betale.</td></tr>
+</table>
+<h3>Filtre og handlinger</h3>
+<ul>
+<li><b>Kun ubetalte</b> (standard), <b>Kun forfaldne</b> eller <b>Alle</b>. Filtrér på kunde, sag og projektleder. Sortér ved at klikke på overskrifterne. <b>Hent som Excel (.xlsx)</b> og <b>Hent som CSV</b> følger filtrene.</li>
+<li><b>+ Betaling</b> (Registrér betaling): hele beløbet eller en delbetaling med dato. Status og udestående opdateres med det samme.</li>
+<li><b>+ Rykker</b> (Registrér rykker): registrerer 1., 2. eller 3. rykker med dato – i rækkefølge og kun på forfaldne fakturaer. Selve rykkerbrevene kommer i en senere version.</li>
+
+</ul>
+</section>
+
+<!-- ───────────── Perioder ───────────── -->
+<section class="chapter">
+<h2>12. Regnskabsperioder (månedsluk)</h2>
+<figure><img class="shot" src="img/guide-perioder.png" alt="Skærmbillede: Måneder lukkes i rækkefølge; advarsler viser, hvad der mangler."><figcaption>Måneder lukkes i rækkefølge; advarsler viser, hvad der mangler.</figcaption></figure>
+<ul>
+<li>En <b>lukket måned låser</b> timer og fakturaer i måneden, så tallene ikke ændrer sig efter regnskabet.</li>
+<li>Månederne lukkes i rækkefølge. Før lukning advares der om fx ugesedler, der ikke er godkendt, og fakturaer, der ikke er bogført. Man kan lukke alligevel.</li>
+<li>En lukket måned kan <b>genåbnes</b> med en begrundelse (skrives i revisionssporet).</li>
+</ul>
+<h3>Månedsafslutning – tallene til regnskabet</h3>
+<table>
+<tr><th style="width:32%">Afsnit</th><th>Betydning</th></tr>
+<tr><td>Igangværende arbejde (medgået tid)</td><td>Godkendte, ikke fakturerede timer på medgået tid pr. projekt – værdien af arbejde, der endnu ikke er faktureret.</td></tr>
+<tr><td>Fastpris – indtægtsførsel</td><td>Pr. fastprisprojekt: pris, færdiggørelse, indtægtsført i alt og denne måned, faktureret i alt og saldoen (+ igangværende arbejde / − forudfaktureret).</td></tr>
+<tr><td>Rammeaftaler – periodeafgrænsning</td><td>Faktureret mod brugt på rammeaftaler.</td></tr>
+</table>
+<p>Ved lukning gemmes et øjebliksbillede af indtægtsførslen.</p>
+
+<h2 style="margin-top:8mm">13. Løn</h2>
+<figure><img class="shot" src="img/guide-lon.png" alt="Skærmbillede: Lønoverførsel pr. måned og medarbejder."><figcaption>Lønoverførsel pr. måned og medarbejder.</figcaption></figure>
+<ul>
+<li>Viser godkendt fravær, kørsel og udlæg pr. medarbejder og <b>lønart</b> (fx FERIE, SYG) – klar til lønsystemet. ARCtime beregner ikke selve lønnen.</li>
+<li><b>Dan lønfil</b> laver filen til lønsystemet. Måneden kan derefter låses. Ændringer, der godkendes senere, kommer med som rettelse i næste måned.</li>
+<li>Medarbejdere uden lønnummer kommer ikke med i filen og er markeret med ⚠.</li>
+<li>Fanen <b>Lønarter</b> styrer, hvilke fraværskoder der svarer til hvilke lønarter.</li>
+</ul>
+</section>
+
+<!-- ───────────── Prislister ───────────── -->
+<section class="chapter">
+<h2>14. Prislister</h2>
+<figure><img class="shot" src="img/guide-prislister.png" alt="Skærmbillede: Standardprisliste og kundespecifikke prislister."><figcaption>Standardprisliste og kundespecifikke prislister.</figcaption></figure>
+<p>Timeprisen på en time findes i denne rækkefølge – den første, der passer, bruges:</p>
+<div class="flow">
+  <div class="box"><b>1. Medarbejderpris på projektet</b>Særlig pris for en person på et projekt.</div><div class="arrow">→</div>
+  <div class="box"><b>2. Projektets prisliste</b>Inkl. kontraktens timepris.</div><div class="arrow">→</div>
+  <div class="box"><b>3. Kundens prisliste</b>Fx en rammeaftale.</div><div class="arrow">→</div>
+  <div class="box"><b>4. Standardprislisten</b>Pr. prisgruppe (Partner, Seniorrådgiver …).</div><div class="arrow">→</div>
+  <div class="box"><b>5. Medarbejderens standardpris</b>Sidste udvej.</div>
+</div>
+<p>En sats kan gælde en prisgruppe og/eller en opgavetype og har en “gælder fra”-dato, så prisstigninger kan lægges ind på forhånd.</p>
+
+<h2 style="margin-top:8mm">15. Rapporter og Power BI</h2>
+<figure><img class="shot" src="img/guide-rapporter.png" alt="Skærmbillede: Budget og forbrug pr. projekt."><figcaption>Budget og forbrug pr. projekt.</figcaption></figure>
+<ul>
+<li><b>Budget og forbrug pr. projekt:</b> budget- og brugte timer, %, værdi, omkostning, DB-grad og status – kan hentes som Excel eller CSV.</li>
+<li><b>Timer for en periode</b> som Excel eller CSV, og <b>Nøgletal (Excel)</b> med virksomhedens nøgletal.</li>
+<li><b>Excel eller CSV?</b> Vælg <b>Hent som Excel (.xlsx)</b>, når du vil læse eller arbejde med tallene: kolonnerne har den rigtige bredde, datoer kan sorteres, timer og beløb kan summeres, overskriften bliver stående, og der er filterpile og en totalrække. CSV er til import i andre systemer.</li>
+<li><b>Power BI og Excel:</b> Økonomi, Ledelse og Admin kan oprette en personlig nøgle med læseadgang til datasættene. Se den separate “Power BI-vejledning”.</li>
+</ul>
+</section>
+
+<!-- ───────────── Revisionsspor + admin ───────────── -->
+<section class="chapter">
+<h2>16. Revisionsspor</h2>
+<figure><img class="shot" src="img/guide-revisionsspor.png" alt="Skærmbillede: Hvem ændrede hvad, hvornår og hvorfor."><figcaption>Hvem ændrede hvad, hvornår og hvorfor.</figcaption></figure>
+<p>Alle vigtige ændringer logges: tidspunkt, hvem, hvad, handling og eventuel begrundelse. Klik på en række for at se før → efter. Sporet kan ikke ændres af nogen – heller ikke administratorer. Filtrér på type og periode. Økonomi, Ledelse og Admin har adgang.</p>
+
+<h2 style="margin-top:8mm">17. Administration</h2>
+<h3>Medarbejdere</h3>
+<figure><img class="shot" src="img/guide-medarbejdere.png" alt="Skærmbillede: Medarbejdere med roller."><figcaption>Medarbejdere med roller.</figcaption></figure>
+<p>Oversigt over medarbejdere med initialer, e-mail og roller. Klik på en medarbejder for at redigere: roller, normtid (fra en dato), prisgruppe, standard timepris og kostpris, lønnummer, fratrædelse, flex og ferie ved opstart, og om en projektleder må oprette projekter. En fratrådt medarbejder sættes til ikke aktiv og logges straks ud. Admin kan lave GDPR-udtræk og pseudonymisere tidligere ansatte.</p>
+
+<h3>Indstillinger</h3>
+<figure><img class="shot" style="max-height:58mm" src="img/guide-indstillinger.png" alt="Skærmbillede: Indstillinger – normtid, helligdage, fraværskoder og godkendelse."><figcaption>Indstillinger – normtid, helligdage, fraværskoder og godkendelse.</figcaption></figure>
+<table>
+<tr><th style="width:24%">Fane</th><th>Indhold</th></tr>
+<tr><td>Normtid</td><td>Ugeskemaer (fx fuld tid 37 t, deltid 30 t man–tor) med timer pr. ugedag.</td></tr>
+<tr><td>Helligdage</td><td>Danske helligdage, der trækkes fra normtiden (hele, halve eller timer).</td></tr>
+<tr><td>Fraværskoder</td><td>Ferie, sygdom, barns sygedag, kursus mv., og om de tæller som fravær i flex og ferie.</td></tr>
+<tr><td>Godkendelse</td><td>Ingen godkendelse · nærmeste leder · projektleder og derefter nærmeste leder.</td></tr>
+</table>
+<h3>Import</h3>
+<figure><img class="shot" style="max-height:52mm" src="img/guide-import.png" alt="Skærmbillede: Import af kunder, projekter og medarbejdere fra Excel."><figcaption>Import af kunder, projekter og medarbejdere fra Excel.</figcaption></figure>
+<ol>
+<li>Hent skabelonen og udfyld én kunde (projekt/medarbejder) pr. linje.</li>
+<li>Gem som CSV i Excel og vælg filen. Du ser først resultatet – intet gemmes endnu.</li>
+<li>Er alt i orden, importeres alt på én gang. Er der fejl, importeres intet, og fejlene vises pr. linje. Findes nummeret i forvejen, opdateres posten.</li>
+</ol>
+</section>
+
+<!-- ───────────── Arbejdsgang ───────────── -->
+<section class="chapter">
+<h2>18. Arbejdsgangen fra time til betaling</h2>
+<div class="flow">
+  <div class="box"><b>1. Registrér</b>Medarbejderen skriver timer i Min uge og indsender ugen.</div><div class="arrow">→</div>
+  <div class="box"><b>2. Godkend</b>Nærmeste leder (evt. projektleder først) godkender. Timeprisen låses.</div><div class="arrow">→</div>
+  <div class="box"><b>3. Følg op</b>Sagsøkonomi viser forbrugt, ikke faktureret og raterne.</div>
+</div>
+<div class="flow">
+  <div class="box"><b>4. Fakturér</b>Kladde fra faktureringsgrundlaget eller “Fakturér rate”. Gennemse og bogfør.</div><div class="arrow">→</div>
+  <div class="box"><b>5. Opkræv</b>Debitorlisten viser forfald. Registrér betalinger og rykkere.</div><div class="arrow">→</div>
+  <div class="box"><b>6. Luk måneden</b>Regnskabsperioder låser måneden. Lønfilen dannes.</div>
+</div>
+<h3>Huskeliste – hver uge</h3>
+<ul>
+<li><b>Medarbejdere:</b> registrér timerne løbende, og indsend ugen senest mandag.</li>
+<li><b>Ledere:</b> godkend ugesedler og udlæg (Forsiden viser, hvad der venter).</li>
+<li><b>Projektledere:</b> hold øje med forbrug mod budget og status på egne sager i Sagsøkonomi.</li>
+</ul>
+<h3>Huskeliste – hver måned (Økonomi)</h3>
+<ol>
+<li>Sagsøkonomi → <b>Kan faktureres nu</b> og <b>Rater klar til fakturering</b>.</li>
+<li>Fakturering → opret kladder, gennemse og bogfør.</li>
+<li>Debitorliste → registrér betalinger, send rykkere på forfaldne.</li>
+<li>Sørg for at alle ugesedler er godkendt, og luk måneden under Regnskabsperioder.</li>
+<li>Løn → dan lønfilen og lås måneden.</li>
+</ol>
+
+<h2 style="margin-top:8mm">19. Spørgsmål og svar</h2>
+<dl>
+<dt>Jeg kan ikke finde et menupunkt, som en kollega har.</dt><dd>Menuen afhænger af rolle. Spørg en administrator, hvis du mangler en rolle eller rettighed.</dd>
+<dt>Jeg kan ikke rette mine timer.</dt><dd>Ugen er indsendt eller godkendt, eller måneden er lukket. Bed din leder om at genåbne ugen.</dd>
+<dt>Hvorfor er “Ikke faktureret” ikke 0 på en sag med fast honorar?</dt><dd>Sagen har faser med ekstraarbejde. De timer faktureres som medgået tid ved siden af honoraret.</dd>
+<dt>Hvorfor kan jeg ikke gemme faktureringsplanen som aktiv?</dt><dd>Raterne giver ikke præcis 100 % af honoraret. Sumlinjen viser, hvor meget der mangler. Gem som kladde imens.</dd>
+<dt>Hvorfor er raten stadig “Afventer”, selv om datoen er passeret?</dt><dd>Den forrige rate er ikke faktureret (bogført) endnu. Raterne faktureres i rækkefølge – medmindre fasen afsluttes.</dd>
+<dt>Timerne står stadig under “Ikke faktureret”, selv om jeg har lavet en faktura.</dt><dd>Fakturaen er en kladde. Timerne tæller som faktureret, når fakturaen bogføres.</dd>
+<dt>En faktura står som forfalden, men kunden har betalt.</dt><dd>Registrér betalingen i Debitorlisten (indtil e-conomic-integrationen henter betalingerne automatisk).</dd>
+<dt>Kan en fejl rettes, efter at fakturaen er bogført?</dt><dd>Nej, men den kan krediteres helt eller delvist, og timerne kan frigives til en ny faktura.</dd>
+</dl>
+</section>
+
+</body>
+</html>

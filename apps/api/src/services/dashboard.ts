@@ -20,6 +20,7 @@ import {
 } from "@arc-tid/domain";
 import { and, eq, gte, inArray, isNotNull, lte, ne, sql } from "drizzle-orm";
 import { type AuthContext, policyOf } from "../auth/plugin.ts";
+import { timesheetApproveeIds } from "./approval.ts";
 import { loadEmployee, normContext } from "./calendar.ts";
 import { approveeIds, visibleUserIds } from "./people.ts";
 import { projectSummaries } from "./projects.ts";
@@ -106,13 +107,18 @@ async function employeeTodos(tx: Tx, auth: AuthContext, today: LocalDate): Promi
 /** Approver to-dos: submitted timesheets and expenses waiting for the caller. */
 async function approverTodos(tx: Tx, auth: AuthContext): Promise<Todo[]> {
   const ids = await approveeIds(tx, auth);
+  // weeks follow the approval mode (D-040: in "finance" mode only Finance approves weeks)
+  const weekIds = await timesheetApproveeIds(tx, auth);
   const todos: Todo[] = [];
-  if (ids.length) {
+  if (weekIds.length) {
     const [ts] = await tx
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.timesheetPeriods)
       .where(
-        and(inArray(schema.timesheetPeriods.userId, ids), eq(schema.timesheetPeriods.status, "submitted")),
+        and(
+          inArray(schema.timesheetPeriods.userId, weekIds),
+          eq(schema.timesheetPeriods.status, "submitted"),
+        ),
       );
     if (ts?.n) todos.push({ kind: "approve_timesheets", href: "/approval", count: ts.n, severity: "info" });
   }

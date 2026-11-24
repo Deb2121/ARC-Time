@@ -7,11 +7,13 @@
 import { addDays, lastDayOfMonth, monthOf, todayCopenhagen, vatSplit } from "@arc-tid/domain";
 import { Badge, Button, Card } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { type FormEvent, Suspense, useMemo, useState } from "react";
 import type { TaskRef } from "@/components/timesheet/types";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { API_URL, ApiError, api, type UploadedFile, uploadFile } from "@/lib/api";
+import { API_URL, api, type UploadedFile, uploadFile } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtKr } from "@/lib/format";
 
 interface Expense {
@@ -25,6 +27,7 @@ interface Expense {
   grossAmount: number;
   vatAmount: number;
   km: number | null;
+  vehicle: "own" | "company" | null;
   fromPlace: string | null;
   toPlace: string | null;
   billable: boolean;
@@ -34,7 +37,13 @@ interface Expense {
 }
 interface Settings {
   types: { id: string; name: string; vatBp: number; vatDeductibleBp: number }[];
-  mileageRates: { year: number; highRate: number; lowRate: number; thresholdKm: number }[];
+  mileageRates: {
+    year: number;
+    highRate: number;
+    lowRate: number;
+    thresholdKm: number;
+    customerRate: number;
+  }[];
 }
 
 const field =
@@ -42,11 +51,34 @@ const field =
 const num = (v: string) => Number(v.replace(/\./g, "").replace(",", "."));
 
 export default function ExpensesPage() {
+  return (
+    <Suspense>
+      <Expenses />
+    </Suspense>
+  );
+}
+
+/** Opened from Min uge as /expenses?new=mileage&date=2026-11-12: the form opens with that date. */
+function Expenses() {
   const { t, locale } = useI18n();
   const qc = useQueryClient();
+  const params = useSearchParams();
   const today = todayCopenhagen();
-  const [month, setMonth] = useState(monthOf(today));
-  const [form, setForm] = useState<"expense" | "mileage" | null>(null);
+  const dateParam = params.get("date");
+  const presetDate =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) && dateParam <= today ? dateParam : null;
+  const newParam = params.get("new");
+  const monthParam = params.get("month");
+  const [month, setMonth] = useState(
+    presetDate
+      ? monthOf(presetDate)
+      : monthParam && /^\d{4}-\d{2}-01$/.test(monthParam)
+        ? monthParam
+        : monthOf(today),
+  );
+  const [form, setForm] = useState<"expense" | "mileage" | null>(
+    newParam === "expense" || newParam === "mileage" ? newParam : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const list = useQuery({
     queryKey: ["expenses", month],
@@ -58,17 +90,21 @@ export default function ExpensesPage() {
   });
   const tasks = useQuery({ queryKey: ["ts-tasks"], queryFn: () => api<TaskRef[]>("/timesheet/tasks") });
   const projects = useMemo(() => {
-    const seen = new Map<string, string>();
+    const seen = new Map<string, ProjectOption>();
     for (const x of tasks.data ?? [])
-      if (x.customerName) seen.set(x.projectId, `${x.projectNumber} ${x.projectName}`);
-    return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+      if (x.customerName)
+        seen.set(x.projectId, {
+          id: x.projectId,
+          label: `${x.projectNumber} ${x.projectName}`,
+          billable: x.projectBillable ?? true,
+        });
+    return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
   }, [tasks.data]);
   const rows = list.data ?? [];
   const drafts = rows.filter((r) => r.status === "draft" || r.status === "rejected");
   const total = rows.reduce((a, r) => a + r.grossAmount, 0);
   const refresh = () => qc.invalidateQueries({ queryKey: ["expenses"] });
-  const fail = (e: unknown) =>
-    setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+  const fail = (e: unknown) => setError(errorText(e, t));
   const monthLabel = (m: string) => fmtDay(m, locale, { month: "long", year: "numeric" });
 
   return (
@@ -96,6 +132,7 @@ export default function ExpensesPage() {
       {form && settings.data && (
         <ExpenseForm
           kind={form}
+          date={presetDate ?? today}
           settings={settings.data}
           projects={projects}
           onDone={() => {
@@ -153,7 +190,7 @@ export default function ExpensesPage() {
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold text-ink-900">
                   {r.kind === "mileage"
-                    ? `${t("ex.kind.mileage")} ${String(r.km).replace(".", ",")} km`
+                    ? `${t("ex.kind.mileage")} ${String(r.km).replace(".", ",")} km${r.vehicle === "company" ? ` · ${t("ex.vehicle.company")}` : ""}`
                     : (r.typeName ?? t("ex.kind.expense"))}{" "}
                   · {r.description}
                 </span>
@@ -207,17 +244,26 @@ export default function ExpensesPage() {
   );
 }
 
+interface ProjectOption {
+  id: string;
+  label: string;
+  /** the case is re-invoiced to the customer → "viderefaktureres" is pre-ticked */
+  billable: boolean;
+}
+
 /** The registration form for one expense or mileage claim. */
 function ExpenseForm({
   kind,
+  date,
   settings,
   projects,
   onDone,
   onError,
 }: {
   kind: "expense" | "mileage";
+  date: string;
   settings: Settings;
-  projects: [string, string][];
+  projects: ProjectOption[];
   onDone: () => void;
   onError: (e: unknown) => void;
 }) {
@@ -227,6 +273,12 @@ function ExpenseForm({
   const [amount, setAmount] = useState("");
   const [projectId, setProjectId] = useState("");
   const [billable, setBillable] = useState(false);
+  const [vehicle, setVehicle] = useState<"own" | "company">("own");
+  const chooseProject = (id: string) => {
+    setProjectId(id);
+    // follow the case's choice; the employee can still untick it on this one expense
+    setBillable(projects.find((p) => p.id === id)?.billable ?? false);
+  };
   const [receipt, setReceipt] = useState<UploadedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const type = settings.types.find((x) => x.id === typeId);
@@ -266,6 +318,7 @@ function ExpenseForm({
             ? { expenseTypeId: typeId || null, amount: num(amount), receiptFileId: receipt?.id ?? null }
             : {
                 km: num(String(f.get("km"))),
+                vehicle,
                 fromPlace: f.get("from") || undefined,
                 toPlace: f.get("to") || undefined,
               }),
@@ -282,7 +335,7 @@ function ExpenseForm({
       <form onSubmit={submit} className="grid gap-4 text-sm sm:grid-cols-2">
         <label className="flex flex-col gap-1">
           <span className="font-semibold text-ink-900">{t("ex.date")}</span>
-          <input name="date" type="date" required defaultValue={today} max={today} className={field} />
+          <input name="date" type="date" required defaultValue={date} max={today} className={field} />
         </label>
         {kind === "expense" ? (
           <label className="flex flex-col gap-1">
@@ -360,6 +413,30 @@ function ExpenseForm({
           </>
         ) : (
           <>
+            <fieldset className="flex flex-col gap-1 sm:col-span-2">
+              <legend className="mb-1 font-semibold text-ink-900">{t("ex.vehicle")}</legend>
+              <div className="flex flex-wrap gap-2">
+                {(["own", "company"] as const).map((v) => (
+                  <label
+                    key={v}
+                    className={`flex cursor-pointer items-center gap-2 rounded-[var(--radius-control)] border px-3 py-2 ${vehicle === v ? "border-brand-600 bg-brand-50 text-ink-900" : "border-line"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="vehicle"
+                      value={v}
+                      checked={vehicle === v}
+                      onChange={() => setVehicle(v)}
+                      className="sr-only"
+                    />
+                    {t(`ex.vehicle.${v}`)}
+                  </label>
+                ))}
+              </div>
+              <span className="text-xs text-ink-500">
+                {t(vehicle === "own" ? "ex.vehicle.ownHint" : "ex.vehicle.companyHint")}
+              </span>
+            </fieldset>
             <label className="flex flex-col gap-1">
               <span className="font-semibold text-ink-900">{t("ex.from")}</span>
               <input name="from" maxLength={200} className={field} />
@@ -372,11 +449,11 @@ function ExpenseForm({
         )}
         <label className="flex flex-col gap-1">
           <span className="font-semibold text-ink-900">{t("ex.project")}</span>
-          <select className={field} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+          <select className={field} value={projectId} onChange={(e) => chooseProject(e.target.value)}>
             <option value="">{t("ex.noProject")}</option>
-            {projects.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
               </option>
             ))}
           </select>
@@ -391,6 +468,11 @@ function ExpenseForm({
             />
             {t("ex.billable")}
           </label>
+          {billable && projectId && kind === "mileage" && rate && (
+            <span className="text-xs text-ink-500">
+              {t("ex.customerRate", { rate: kr2(rate.customerRate) })}
+            </span>
+          )}
           {billable && projectId && (
             <label className="flex items-center gap-2">
               <span>{t("ex.markup")}</span>

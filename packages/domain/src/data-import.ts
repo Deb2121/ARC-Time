@@ -61,7 +61,7 @@ export const IMPORT_COLUMNS: Record<ImportKind, ImportColumn[]> = {
       key: "contractType",
       headers: ["aftaletype", "contract_type", "type"],
       required: false,
-      example: "regning",
+      example: "medgået tid",
     },
     { key: "price", headers: ["fastpris", "pris", "price"], required: false, example: "" },
     { key: "hourlyRate", headers: ["timepris", "hourly_rate"], required: false, example: "950" },
@@ -250,10 +250,11 @@ export function validateRow(kind: ImportKind, v: Record<string, string>): string
   return errors;
 }
 
-/** "regning" / "fastpris" / "rammeaftale" (or English) → contract type; null when not understood. */
+/** "medgået tid" / "regning" / "fastpris" / "rammeaftale" (or English) → contract type; null when not understood. */
 export function contractTypeOf(v: string): "time_material" | "fixed_price" | "retainer" | null {
   const s = v.trim().toLowerCase();
-  if (["regning", "løbende", "time_material", "t&m"].includes(s)) return "time_material";
+  if (["medgået tid", "medgaaet tid", "medgået", "regning", "løbende", "time_material", "t&m"].includes(s))
+    return "time_material";
   if (["fastpris", "fixed_price", "fixed"].includes(s)) return "fixed_price";
   if (["rammeaftale", "abonnement", "retainer"].includes(s)) return "retainer";
   return null;

@@ -25,6 +25,16 @@ export class ApiError extends Error {
   }
 }
 
+/** fetch() that reports an unreachable server as ApiError(0, "network") instead of a bare TypeError. */
+async function reach(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (e) {
+    if (init.signal?.aborted) throw e;
+    throw new ApiError(0, "network");
+  }
+}
+
 /**
  * Calls the ARCnordic Tid API under /api/v1 with the session cookie, JSON body and CSRF header; returns parsed JSON.
  * @example const me = await api<Me>("/me")
@@ -34,7 +44,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body) headers.set("content-type", "application/json");
   if (method !== "GET" && csrfToken) headers.set("x-csrf-token", csrfToken);
-  const res = await fetch(`${API_URL}/api/v1${path}`, { ...init, method, headers, credentials: "include" });
+  const res = await reach(`${API_URL}/api/v1${path}`, { ...init, method, headers, credentials: "include" });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new ApiError(res.status, body.error ?? "error");
@@ -82,7 +92,7 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   body.append("file", file, file.name);
   const headers = new Headers();
   if (csrfToken) headers.set("x-csrf-token", csrfToken);
-  const res = await fetch(`${API_URL}/api/v1/files`, {
+  const res = await reach(`${API_URL}/api/v1/files`, {
     method: "POST",
     body,
     headers,

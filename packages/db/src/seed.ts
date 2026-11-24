@@ -21,10 +21,11 @@ import {
 } from "@arc-tid/domain";
 import { hash } from "@node-rs/argon2";
 import { config } from "dotenv";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createDb, type Tx, withTenant } from "./client.ts";
 import * as s from "./schema.ts";
 import { seedAccess } from "./seed-access.ts";
+import { seedCaseFinance } from "./seed-case-finance.ts";
 import { seedExpenses } from "./seed-expenses.ts";
 import { seedMoney } from "./seed-money.ts";
 import { seedPayroll } from "./seed-payroll.ts";
@@ -91,7 +92,7 @@ const PEOPLE: Person[] = [
     name: "Karen Holm",
     initials: "KH",
     dept: "adm",
-    roles: ["management", "admin", "line_manager"],
+    roles: ["management", "admin", "finance", "line_manager"],
     sales: 1250,
     cost: 700,
     start: "2012-03-01",
@@ -308,7 +309,6 @@ interface ProjectDef {
   }[];
   /** tasks per contract index */
   tasks: TaskDef[][];
-  commentRequired?: boolean;
   billable?: boolean;
 }
 
@@ -346,9 +346,8 @@ const PROJECTS: ProjectDef[] = [
     members: ["PD", "LV", "EK", "IS", "OB"],
     category: "Nybyggeri",
     start: "2026-05-01",
-    contracts: [{ name: "Regning efter medgået tid (rammeaftale)", type: "time_material" }],
+    contracts: [{ name: "Medgået tid (rammeaftale)", type: "time_material" }],
     tasks: [ARK_PHASES(1.5, 975)],
-    commentRequired: true,
   },
   {
     number: "26003",
@@ -437,7 +436,7 @@ const PROJECTS: ProjectDef[] = [
     members: ["IS", "OB", "MB"],
     category: "Brand",
     start: "2026-07-01",
-    contracts: [{ name: "Regning med loft 200 t", type: "time_material", rate: 1100, maxHours: 200 }],
+    contracts: [{ name: "Medgået tid med loft 200 t", type: "time_material", rate: 1100, maxHours: 200 }],
     tasks: [
       [
         { name: "Brandstrategi", hours: 80, rate: 1100 },
@@ -455,7 +454,7 @@ const PROJECTS: ProjectDef[] = [
     start: "2026-06-01",
     contracts: [
       { name: "Fastpris DGNB-certificering", type: "fixed_price", price: 180_000, rate: 1000 },
-      { name: "Ekstraarbejde efter regning", type: "time_material", rate: 975 },
+      { name: "Ekstraarbejde, medgået tid", type: "time_material", rate: 975 },
     ],
     tasks: [
       [
@@ -473,7 +472,7 @@ const PROJECTS: ProjectDef[] = [
     members: ["SK", "FH", "NL"],
     category: "Byggeledelse",
     start: "2026-08-15",
-    contracts: [{ name: "Byggeledelse efter regning", type: "time_material", rate: 950 }],
+    contracts: [{ name: "Byggeledelse, medgået tid", type: "time_material", rate: 950 }],
     tasks: [
       [
         { name: "Byggeledelse", hours: 300, rate: 950 },
@@ -513,6 +512,10 @@ if (existing.length > 0) {
   if (added) console.log("added payroll setup (salary codes, payroll numbers) to the existing demo tenant");
   if (await withTenant(db, tenantId, (tx) => seedAccess(tx, tenantId)))
     console.log("added extra rights (project creation for AL and PD) to the existing demo tenant");
+  if (await withTenant(db, tenantId, (tx) => seedCaseFinance(tx, tenantId, todayCopenhagen())))
+    console.log(
+      "added case finance demo data (instalment shares, ekstraarbejde, payments) to the existing demo tenant",
+    );
   console.log(
     "demo tenant already seeded — run `pnpm db:reset; pnpm db:migrate; pnpm db:seed` for a clean database",
   );
@@ -536,7 +539,13 @@ await db.transaction(async (tx: Tx) => {
   const tenant = await insertOne(
     tx
       .insert(s.tenants)
-      .values({ name: "ARCnordic Demo ApS", slug: DEMO_SLUG, goLiveDate: firstMonday })
+      // D-040: Finance approves every week
+      .values({
+        name: "ARCnordic Demo ApS",
+        slug: DEMO_SLUG,
+        goLiveDate: firstMonday,
+        approvalMode: "finance",
+      })
       .returning(),
   );
   const tenantId = tenant.id;
@@ -710,7 +719,6 @@ await db.transaction(async (tx: Tx) => {
           startDate: pd.start,
           endDate: pd.end,
           billable: pd.billable ?? true,
-          commentRequired: pd.commentRequired ?? false,
         })
         .returning(),
     );
@@ -937,6 +945,19 @@ await db.transaction(async (tx: Tx) => {
   await seedPlanning(tx, tenantId, today);
   await seedPayroll(tx, tenantId);
   await seedAccess(tx, tenantId);
+  // A fresh database gets the plan order and activation that migration 0026 gave existing data (it ran before
+  // there were any contracts): instalments ordered by date; plans that add up to the price are active.
+  await tx.execute(sql`
+    update payment_plan_items p set sequence = x.rn
+    from (select id, row_number() over (partition by contract_id order by due_date, id) as rn
+          from payment_plan_items) x
+    where x.id = p.id and p.sequence = 0`);
+  await tx.execute(sql`
+    update contracts c set plan_active = true
+    where (c.type = 'fixed_price' and c.price > 0
+           and c.price = (select coalesce(sum(amount), 0) from payment_plan_items p where p.contract_id = c.id))
+       or (c.type = 'retainer' and exists (select 1 from payment_plan_items p where p.contract_id = c.id))`);
+  await seedCaseFinance(tx, tenantId, today);
 });
 
 const [{ count } = { count: 0 }] = await db.execute<{ count: number }>(

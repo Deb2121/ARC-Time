@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api, can } from "@/lib/api";
+import { api, can } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtHours, fmtKr, fmtPct } from "@/lib/format";
 
 interface Period {
@@ -82,7 +83,7 @@ export default function PeriodsPage() {
       await qc.invalidateQueries({ queryKey: ["periods"] });
       await qc.invalidateQueries({ queryKey: ["period-report"] });
     } catch (e) {
-      setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+      setError(errorText(e, t));
     }
   }
 
@@ -145,11 +146,7 @@ export default function PeriodsPage() {
                       setReopening(null);
                       return qc.invalidateQueries({ queryKey: ["periods"] });
                     })
-                    .catch((err) =>
-                      setError(
-                        err instanceof ApiError ? t(`err.${err.code}` as MessageKey) : t("common.error"),
-                      ),
-                    );
+                    .catch((err) => setError(errorText(err, t)));
                 }}
               >
                 <input

@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
+import { setApprovalMode } from "./approval-mode.ts";
 
 /**
  * M1 core loop in the browser: register (keyboard) → submit → manager approves → employee sees approved.
@@ -32,6 +33,10 @@ function monday(d = new Date()): string {
 const TASK = "Behovsanalyse og workshops";
 const week = monday();
 
+test.beforeAll(async ({ playwright }) => {
+  await setApprovalMode(playwright, "line_manager");
+});
+
 test.afterAll(async ({ playwright }) => {
   // Reopen Laura's week as Anne and remove the test cell as Laura.
   const anne = await playwright.request.newContext();
@@ -58,6 +63,7 @@ test.afterAll(async ({ playwright }) => {
   }
   await anne.dispose();
   await lv.dispose();
+  await setApprovalMode(playwright, "finance");
 });
 
 test("register → submit → approve", async ({ page, browser }) => {

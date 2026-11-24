@@ -9,6 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
+import { useApprovalMode } from "./test-approval-mode.ts";
 
 const config = loadConfig({ NODE_ENV: "test", DEV_LOGIN_ENABLED: "true", AUTH_RATE_LIMIT: "1000" });
 const { db, close } = createDb(config.DATABASE_URL, { max: 2 });
@@ -46,10 +47,14 @@ const today = todayCopenhagen();
 const week = startOfIsoWeek(today);
 const lastWeek = addDays(week, -7);
 
+// these tests walk the line manager approval flow; the demo seed uses "finance" (D-040)
+let restoreMode: () => Promise<void> = async () => {};
 beforeAll(async () => {
   app = await buildApp(config, db);
+  restoreMode = await useApprovalMode(app, db, "line_manager");
 });
 afterAll(async () => {
+  await restoreMode();
   await app.close();
   await close();
 });
@@ -84,9 +89,7 @@ describe("timesheet", () => {
     expect(future.json().error).toBe("future_date");
 
     // 1 h on another task first, so 24 h more is always over the limit — whatever the day already holds.
-    const other = tasks.find(
-      (x: { taskId: string; commentRequired: boolean }) => x.taskId !== t.taskId && !x.commentRequired,
-    );
+    const other = tasks.find((x: { taskId: string }) => x.taskId !== t.taskId);
     const day = addDays(lastWeek, 6); // last Sunday: in the past, normally empty
     const before = (await get("LV", `/api/v1/timesheet/week/${lastWeek}`)).json();
     const otherBefore =
@@ -120,16 +123,16 @@ describe("timesheet", () => {
     expect(res.statusCode).toBe(403);
   });
 
-  it("requires a comment on projects that demand one", async () => {
+  it("a comment is optional: hours save without one (D-031)", async () => {
     const tasks = (await get("LV", "/api/v1/timesheet/tasks")).json();
-    const t = tasks.find((x: { projectNumber: string }) => x.projectNumber === "26002"); // commentRequired
+    const t = tasks.find((x: { projectNumber: string }) => x.projectNumber === "26002");
     const res = await send("LV", "PUT", "/api/v1/timesheet/entries", {
       date: week,
       taskId: t.taskId,
-      hours: 1,
+      hours: 0,
       comment: "",
     });
-    expect(res.json().error).toBe("comment_required");
+    expect(res.statusCode).toBe(200);
   });
 });
 
@@ -269,9 +272,19 @@ describe("projects and reports", () => {
     expect(res.body).toContain("Projekt;Navn;Kunde");
   });
 
+  it("exports budget vs actual and time entries as Excel workbooks (D-033)", async () => {
+    const xlsx = await get("KH", "/api/v1/reports/budget-actual?format=xlsx");
+    expect(xlsx.headers["content-type"]).toContain("spreadsheetml");
+    expect(xlsx.headers["content-disposition"]).toMatch(/ARCtime_budget-og-forbrug_\d{4}-\d{2}-\d{2}\.xlsx/);
+    expect(xlsx.rawPayload.subarray(0, 2).toString()).toBe("PK"); // a zip, i.e. a real .xlsx
+    const time = await get("KH", "/api/v1/reports/time-entries?from=2026-09-01&to=2026-09-30&format=xlsx");
+    expect(time.headers["content-disposition"]).toContain("ARCtime_tidsregistreringer_2026-09.xlsx");
+  });
+
   it("returns flex and vacation balances", async () => {
     const res = (await get("LV", "/api/v1/me/balances")).json();
     expect(typeof res.flex).toBe("number");
-    expect(res.vacation.accrued).toBeGreaterThan(0);
+    expect(res.vacation.earned).toBeGreaterThan(0);
+    expect(typeof res.vacation.balance).toBe("number");
   });
 });

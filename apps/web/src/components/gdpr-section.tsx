@@ -9,8 +9,9 @@ import { Button } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useI18n } from "@/i18n";
-import type { MessageKey } from "@/i18n/da";
+import { da, type MessageKey } from "@/i18n/da";
 import { API_URL, ApiError, api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 
 /** Shape of GET /admin/employees/:id/erasure. */
 interface ErasurePreview {
@@ -43,7 +44,8 @@ export function GdprSection({ userId }: { userId: string }) {
       setOpen(false);
       await qc.invalidateQueries();
     } catch (e) {
-      setMsg(e instanceof ApiError ? t(`gdpr.block.${e.code}` as MessageKey) : t("common.error"));
+      const block = e instanceof ApiError ? `gdpr.block.${e.code}` : "";
+      setMsg(block in da ? t(block as MessageKey) : errorText(e, t));
     }
   }
 

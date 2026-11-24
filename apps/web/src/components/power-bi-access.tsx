@@ -10,7 +10,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ANALYTICS_URL, ApiError, api } from "@/lib/api";
+import { ANALYTICS_URL, api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay } from "@/lib/format";
 
 /** A token as listed (never the secret itself). */
@@ -43,8 +44,7 @@ export function PowerBiAccess() {
   const [fresh, setFresh] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fail = (e: unknown) =>
-    setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+  const fail = (e: unknown) => setError(errorText(e, t));
   const refresh = () => qc.invalidateQueries({ queryKey: ["api-tokens"] });
   const day = (iso: string) =>
     fmtDay(iso.slice(0, 10), locale, { day: "numeric", month: "short", year: "numeric" });

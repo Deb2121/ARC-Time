@@ -6,7 +6,13 @@
  *   GET   /projects/:id           detail: WBS with rolled-up actuals, contracts, members
  *   POST  /projects               create project (+ first contract)
  *   POST  /projects/:id/tasks     add a task (WBS ≤ 5 levels)
+ *   POST  /projects/:id/members   add a person to the team (may then book time)
+ *   DELETE /projects/:id/members/:userId  remove a person from the team
+ *   PUT   /projects/:id/members/:userId/rate  set or remove the person's own hourly price on the case (D-038)
  *   PATCH /tasks/:id              edit a task
+ *   POST  /tasks/:id/phase-status close (done) or reopen a phase and everything under it (D-041)
+ *   GET   /projects/:id/completion  what is still open before the case can be completed (D-041)
+ *   POST  /projects/:id/status      complete the case (Admin, nothing left) or set it active again (D-041)
  *   GET   /customers              list customers
  *   POST  /customers              create customer
  */
@@ -14,9 +20,17 @@ import { hasRole } from "@arc-tid/domain";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { type AuthContext, requireCapability } from "../auth/plugin.ts";
+import { completionCheck, setPhaseStatus, setProjectStatus } from "../services/case-lifecycle.ts";
 import { createCustomer, listCustomers } from "../services/customers.ts";
 import { AppError } from "../services/errors.ts";
-import { addTask, createProject, updateTask } from "../services/project-setup.ts";
+import { memberRates, rateChoices, setMemberRate } from "../services/member-rates.ts";
+import {
+  addProjectMember,
+  addTask,
+  createProject,
+  removeProjectMember,
+  updateTask,
+} from "../services/project-setup.ts";
 import { canEditProject, projectDetail, projectSummaries, visibleProjectIds } from "../services/projects.ts";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -35,7 +49,16 @@ export const projectRoutes: FastifyPluginAsyncZod = async (app) => {
       if (visible !== "all" && !visible.includes(req.params.id)) throw new AppError(404, "not_found");
       const detail = await projectDetail(tx, req.params.id);
       if (!detail) throw new AppError(404, "not_found");
-      return { ...detail, canEdit: await canEditProject(tx, auth, req.params.id) };
+      const canEdit = await canEditProject(tx, auth, req.params.id);
+      if (!canEdit) return { ...detail, canEdit };
+      // prices are shown only to those who may change them (manager, Finance, Admin)
+      const rates = await memberRates(tx, req.params.id);
+      return {
+        ...detail,
+        canEdit,
+        members: detail.members.map((m) => ({ ...m, price: rates.get(m.id) ?? null })),
+        rateChoices: await rateChoices(tx, req.params.id),
+      };
     });
   });
 
@@ -52,16 +75,18 @@ export const projectRoutes: FastifyPluginAsyncZod = async (app) => {
           price: z.number().nonnegative().optional(),
           /** kr per hour */
           hourlyRate: z.number().nonnegative().optional(),
+          /** Medgået tid med loft: invoice hours until this many hours, the rest is free */
+          maxHours: z.number().positive().max(100_000).optional(),
           startDate: isoDate.optional(),
           endDate: isoDate.optional(),
-          billable: z.boolean().default(true),
-          commentRequired: z.boolean().default(false),
+          /** "Viderefaktureres til kunden"; default: yes when there is a customer */
+          billable: z.boolean().optional(),
           category: z.string().max(100).optional(),
         }),
       },
     },
     async (req) => {
-      // "create if right" (D-025): Finance/Admin, or a project manager with the create_projects right.
+      // D-040: only Admin creates cases (not Finance, not project managers — not even with the old right).
       const auth = requireCapability(req, "project.create");
       return req.withTenant((tx) => createProject(tx, auth, req.body));
     },
@@ -83,6 +108,67 @@ export const projectRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (req) => req.withTenant((tx) => addTask(tx, req.auth as AuthContext, req.params.id, req.body)),
+  );
+
+  app.post(
+    "/projects/:id/members",
+    { schema: { params: idParams, body: z.object({ userId: z.string().uuid() }) } },
+    async (req) =>
+      req.withTenant((tx) => addProjectMember(tx, req.auth as AuthContext, req.params.id, req.body.userId)),
+  );
+
+  app.delete(
+    "/projects/:id/members/:userId",
+    { schema: { params: z.object({ id: z.string().uuid(), userId: z.string().uuid() }) } },
+    async (req) =>
+      req.withTenant((tx) =>
+        removeProjectMember(tx, req.auth as AuthContext, req.params.id, req.params.userId),
+      ),
+  );
+
+  app.put(
+    "/projects/:id/members/:userId/rate",
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid(), userId: z.string().uuid() }),
+        body: z.object({
+          /** kr per hour; null = use the case's own hourly rate */
+          rate: z.number().min(0).max(100_000).nullable(),
+          /** the price list line it was chosen from; omitted = typed in by hand */
+          label: z.string().max(200).nullable().optional(),
+        }),
+      },
+    },
+    async (req) =>
+      req.withTenant((tx) =>
+        setMemberRate(tx, req.auth as AuthContext, req.params.id, req.params.userId, {
+          rate: req.body.rate === null ? null : Math.round(req.body.rate * 100),
+          label: req.body.label,
+        }),
+      ),
+  );
+
+  app.post(
+    "/tasks/:id/phase-status",
+    { schema: { params: idParams, body: z.object({ status: z.enum(["open", "closed"]) }) } },
+    async (req) =>
+      req.withTenant((tx) => setPhaseStatus(tx, req.auth as AuthContext, req.params.id, req.body.status)),
+  );
+
+  app.get("/projects/:id/completion", { schema: { params: idParams } }, async (req) => {
+    const auth = req.auth as AuthContext;
+    return req.withTenant(async (tx) => {
+      const visible = await visibleProjectIds(tx, auth);
+      if (visible !== "all" && !visible.includes(req.params.id)) throw new AppError(404, "not_found");
+      return completionCheck(tx, auth, req.params.id);
+    });
+  });
+
+  app.post(
+    "/projects/:id/status",
+    { schema: { params: idParams, body: z.object({ status: z.enum(["completed", "active"]) }) } },
+    async (req) =>
+      req.withTenant((tx) => setProjectStatus(tx, req.auth as AuthContext, req.params.id, req.body.status)),
   );
 
   app.patch(

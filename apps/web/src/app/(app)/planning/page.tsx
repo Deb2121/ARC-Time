@@ -11,7 +11,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useId, useMemo, useState } from "react";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtHours, fmtPct } from "@/lib/format";
 import type { ProjectSummary } from "../projects/page";
 
@@ -94,7 +95,7 @@ export default function PlanningPage() {
       setError(null);
       await qc.invalidateQueries({ queryKey: ["planning"] });
     } catch (e) {
-      setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+      setError(errorText(e, t));
     }
   }
 

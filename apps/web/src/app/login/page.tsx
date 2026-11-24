@@ -7,6 +7,7 @@ import { type FormEvent, useState } from "react";
 import { LanguageSwitch } from "@/components/language-switch";
 import { useI18n } from "@/i18n";
 import { API_URL, ApiError, api, setCsrfToken } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -31,7 +32,13 @@ export default function LoginPage() {
       setCsrfToken(res.csrfToken);
       router.replace("/");
     } catch (err) {
-      setError(t(err instanceof ApiError && err.status === 429 ? "auth.tooMany" : "auth.invalid"));
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? t("auth.tooMany")
+          : err instanceof ApiError && err.status === 401
+            ? t("auth.invalid")
+            : errorText(err, t),
+      );
     } finally {
       setBusy(false);
     }

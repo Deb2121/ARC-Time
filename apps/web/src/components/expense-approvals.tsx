@@ -8,8 +8,8 @@ import { Button } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useI18n } from "@/i18n";
-import type { MessageKey } from "@/i18n/da";
-import { API_URL, ApiError, api } from "@/lib/api";
+import { API_URL, api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtKr } from "@/lib/format";
 
 interface PendingExpense {
@@ -24,6 +24,7 @@ interface PendingExpense {
   projectName: string | null;
   grossAmount: number;
   km: number | null;
+  vehicle?: "own" | "company" | null;
   billable: boolean;
   receiptFileId: string | null;
 }
@@ -43,8 +44,7 @@ export function ExpenseApprovals() {
     setError(null);
     return qc.invalidateQueries({ queryKey: ["expense-approvals"] });
   };
-  const fail = (e: unknown) =>
-    setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+  const fail = (e: unknown) => setError(errorText(e, t));
 
   if (pending.isLoading) return <p className="text-ink-500">{t("common.loading")}</p>;
   if (!pending.data?.length) return <p className="text-ink-500">{t("ap.noExpenses")}</p>;
@@ -68,7 +68,7 @@ export function ExpenseApprovals() {
                 </p>
                 <p className="text-ink-700">
                   {x.kind === "mileage"
-                    ? `${t("ex.kind.mileage")} ${String(x.km).replace(".", ",")} km`
+                    ? `${t("ex.kind.mileage")} ${String(x.km).replace(".", ",")} km${x.vehicle === "company" ? ` · ${t("ex.vehicle.company")}` : ""}`
                     : (x.typeName ?? t("ex.kind.expense"))}{" "}
                   · {x.description}
                 </p>

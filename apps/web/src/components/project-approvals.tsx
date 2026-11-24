@@ -10,8 +10,8 @@ import { Button } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useI18n } from "@/i18n";
-import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtHours, weekLabel } from "@/lib/format";
 
 /** One employee × week × project waiting for the project manager. */
@@ -56,9 +56,7 @@ export function ProjectApprovals() {
         void qc.invalidateQueries({ queryKey: ["pm-approvals"] });
         void qc.invalidateQueries({ queryKey: ["approvals"] });
       })
-      .catch((e: unknown) =>
-        setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error")),
-      );
+      .catch((e: unknown) => setError(errorText(e, t)));
 
   if (inbox.isLoading) return <p className="text-ink-500">{t("common.loading")}</p>;
   if (!inbox.data?.enabled) return <p className="text-ink-500">{t("ap.pmDisabled")}</p>;

@@ -12,6 +12,7 @@ import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
 import { api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtFlex, fmtHours, fmtPct, weekLabel } from "@/lib/format";
 
 interface Item {
@@ -91,7 +92,10 @@ function Approval() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejecting, setRejecting] = useState<{ id: string; comment: string } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const failed = (e: unknown) => setError(errorText(e, t));
   const done = () => {
+    setError(null);
     setSelected(new Set());
     setRejecting(null);
     void qc.invalidateQueries({ queryKey: ["approvals"] });
@@ -99,16 +103,19 @@ function Approval() {
   const approve = useMutation({
     mutationFn: (id: string) => api(`/approvals/${id}/approve`, { method: "POST" }),
     onSuccess: done,
+    onError: failed,
   });
   const bulk = useMutation({
     mutationFn: (ids: string[]) =>
       api("/approvals/bulk-approve", { method: "POST", body: JSON.stringify({ periodIds: ids }) }),
     onSuccess: done,
+    onError: failed,
   });
   const reject = useMutation({
     mutationFn: (r: { id: string; comment: string }) =>
       api(`/approvals/${r.id}/reject`, { method: "POST", body: JSON.stringify({ comment: r.comment }) }),
     onSuccess: done,
+    onError: failed,
   });
 
   const items = inbox.data?.items ?? [];
@@ -124,6 +131,7 @@ function Approval() {
           <p className="text-sm text-ink-500">{weekLabel(weekStart, locale)}</p>
           <h1 className="mt-1 text-3xl font-normal">{t("ap.title")}</h1>
           <p className="mt-1 text-ink-700">{t("ap.intro")}</p>
+          <p className="mt-1 max-w-2xl text-sm text-ink-500">{t("ap.scope")}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => go(addDays(weekStart, -7))} aria-label={t("ts.prev")}>
@@ -153,6 +161,19 @@ function Approval() {
         </div>
       )}
 
+      {error && (
+        <p
+          role="alert"
+          className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+        >
+          {error}
+        </p>
+      )}
+      {inbox.isError && (
+        <p role="alert" className="text-danger">
+          {errorText(inbox.error, t)}
+        </p>
+      )}
       {inbox.isLoading && <p className="text-ink-500">{t("common.loading")}</p>}
       {!inbox.isLoading && items.length === 0 && <p className="text-ink-500">{t("ap.empty")}</p>}
 

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useMe } from "@/components/session";
-import { changeAbsenceType, removeAbsenceRow } from "@/components/timesheet/absence-actions";
+import { changeAbsenceType, removeRow } from "@/components/timesheet/absence-actions";
 import { CalendarPanel } from "@/components/timesheet/calendar-panel";
 import { DayView } from "@/components/timesheet/day-view";
 import { TaskPicker } from "@/components/timesheet/task-picker";
@@ -18,10 +18,12 @@ import {
   taskRowKey,
   type WeekData,
 } from "@/components/timesheet/types";
+import { useWeekExpenseCells } from "@/components/timesheet/week-expenses";
 import { type RowAction, rowLabel, type Selected, WeekGrid } from "@/components/timesheet/week-grid";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api, type Person } from "@/lib/api";
+import { api, type Person } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtFlex, fmtHours, fmtPct, weekLabel } from "@/lib/format";
 
 const TIMER_KEY = "arc_timer";
@@ -72,6 +74,7 @@ function Timesheet() {
     queryFn: () => api<WeekData>(`/timesheet/week/${weekStart}${isOwn ? "" : `?userId=${viewUser}`}`),
   });
   const people = useQuery({ queryKey: ["users"], queryFn: () => api<Person[]>("/users"), enabled: !isOwn });
+  const expenseCells = useWeekExpenseCells(week.data?.days ?? [], today, isOwn && Boolean(week.data));
   const viewedName = people.data?.find((p) => p.id === viewUser)?.fullName;
 
   const [extraRows, setExtraRows] = useState<Row[]>([]);
@@ -139,8 +142,7 @@ function Timesheet() {
   });
 
   const [actionError, setActionError] = useState<string | null>(null);
-  const showError = (e: unknown) =>
-    setActionError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+  const showError = (e: unknown) => setActionError(errorText(e, t));
   const submit = useMutation({
     mutationFn: () =>
       api<{ status: string; warnings: string[] }>(`/timesheet/week/${weekStart}/submit`, {
@@ -160,11 +162,11 @@ function Timesheet() {
     onError: showError,
   });
 
-  /** Removes an absence row, or moves its hours to another absence type (wrong reason chosen). */
+  /** Removes a task or absence row (picked by mistake), or moves absence hours to another absence type. */
   async function rowAction(a: RowAction) {
     setActionError(null);
     try {
-      if (a.type === "remove") await removeAbsenceRow(a.row);
+      if (a.type === "remove") await removeRow(a.row);
       else
         await changeAbsenceType(
           a.row,
@@ -179,7 +181,9 @@ function Timesheet() {
     await refresh();
   }
 
-  const selRow = rows.find((r) => r.key === selected?.rowKey);
+  // The info box follows the comment box while it is open, so clicking elsewhere cannot attach it to another cell.
+  const infoSel = panel?.sel ?? selected;
+  const selRow = rows.find((r) => r.key === infoSel?.rowKey);
 
   function openPanel(sel: Selected, hours: number | null = null) {
     const r = rows.find((x) => x.key === sel.rowKey);
@@ -209,11 +213,11 @@ function Timesheet() {
           comment: panel.comment,
         }),
       });
-      setPanel(null);
+      // Refresh first so the cell shows the saved hours the moment the comment box closes.
       await refresh();
+      setPanel(null);
     } catch (err) {
-      const code = err instanceof ApiError ? err.code : "invalid";
-      setPanel({ ...panel, error: t(`err.${code}` as MessageKey) });
+      setPanel({ ...panel, error: errorText(err, t, "invalid") });
     }
   }
 
@@ -248,7 +252,7 @@ function Timesheet() {
   if (week.isError)
     return (
       <p role="alert" className="text-danger">
-        {t("common.error")}
+        {errorText(week.error, t)}
       </p>
     );
 
@@ -400,11 +404,8 @@ function Timesheet() {
               rows={rows}
               selected={selected}
               onSelect={setSelected}
-              onCommentNeeded={(sel, hours) => {
-                setSelected(sel);
-                openPanel(sel, hours);
-              }}
               onRowAction={isOwn ? rowAction : undefined}
+              dayRow={expenseCells ? { label: t("ts.exp.row"), cells: expenseCells } : null}
             />
           )}
           {view === "week" && <p className="text-xs text-ink-500">{t("ts.keyboardHelp")}</p>}
@@ -431,22 +432,22 @@ function Timesheet() {
             </div>
           </section>
 
-          {selected && selRow && (
+          {infoSel && selRow && (
             <section className="flex max-w-xl flex-col gap-3 rounded-lg border border-line bg-surface p-4 text-sm">
               <div>
                 <p className="font-semibold text-ink-900">{rowLabel(selRow, locale)}</p>
                 <p className="first-letter:uppercase text-ink-500">
-                  {fmtDay(selected.date, locale, { weekday: "long", day: "numeric", month: "long" })}
+                  {fmtDay(infoSel.date, locale, { weekday: "long", day: "numeric", month: "long" })}
                 </p>
               </div>
-              {selRow.cells[selected.date]?.comment && !panel && (
+              {selRow.cells[infoSel.date]?.comment && !panel && (
                 <p className="rounded bg-surface-alt p-2 text-ink-700">
-                  “{selRow.cells[selected.date]?.comment}”
+                  “{selRow.cells[infoSel.date]?.comment}”
                 </p>
               )}
               {data.editable && !panel && (
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => openPanel(selected)}>
+                  <Button variant="secondary" onClick={() => openPanel(infoSel)}>
                     ✎ {t("ts.comment")}
                   </Button>
                   {selRow.kind === "task" && !timer && (
@@ -464,9 +465,6 @@ function Timesheet() {
                     void savePanel();
                   }}
                 >
-                  {selRow.kind === "task" && selRow.ref.commentRequired && (
-                    <p className="text-xs text-ink-500">{t("ts.commentRequired")}</p>
-                  )}
                   <label className="flex flex-col gap-1">
                     <span className="font-semibold text-ink-900">{t("ts.comment")}</span>
                     <textarea

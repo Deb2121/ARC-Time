@@ -10,9 +10,10 @@ export interface TaskRef {
   projectNumber: string;
   projectName: string;
   customerName: string | null;
-  commentRequired: boolean;
   taskBillable?: boolean;
   billable?: boolean;
+  /** the project is re-invoiced to the customer (expenses on it are pre-ticked "viderefaktureres") */
+  projectBillable?: boolean;
   favourite?: boolean;
 }
 

@@ -15,12 +15,14 @@ import {
   fromDecimal,
   type Grouping,
   type InvoiceableEntry,
+  instalmentStatuses,
   invoiceTotals,
   isAmountLine,
   isLocked,
   type LocalDate,
   lineAmount,
   monthOf,
+  type PlanInstalment,
   spreadAmount,
 } from "@arc-tid/domain";
 import { and, asc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
@@ -109,6 +111,76 @@ export async function invoiceableEntries(
   }));
 }
 
+/** A payment plan item as the domain's billing-plan rules see it (phase done = its phase is closed). */
+export function toPlanInstalment(
+  item: typeof s.paymentPlanItems.$inferSelect,
+  closedTaskIds: ReadonlySet<string>,
+): PlanInstalment {
+  return {
+    id: item.id,
+    sequence: item.sequence,
+    percentageBp: item.percentageBp,
+    amount: item.amount,
+    plannedDate: item.dueDate,
+    invoiced: item.status === "invoiced",
+    phaseDone: item.taskId ? closedTaskIds.has(item.taskId) : false,
+    markedReady: item.status === "ready",
+  };
+}
+
+/**
+ * Plan items that may go on an invoice on `asOf`, not reserved by another draft (D-029). An active plan follows
+ * the billing-plan rules (only klar instalments: the previous one invoiced and the date passed, or the phase
+ * done). A plan not activated yet keeps the earlier rule: marked ready, or planned and due.
+ */
+export async function readyPlanItems(
+  tx: Tx,
+  contracts: (typeof s.contracts.$inferSelect)[],
+  asOf: LocalDate,
+): Promise<(typeof s.paymentPlanItems.$inferSelect)[]> {
+  const planContracts = contracts.filter((c) => c.type !== "time_material");
+  if (!planContracts.length) return [];
+  const items = await tx
+    .select()
+    .from(s.paymentPlanItems)
+    .where(
+      inArray(
+        s.paymentPlanItems.contractId,
+        planContracts.map((c) => c.id),
+      ),
+    )
+    .orderBy(asc(s.paymentPlanItems.sequence), asc(s.paymentPlanItems.dueDate));
+  const taskIds = items.flatMap((i) => (i.taskId ? [i.taskId] : []));
+  const closed = new Set(
+    taskIds.length
+      ? (
+          await tx
+            .select({ id: s.tasks.id })
+            .from(s.tasks)
+            .where(and(inArray(s.tasks.id, taskIds), eq(s.tasks.status, "closed")))
+        ).map((t) => t.id)
+      : [],
+  );
+  const out: (typeof s.paymentPlanItems.$inferSelect)[] = [];
+  for (const c of planContracts) {
+    const own = items.filter((i) => i.contractId === c.id);
+    if (c.planActive) {
+      const status = instalmentStatuses(
+        own.map((i) => toPlanInstalment(i, closed)),
+        asOf,
+      );
+      out.push(...own.filter((i) => status.get(i.id) === "klar" && !i.invoiceLineId));
+    } else {
+      out.push(
+        ...own.filter(
+          (i) => !i.invoiceLineId && (i.status === "ready" || (i.status === "planned" && i.dueDate <= asOf)),
+        ),
+      );
+    }
+  }
+  return out.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+}
+
 /** T&M cap: hours above the contract's maximum are not invoiceable (docs/spec/projects.md). */
 async function applyCaps<T extends { contractId: string; maxHours: number | null; hours: number }>(
   tx: Tx,
@@ -157,22 +229,7 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
   const entries = await applyCaps(tx, await invoiceableEntries(tx, p.projectIds, p.upTo));
   const contracts = await tx.select().from(s.contracts).where(inArray(s.contracts.projectId, p.projectIds));
   const milestones =
-    p.includeMilestones === false || !contracts.length
-      ? []
-      : await tx
-          .select()
-          .from(s.paymentPlanItems)
-          .where(
-            and(
-              inArray(
-                s.paymentPlanItems.contractId,
-                contracts.map((c) => c.id),
-              ),
-              isNull(s.paymentPlanItems.invoiceLineId),
-              sql`(${s.paymentPlanItems.status} = 'ready' or (${s.paymentPlanItems.status} = 'planned' and ${s.paymentPlanItems.dueDate} <= ${p.upTo}))`,
-            ),
-          )
-          .orderBy(asc(s.paymentPlanItems.dueDate));
+    p.includeMilestones === false || !contracts.length ? [] : await readyPlanItems(tx, contracts, p.upTo);
   // Approved, billable, unreserved expenses on the projects (brief §4.7): re-invoiced at net + markup.
   const billableExpenses = await tx
     .select({
@@ -182,6 +239,7 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
       kind: s.expenses.kind,
       description: s.expenses.description,
       netAmount: s.expenses.netAmount,
+      billAmount: s.expenses.billAmount,
       markupBp: s.expenses.markupBp,
       km: s.expenses.km,
       typeName: s.expenseTypes.name,
@@ -198,7 +256,21 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
       ),
     )
     .orderBy(asc(s.expenses.date));
-  if (!entries.length && !milestones.length && !billableExpenses.length) return null;
+  // Sub-consultants' invoices marked "videre­faktureres" (D-039): re-invoiced at amount + markup.
+  const subInvoices = await tx
+    .select()
+    .from(s.subconsultantInvoices)
+    .where(
+      and(
+        inArray(s.subconsultantInvoices.projectId, p.projectIds),
+        eq(s.subconsultantInvoices.rebill, true),
+        isNull(s.subconsultantInvoices.invoiceLineId),
+        eq(s.subconsultantInvoices.invoiced, false),
+        lte(s.subconsultantInvoices.invoiceDate, p.upTo),
+      ),
+    )
+    .orderBy(asc(s.subconsultantInvoices.invoiceDate));
+  if (!entries.length && !milestones.length && !billableExpenses.length && !subInvoices.length) return null;
 
   const [invoice] = await tx
     .insert(s.invoices)
@@ -223,7 +295,8 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
       (m) => contracts.find((c) => c.id === m.contractId)?.projectId === project.id,
     );
     const projExpenses = billableExpenses.filter((x) => x.projectId === project.id);
-    if (!projEntries.length && !projMilestones.length && !projExpenses.length) continue;
+    const projSubs = subInvoices.filter((x) => x.projectId === project.id);
+    if (!projEntries.length && !projMilestones.length && !projExpenses.length && !projSubs.length) continue;
     if (projects.length > 1) {
       await tx.insert(s.invoiceLines).values({
         tenantId: p.tenantId,
@@ -299,9 +372,10 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
         );
     }
     for (const x of projExpenses) {
-      const amount = billableAmount(x.netAmount, x.markupBp);
-      const label =
-        x.kind === "mileage" ? `Kørsel ${x.km} km` : `Udlæg${x.typeName ? ` (${x.typeName})` : ""}`;
+      // mileage is charged at the customer km price (billAmount), other expenses at net; markup on top
+      const amount = billableAmount(x.billAmount ?? x.netAmount, x.markupBp);
+      const km = x.km === null ? "" : String(x.km).replace(".", ",");
+      const label = x.kind === "mileage" ? `Kørsel ${km} km` : `Udlæg${x.typeName ? ` (${x.typeName})` : ""}`;
       const [line] = await tx
         .insert(s.invoiceLines)
         .values({
@@ -320,6 +394,30 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
         .returning();
       await tx.update(s.expenses).set({ invoiceLineId: line?.id }).where(eq(s.expenses.id, x.id));
     }
+    for (const x of projSubs) {
+      const amount = billableAmount(x.amount, x.markupBp);
+      const ref = x.invoiceNumber ? ` (faktura ${x.invoiceNumber})` : "";
+      const [line] = await tx
+        .insert(s.invoiceLines)
+        .values({
+          tenantId: p.tenantId,
+          invoiceId: invoice.id,
+          sort: sort++,
+          kind: "expense",
+          description: `Underrådgiver ${x.supplier}${ref}${x.note ? `: ${x.note}` : ""}`,
+          quantity: 1,
+          unitPrice: amount,
+          amount,
+          originalAmount: amount,
+          vatBp: DANISH_VAT_BP,
+          projectId: project.id,
+        })
+        .returning();
+      await tx
+        .update(s.subconsultantInvoices)
+        .set({ invoiceLineId: line?.id })
+        .where(eq(s.subconsultantInvoices.id, x.id));
+    }
   }
   await recalcInvoice(tx, invoice.id);
   await writeAudit(tx, {
@@ -329,6 +427,85 @@ export async function createDraftFromSuggestion(tx: Tx, p: DraftParams): Promise
     action: "create",
     userId: p.userId,
     after: { customerId: p.customerId, projectIds: p.projectIds, grouping: p.grouping },
+  });
+  return invoice.id;
+}
+
+/** What goes on a one-line draft: an instalment (reserved via paymentPlanItemId) or an a conto amount on a phase. */
+export interface SingleLineDraft {
+  tenantId: string;
+  userId: string;
+  projectId: string;
+  invoiceDate: LocalDate;
+  description: string;
+  amount: number;
+  paymentPlanItemId?: string;
+  acontoTaskId?: string;
+}
+
+/**
+ * "Fakturér rate" / a conto (D-029): creates a draft invoice for the case with one milestone line. An instalment
+ * is reserved on the draft at once (like time entries), and becomes "faktureret" when the invoice is booked.
+ * Returns the new invoice id.
+ */
+export async function createSingleLineDraft(tx: Tx, d: SingleLineDraft): Promise<string> {
+  const [project] = await tx.select().from(s.projects).where(eq(s.projects.id, d.projectId));
+  if (!project?.customerId) throw new InvoiceError("project_has_no_customer", 422);
+  const [customer] = await tx.select().from(s.customers).where(eq(s.customers.id, project.customerId));
+  if (!customer) throw new InvoiceError("customer_not_found", 404);
+  if (d.amount <= 0) throw new InvoiceError("nothing_to_invoice", 422);
+  const [invoice] = await tx
+    .insert(s.invoices)
+    .values({
+      tenantId: d.tenantId,
+      legalEntityId: project.legalEntityId,
+      customerId: customer.id,
+      projectId: project.id,
+      invoiceDate: d.invoiceDate,
+      dueDate: dueDate(d.invoiceDate, customer.paymentTermsDays),
+      currency: project.currency,
+      heading: `${project.number} ${project.name}`,
+      createdBy: d.userId,
+    })
+    .returning();
+  if (!invoice) throw new InvoiceError("create_failed", 500);
+  const [line] = await tx
+    .insert(s.invoiceLines)
+    .values({
+      tenantId: d.tenantId,
+      invoiceId: invoice.id,
+      sort: 0,
+      kind: "milestone",
+      description: d.description,
+      quantity: 1,
+      unitPrice: d.amount,
+      amount: d.amount,
+      originalAmount: d.amount,
+      vatBp: DANISH_VAT_BP,
+      projectId: project.id,
+      paymentPlanItemId: d.paymentPlanItemId ?? null,
+      acontoTaskId: d.acontoTaskId ?? null,
+    })
+    .returning();
+  if (d.paymentPlanItemId)
+    await tx
+      .update(s.paymentPlanItems)
+      .set({ invoiceLineId: line?.id })
+      .where(eq(s.paymentPlanItems.id, d.paymentPlanItemId));
+  await recalcInvoice(tx, invoice.id);
+  await writeAudit(tx, {
+    tenantId: d.tenantId,
+    entity: "invoice",
+    entityId: invoice.id,
+    action: "create",
+    userId: d.userId,
+    after: {
+      projectId: project.id,
+      kind: d.paymentPlanItemId ? "instalment" : "aconto",
+      paymentPlanItemId: d.paymentPlanItemId,
+      acontoTaskId: d.acontoTaskId,
+      amount: d.amount,
+    },
   });
   return invoice.id;
 }
@@ -479,6 +656,10 @@ async function releaseLines(tx: Tx, lineIds: string[]) {
   if (!lineIds.length) return;
   await tx.update(s.expenses).set({ invoiceLineId: null }).where(inArray(s.expenses.invoiceLineId, lineIds));
   await tx
+    .update(s.subconsultantInvoices)
+    .set({ invoiceLineId: null })
+    .where(inArray(s.subconsultantInvoices.invoiceLineId, lineIds));
+  await tx
     .update(s.timeEntries)
     .set({ invoiceLineId: null })
     .where(inArray(s.timeEntries.invoiceLineId, lineIds));
@@ -566,6 +747,10 @@ export async function bookInvoice(
       .set({ status: "invoiced", updatedAt: new Date() })
       .where(inArray(s.expenses.invoiceLineId, lineIds));
     await tx
+      .update(s.subconsultantInvoices)
+      .set({ invoiced: true })
+      .where(inArray(s.subconsultantInvoices.invoiceLineId, lineIds));
+    await tx
       .update(s.timeEntries)
       .set({ status: "invoiced", updatedAt: new Date() })
       .where(inArray(s.timeEntries.invoiceLineId, lineIds));
@@ -581,6 +766,10 @@ export async function bookInvoice(
         .update(s.expenses)
         .set({ status: "approved", invoiceLineId: null, updatedAt: new Date() })
         .where(inArray(s.expenses.invoiceLineId, toRelease));
+      await tx
+        .update(s.subconsultantInvoices)
+        .set({ invoiced: false, invoiceLineId: null })
+        .where(inArray(s.subconsultantInvoices.invoiceLineId, toRelease));
       await tx
         .update(s.timeEntries)
         .set({ status: "approved", invoiceLineId: null, updatedAt: new Date() })

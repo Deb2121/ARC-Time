@@ -52,7 +52,7 @@ export async function assertCanSeeLine(tx: Tx, auth: AuthContext, lineId: string
 /**
  * Invoicing basis ("faktureringsgrundlag"): per customer project, everything invoiceable up to `upTo` — approved,
  * billable, unreserved T&M hours (value at the approval rate snapshot, øre), due or ready payment-plan items, and
- * approved billable expenses (net + markup).
+ * approved billable expenses (net + markup) and sub-consultants' invoices to re-invoice (D-039).
  * Project managers see only projects they manage.
  */
 export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate) {
@@ -76,7 +76,7 @@ export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate)
     select p.id as project_id, p.number, p.name, c.id as customer_id, c.name as customer_name, u.initials as manager_initials,
       coalesce(t.hours, 0) as hours, coalesce(t.value, 0) as value, t.oldest,
       coalesce(m.amount, 0) as milestones, coalesce(m.n, 0)::int as milestone_count,
-      coalesce(x.amount, 0) as expenses
+      coalesce(x.amount, 0) + coalesce(sx.amount, 0) as expenses
     from projects p
     join customers c on c.id = p.customer_id
     left join users u on u.id = p.manager_id
@@ -92,12 +92,20 @@ export async function invoicingBasis(tx: Tx, auth: AuthContext, upTo: LocalDate)
         and (pi.status = 'ready' or (pi.status = 'planned' and pi.due_date <= ${upTo}))
     ) m on true
     left join lateral (
-      select round(sum(ex.net_amount + ex.net_amount * ex.markup_bp / 10000.0)) as amount
+      select round(sum(coalesce(ex.bill_amount, ex.net_amount) * (1 + ex.markup_bp / 10000.0))) as amount
       from expenses ex
       where ex.project_id = p.id and ex.status = 'approved' and ex.billable and ex.invoice_line_id is null
         and ex.date <= ${upTo}
     ) x on true
-    where (coalesce(t.hours, 0) > 0 or coalesce(m.n, 0) > 0 or coalesce(x.amount, 0) > 0)
+    left join lateral (
+      -- sub-consultants' invoices to re-invoice (D-039), amount + markup
+      select round(sum(si.amount * (1 + si.markup_bp / 10000.0))) as amount
+      from subconsultant_invoices si
+      where si.project_id = p.id and si.rebill and si.invoice_line_id is null and not si.invoiced
+        and si.invoice_date <= ${upTo}
+    ) sx on true
+    where (coalesce(t.hours, 0) > 0 or coalesce(m.n, 0) > 0 or coalesce(x.amount, 0) > 0
+      or coalesce(sx.amount, 0) > 0)
       ${onlyOwn ? sql`and p.manager_id = ${auth.userId}` : sql``}
     order by c.name, p.number`);
   return rows.map((r) => ({

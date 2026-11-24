@@ -44,6 +44,16 @@ export interface AccountingAdapter {
   testConnection(): Promise<void>;
   upsertCustomer(c: CustomerDoc): Promise<{ externalId: string }>;
   pushInvoice(inv: InvoiceDoc): Promise<{ externalId: string }>;
+  /** Payment status of a booked invoice (debtor list, D-029): gross total and what is still unpaid, in øre. */
+  invoiceBalance?(externalId: string): Promise<InvoiceBalance>;
+}
+
+/** What the accounting system says about a booked invoice's payment. */
+export interface InvoiceBalance {
+  /** invoice total incl. VAT, øre */
+  gross: number;
+  /** still unpaid, øre */
+  remainder: number;
 }
 
 /**

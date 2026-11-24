@@ -226,7 +226,7 @@ export async function commitImport(tx: Tx, auth: AuthContext, kind: ImportKind, 
           .values({
             tenantId: auth.tenantId,
             projectId,
-            name: { time_material: "Regning", fixed_price: "Fastpris", retainer: "Rammeaftale" }[type],
+            name: { time_material: "Medgået tid", fixed_price: "Fastpris", retainer: "Rammeaftale" }[type],
             type,
             price: price !== undefined ? kr(price) : null,
             hourlyRate: rate !== undefined ? kr(rate) : null,

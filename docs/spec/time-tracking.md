@@ -132,10 +132,9 @@ Existing entries on a later-closed task stay valid but cannot be edited except b
 **R5 Future dates** [Brief] — Work entries dated after today + `maxFutureDays` are refused (default 0). Absence may be
 future-dated (planned vacation). [Assumed]
 
-**R6 Required comment** [Brief + Observed] — Comment required if tenant `requireCommentAll` or the project's
-`requireComment` is on, or the extra field is mandatory for that task. Checked at save. Example: project "1042 Ny
-skole Ballerup" requires comment; Jonas enters 3 h without comment → refused, focus stays in cell, panel opens on the
-comment field.
+**R6 Comment (optional)** [Owner decision D-031] — A comment on hours is always optional. There is no per-project or
+tenant setting that makes it mandatory; the comment is shown on the invoice's time specification when written.
+(Replaces the earlier "required comment" rule.)
 
 **R7 Period lock** [Brief] — If the date falls in a closed accounting period of the employee's legal entity, all create/
 edit/delete is refused for everyone, including Finance, unless the period is reopened (globally or for that employee

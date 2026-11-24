@@ -14,8 +14,11 @@ import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-
 import type { AuthContext } from "../auth/plugin.ts";
 import { AppError } from "./errors.ts";
 
-/** How weeks are approved in this tenant. */
-export type ApprovalMode = "none" | "line_manager" | "pm_then_line_manager";
+/**
+ * How weeks are approved in this tenant. "finance" (D-040): every submitted week goes straight to Finance, who
+ * approves or rejects; line managers and project managers do not approve hours.
+ */
+export type ApprovalMode = "none" | "line_manager" | "pm_then_line_manager" | "finance";
 
 /** The tenant's approval mode (defaults to line manager only). */
 export async function approvalMode(tx: Tx, tenantId: string): Promise<ApprovalMode> {
