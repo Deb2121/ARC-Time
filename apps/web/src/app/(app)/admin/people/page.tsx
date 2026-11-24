@@ -120,7 +120,7 @@ export default function PeoplePage() {
               )}
             </div>
             {shown.length === 0 && <p className="px-4 py-6 text-sm text-ink-500">{t("people.noMatch")}</p>}
-            <ul>
+            <ul aria-label={t("people.title")}>
               {shown.map((p) => {
                 const isSel = selected === p.id;
                 const manager = p.managerId ? byId.get(p.managerId) : undefined;

@@ -35,7 +35,8 @@ test("a line manager signs in, sees home and their team, and signs out", async (
     .getByRole("link", { name: "Medarbejdere" })
     .click();
   await expect(page.getByRole("heading", { name: "Medarbejdere" })).toBeVisible();
-  await expect(page.getByRole("row")).toHaveCount(5); // header + AL, PD, LV, EK
+  // the list of people Anne may see: herself and her team (AL, PD, LV, EK)
+  await expect(page.getByRole("list", { name: "Medarbejdere" }).locator(":scope > li")).toHaveCount(4);
   if (shots) await page.screenshot({ path: `${shots}/m0-people.png`, fullPage: true });
 
   await page.getByRole("button", { name: "English" }).click();
