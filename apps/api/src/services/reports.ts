@@ -1,56 +1,40 @@
 /**
- * Reports and balances (docs/spec/reporting.md) — GRASP Pure Fabrication: report queries and CSV export.
- * CSV is made for Danish Excel: semicolon separator, decimal comma, UTF-8 with BOM, CRLF line endings.
+ * Reports and balances (docs/spec/reporting.md) — GRASP Pure Fabrication: report queries and their export tables.
+ * Excel (.xlsx) and CSV files are made from those tables by `services/export.ts` (D-033).
  * Visibility follows `services/people.ts` (time entries) and `services/projects.ts` (projects).
  */
 import { schema, type Tx } from "@arc-tid/db";
-import {
-  formatHours,
-  formatMinor,
-  hasRole,
-  type LocalDate,
-  MASKED_ABSENCE,
-  todayCopenhagen,
-} from "@arc-tid/domain";
+import { hasRole, type LocalDate, MASKED_ABSENCE, todayCopenhagen } from "@arc-tid/domain";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { type AuthContext, policyOf } from "../auth/plugin.ts";
-import { flexBalance, loadEmployee, vacationBalance } from "./calendar.ts";
+import { flexBalance, loadEmployee } from "./calendar.ts";
 import { AppError } from "./errors.ts";
+import { type ExportTable, entryStatusDa } from "./export.ts";
+import { leaveAccounts } from "./leave.ts";
 import { reportIds, visibleUserIds } from "./people.ts";
 import { projectSummaries, visibleProjectIds } from "./projects.ts";
 import { tenantGoLive } from "./timesheet.ts";
 
 /**
- * Builds a CSV document for Danish Excel. Values containing ; " or line breaks are quoted.
- * @example toCsv(["Navn", "Timer"], [["Laura", "7,50"]]) // "﻿Navn;Timer\r\nLaura;7,50\r\n"
+ * The signed-in employee's flex balance (hours, completed weeks) and leave balances (days) — the same figures as the
+ * leave accounts page (D-037): ferie always, feriefridage when the employee earns them.
  */
-export function toCsv(header: string[], rows: (string | number | null)[][]): string {
-  const esc = (v: string | number | null) => {
-    const s = v === null ? "" : String(v);
-    return /[";\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
-  };
-  return `﻿${[header, ...rows].map((r) => r.map(esc).join(";")).join("\r\n")}\r\n`;
-}
-
-/** Basis points → "49,0" for CSV (empty when unknown). */
-const pct = (bp: number | null) => (bp === null ? "" : (bp / 100).toFixed(1).replace(".", ","));
-
-/** The signed-in employee's flex balance (hours, completed weeks) and vacation balance (days) for the holiday year. */
 export async function myBalances(tx: Tx, auth: AuthContext) {
   const emp = await loadEmployee(tx, auth.userId);
   if (!emp) throw new AppError(404, "not_found");
   const today = todayCopenhagen();
-  const vac = await vacationBalance(tx, emp, today);
+  const leave = await leaveAccounts(tx, auth, auth.userId, today);
+  const days = (a: (typeof leave.accounts)[number]) => ({
+    earned: a.earned / 100,
+    used: a.used / 100,
+    pending: a.pending / 100,
+    balance: a.balance / 100,
+  });
+  const [ferie, fri] = leave.accounts;
   return {
     flex: (await flexBalance(tx, emp, today, await tenantGoLive(tx, auth.tenantId))) / 100,
-    vacation: {
-      holidayYear: vac.holidayYear,
-      opening: vac.opening / 100,
-      accrued: vac.accrued / 100,
-      used: vac.used / 100,
-      planned: vac.planned / 100,
-      balance: vac.balance / 100,
-    },
+    vacation: ferie ? days(ferie) : null,
+    extraHoliday: fri && (fri.perMonth > 0 || fri.balance !== 0) ? days(fri) : null,
   };
 }
 
@@ -59,41 +43,40 @@ export async function budgetActualRows(tx: Tx, auth: AuthContext) {
   return projectSummaries(tx, await visibleProjectIds(tx, auth));
 }
 
-/** Budget vs actual as a Danish CSV document. */
-export function budgetActualCsv(rows: Awaited<ReturnType<typeof budgetActualRows>>): string {
-  return toCsv(
-    [
-      "Projekt",
-      "Navn",
-      "Kunde",
-      "Projektleder",
-      "Budget timer",
-      "Forbrugte timer",
-      "Forbrug %",
-      "Budget kr",
-      "Værdi kr",
-      "Omkostning kr",
-      "DB kr",
-      "DB-grad %",
-      "Status",
+/** Budget vs actual as an export table (Excel or CSV): one row per project, totals for hours and amounts. */
+export function budgetActualExport(
+  rows: Awaited<ReturnType<typeof budgetActualRows>>,
+  today: LocalDate = todayCopenhagen(),
+): ExportTable<(typeof rows)[number]> {
+  const pctOf = (bp: number | null) => (bp === null ? null : bp / 100);
+  return {
+    sheet: "Budget og forbrug",
+    file: `ARCtime_budget-og-forbrug_${today}`,
+    rows,
+    columns: [
+      { header: "Projekt", kind: "text", value: (r) => r.number },
+      { header: "Navn", kind: "text", value: (r) => r.name },
+      { header: "Kunde", kind: "text", value: (r) => r.customerName },
+      { header: "Projektleder", kind: "text", value: (r) => r.managerInitials },
+      { header: "Budget timer", kind: "hours", value: (r) => r.budgetHours / 100, total: true },
+      { header: "Forbrugte timer", kind: "hours", value: (r) => r.usedHours / 100, total: true },
+      { header: "Forbrug %", kind: "percent", value: (r) => pctOf(r.hoursConsumptionBp) },
+      { header: "Budget kr", kind: "money", value: (r) => r.budgetAmount / 100, total: true },
+      { header: "Værdi kr", kind: "money", value: (r) => r.usedValue / 100, total: true },
+      { header: "Omkostning kr", kind: "money", value: (r) => r.usedCost / 100, total: true },
+      { header: "DB-grad %", kind: "percent", value: (r) => pctOf(r.marginBp) },
+      { header: "Status", kind: "text", value: (r) => HEALTH_DA[r.health] ?? r.health },
     ],
-    rows.map((r) => [
-      r.number,
-      r.name,
-      r.customerName,
-      r.managerInitials,
-      formatHours(r.budgetHours),
-      formatHours(r.usedHours),
-      pct(r.hoursConsumptionBp),
-      formatMinor(r.budgetAmount),
-      formatMinor(r.usedValue),
-      formatMinor(r.usedCost),
-      formatMinor(r.contributionMargin),
-      pct(r.marginBp),
-      r.health,
-    ]),
-  );
+  };
 }
+
+/** Budget status in plain Danish for exports (never the internal code). */
+const HEALTH_DA: Record<string, string> = {
+  ok: "På sporet",
+  warning: "Tæt på budget",
+  over: "Over budget",
+  no_budget: "Intet budget",
+};
 
 /** Filters for the time-entry report. */
 export interface TimeEntryFilter {
@@ -158,34 +141,35 @@ export async function timeEntryRows(tx: Tx, auth: AuthContext, f: TimeEntryFilte
   });
 }
 
-/** Time entries as a Danish CSV document. */
-export function timeEntryCsv(rows: Awaited<ReturnType<typeof timeEntryRows>>): string {
-  return toCsv(
-    [
-      "Dato",
-      "Initialer",
-      "Medarbejder",
-      "Projekt",
-      "Projektnavn",
-      "WBS",
-      "Opgave/fravær",
-      "Timer",
-      "Fakturerbar",
-      "Status",
-      "Kommentar",
+/** "2026-09" when the period is exactly one calendar month, otherwise "2026-09-01_2026-10-15" (file names). */
+export function periodLabel(from: LocalDate, to: LocalDate): string {
+  const lastDay = new Date(Date.UTC(Number(to.slice(0, 4)), Number(to.slice(5, 7)), 0)).getUTCDate();
+  const wholeMonth =
+    from.slice(0, 7) === to.slice(0, 7) && from.endsWith("-01") && Number(to.slice(8, 10)) === lastDay;
+  return wholeMonth ? from.slice(0, 7) : `${from}_${to}`;
+}
+
+/** Time entries as an export table (Excel or CSV), with total hours. */
+export function timeEntryExport(
+  rows: Awaited<ReturnType<typeof timeEntryRows>>,
+  period: { from: LocalDate; to: LocalDate },
+): ExportTable<(typeof rows)[number]> {
+  return {
+    sheet: "Tidsregistreringer",
+    file: `ARCtime_tidsregistreringer_${periodLabel(period.from, period.to)}`,
+    rows,
+    columns: [
+      { header: "Dato", kind: "date", value: (r) => r.date },
+      { header: "Initialer", kind: "text", value: (r) => r.initials },
+      { header: "Medarbejder", kind: "text", value: (r) => r.employee },
+      { header: "Projekt", kind: "text", value: (r) => r.projectNumber },
+      { header: "Projektnavn", kind: "text", value: (r) => r.projectName },
+      { header: "WBS", kind: "text", value: (r) => r.wbs },
+      { header: "Opgave/fravær", kind: "text", value: (r) => r.task ?? r.absence },
+      { header: "Timer", kind: "hours", value: (r) => r.hours, total: true },
+      { header: "Fakturerbar", kind: "yesno", value: (r) => r.billable },
+      { header: "Status", kind: "text", value: (r) => entryStatusDa(r.status) },
+      { header: "Kommentar", kind: "comment", value: (r) => r.comment },
     ],
-    rows.map((r) => [
-      r.date,
-      r.initials,
-      r.employee,
-      r.projectNumber,
-      r.projectName,
-      r.wbs,
-      r.task ?? r.absence,
-      formatHours(Math.round(r.hours * 100)),
-      r.billable ? "Ja" : "Nej",
-      r.status,
-      r.comment,
-    ]),
-  );
+  };
 }

@@ -81,7 +81,7 @@ Next period: start = previous end + 1 day; length defaults to previous length (m
 
 ## 8. Open points
 
-- Which payroll provider does ARCnordic use (Danløn, DataLøn, Zenegy, other)? Monthly only, or also hourly-paid 14-day groups?
+- ~~Which payroll provider does ARCnordic use?~~ **DataLøn** (2026-11-19). Still open: DataLøn's lønarter for ferie, feriefridage and kørsel, and its import file layout. Monthly only, or also hourly-paid 14-day groups?
 - Is overtime paid for any employee group, or does everything go to flex/afspadsering?
 - Are mileage and expense reimbursements paid through payroll or via the accounting system (bank transfer)?
 - Per diem (diæter) rules needed now?

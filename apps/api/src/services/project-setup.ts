@@ -21,10 +21,12 @@ export interface NewProjectInput {
   contractType: "time_material" | "fixed_price" | "retainer";
   price?: number | undefined;
   hourlyRate?: number | undefined;
+  /** Medgået tid med loft: hours that can be invoiced at most (only on medgået tid) */
+  maxHours?: number | undefined;
   startDate?: LocalDate | undefined;
   endDate?: LocalDate | undefined;
-  billable: boolean;
-  commentRequired: boolean;
+  /** "Viderefaktureres til kunden"; omitted = yes when there is a customer, no for an internal case */
+  billable?: boolean | undefined;
   category?: string | undefined;
 }
 
@@ -47,6 +49,11 @@ async function nextProjectNumber(tx: Tx): Promise<string> {
 export async function createProject(tx: Tx, auth: AuthContext, b: NewProjectInput) {
   const [entity] = await tx.select().from(schema.legalEntities).limit(1);
   if (!entity) throw new AppError(400, "no_legal_entity");
+  if (b.maxHours !== undefined && b.contractType !== "time_material")
+    throw new AppError(422, "cap_needs_time_material");
+  // there is no one to invoice on an internal case
+  if (b.billable && !b.customerId) throw new AppError(422, "billable_needs_customer");
+  const billable = b.billable ?? b.customerId !== null;
   const [project] = await tx
     .insert(schema.projects)
     .values({
@@ -59,8 +66,7 @@ export async function createProject(tx: Tx, auth: AuthContext, b: NewProjectInpu
       status: "active",
       startDate: b.startDate,
       endDate: b.endDate,
-      billable: b.billable,
-      commentRequired: b.commentRequired,
+      billable,
       category: b.category,
     })
     .returning();
@@ -68,10 +74,14 @@ export async function createProject(tx: Tx, auth: AuthContext, b: NewProjectInpu
   await tx.insert(schema.contracts).values({
     tenantId: auth.tenantId,
     projectId: project.id,
-    name: { time_material: "Regning", fixed_price: "Fastpris", retainer: "Rammeaftale" }[b.contractType],
+    name:
+      b.maxHours !== undefined
+        ? "Medgået tid med loft"
+        : { time_material: "Medgået tid", fixed_price: "Fastpris", retainer: "Rammeaftale" }[b.contractType],
     type: b.contractType,
     price: b.price !== undefined ? kr(b.price) : null,
     hourlyRate: b.hourlyRate !== undefined ? kr(b.hourlyRate) : null,
+    maxHours: b.maxHours ?? null,
   });
   await tx
     .insert(schema.projectMembers)
@@ -196,4 +206,82 @@ export async function updateTask(tx: Tx, auth: AuthContext, taskId: string, patc
     after,
   });
   return after;
+}
+
+/** The member's name for audit rows (people read names in Revisionsspor, not ids). */
+async function memberName(tx: Tx, userId: string) {
+  const [u] = await tx
+    .select({ fullName: schema.users.fullName, active: schema.users.active })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId));
+  return u;
+}
+
+/**
+ * Adds a person to the project team (spec projects.md S4), so they can find its tasks in Min uge and book time.
+ * Admin/Finance or the project's manager; only active people. Adding an existing member is a no-op.
+ */
+export async function addProjectMember(tx: Tx, auth: AuthContext, projectId: string, userId: string) {
+  if (!(await canEditProject(tx, auth, projectId))) throw new AppError(403, "forbidden");
+  const person = await memberName(tx, userId);
+  if (!person) throw new AppError(404, "not_found");
+  if (!person.active) throw new AppError(422, "member_inactive");
+  const added = await tx
+    .insert(schema.projectMembers)
+    .values({ tenantId: auth.tenantId, projectId, userId })
+    .onConflictDoNothing()
+    .returning();
+  if (added.length) {
+    await writeAudit(tx, {
+      tenantId: auth.tenantId,
+      entity: "project",
+      entityId: projectId,
+      action: "member_add",
+      userId: auth.userId,
+      after: { member: person.fullName },
+    });
+  }
+  return { ok: true };
+}
+
+/**
+ * Removes a person from the project team. Refused for the project manager, and while the person has hours on the
+ * project that are not yet submitted (draft or rejected) — they could no longer correct them. Approved and submitted
+ * hours stay on the project.
+ */
+export async function removeProjectMember(tx: Tx, auth: AuthContext, projectId: string, userId: string) {
+  if (!(await canEditProject(tx, auth, projectId))) throw new AppError(403, "forbidden");
+  const [project] = await tx
+    .select({ managerId: schema.projects.managerId })
+    .from(schema.projects)
+    .where(eq(schema.projects.id, projectId));
+  if (!project) throw new AppError(404, "not_found");
+  if (project.managerId === userId) throw new AppError(422, "member_is_manager");
+  const [open] = await tx
+    .select({ id: schema.timeEntries.id })
+    .from(schema.timeEntries)
+    .where(
+      and(
+        eq(schema.timeEntries.projectId, projectId),
+        eq(schema.timeEntries.userId, userId),
+        sql`${schema.timeEntries.status} in ('draft', 'rejected')`,
+      ),
+    )
+    .limit(1);
+  if (open) throw new AppError(422, "member_has_open_hours");
+  const removed = await tx
+    .delete(schema.projectMembers)
+    .where(and(eq(schema.projectMembers.projectId, projectId), eq(schema.projectMembers.userId, userId)))
+    .returning();
+  if (removed.length) {
+    await writeAudit(tx, {
+      tenantId: auth.tenantId,
+      entity: "project",
+      entityId: projectId,
+      action: "member_remove",
+      userId: auth.userId,
+      before: { member: (await memberName(tx, userId))?.fullName },
+    });
+  }
+  return { ok: true };
 }

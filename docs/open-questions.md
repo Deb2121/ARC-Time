@@ -61,3 +61,26 @@ Each has a default we will use if unanswered (recorded as [Assumed] in the specs
 - **OQ-40 Security** — IP allow-list or extra MFA requirements beyond Entra ID?
 - **OQ-41 SharePoint** — Project folders structured by project number? Link only, or create folders automatically?
 - **OQ-42 Other systems** — Anything else to connect (e.g. Jira, document management, HR system)?
+
+## G. Case finance (D-029)
+
+- **OQ-43 Unclear feedback line** — Finance wrote "I den 1 mullerst skal man kunne se førdte penge bølje". Likely (a) kroner consumed on medgået tid cases, (b) a totals row at the bottom, or (c) the booked/invoiced amount. _Default: all three are built (forbrugt column, totals row, faktureret column)._ **Answer:** _(record here when Finance confirms)_
+- **OQ-44 Thresholds and status order** — Warning at 75 % and alert above 100 % of the fee? Status priority Honorar overskredet → Overskridelsesrisiko → Rate klar → Kan faktureres → Ajour? _Default: as listed; thresholds can be changed by Finance._
+- **OQ-45 Reminder letters and fees** — Phase 2: letter text per reminder level, reminder fee (rykkergebyr) and interest? _Default: reminders are only registered (level and date) for now._
+
+## H. Finance feedback, answers 2026-11-17
+
+Answers from the finance employee to the questions raised after her review (prompt "Økonomi-feedback til ARCtime").
+
+- **Ferie** — 2,08 days per month for permanent staff (25 days a year), accrued **monthly**. _Status: built (D-037): monthly accrual with pro rata part months and a ledger with running balance._
+- **Feriefridage** — Some employees earn ½ feriefridag per month. It is **individual** and must be a **separate accrual** per employee (not a fixed yearly grant). _Status: built (D-037): individual rate per employee, set on the Ferie og fridage page._
+- **Customer km price** — The customer is charged **4,50 kr/km**, for own car and company car alike. _Status: built (D-036)._
+- **Rammeaftaler** — Means ongoing work for a customer when there are tasks to solve, not a separate fee form. The fee forms are **Medgået tid**, **Fastpris** (monthly instalments until the fee is paid, as in the rate plan) and **Medgået tid med loft** (invoice hours until an agreed cap; hours above the cap are free; rarely used). _Status: the three are offered on new cases (D-036); the Rammeaftale type stays hidden._
+- **Overlapping instalments** — Two instalments in the same month (e.g. rate 5 and 6 in March 2027) are intentional: phases overlap and the course differs per case. _Status: built (D-039): the rate plan generator allows it and marks such months._
+
+- **"værdier"** — A slip in the feedback, not a request (owner, 2026-11-17). Closed.
+- **Payroll system** — **Dataløn** (owner, 2026-11-19). e-conomic is the accounting system and does not run payroll. _Next: get Dataløn's lønarter (salary type numbers) for ferie, feriefridage and kørsel and the import file layout Finance uses today (an example file or Dataløn's import description), then set the provider codes under Løn and match the export file. Until then the demo codes are used._
+- **Sub-consultants** — Sub-consultant invoices **must be registered** in ARCtime (owner, 2026-11-19). _Status: built (D-039): registered on the case/phase, compared with the fee in the rate plan, optionally re-invoiced to the customer with a markup per invoice (default 0 %)._
+- **Warning triangle in TimeLog's price list** — Not relevant; drop it (owner, 2026-11-19). Closed.
+
+Still open: Dataløn's lønarter and import file layout; how sub-consultant costs are re-invoiced (at cost or with a markup).

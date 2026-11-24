@@ -6,7 +6,8 @@
  *   GET   /payroll/periods/:month                  preview: rows per employee, lines and warnings
  *   POST  /payroll/periods/:month/export           generate / regenerate the file
  *   POST  /payroll/periods/:month/lock             lock an exported month
- *   GET   /payroll/periods/:month/file.csv         download the generated CSV
+ *   GET   /payroll/periods/:month/file.csv         download the generated CSV (import file for the payroll system)
+ *   GET   /payroll/periods/:month/file.xlsx        the same file as a readable Excel sheet
  *   GET   /payroll/salary-codes                    salary codes + absence-code mapping
  *   PATCH /payroll/salary-codes/:id                edit provider code / include in export
  *   PUT   /payroll/absence-mapping                 map an absence code to a salary code (or none)
@@ -17,13 +18,16 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { requireCapability } from "../auth/plugin.ts";
 import { AppError } from "../services/errors.ts";
+import { exportFile } from "../services/export.ts";
 import {
   exportPayroll,
   lockPayPeriod,
   payPeriods,
+  payrollExport,
   payrollFile,
   payrollPreview,
 } from "../services/payroll.ts";
+import { sendExport } from "./send-export.ts";
 
 const month = z.string().regex(/^\d{4}-\d{2}-01$/, "first day of a month");
 const monthParams = z.object({ month });
@@ -57,6 +61,13 @@ export const payrollRoutes: FastifyPluginAsyncZod = async (app) => {
       .header("content-type", "text/csv; charset=utf-8")
       .header("content-disposition", `attachment; filename="${f.filename}"`)
       .send(f.csv);
+  });
+
+  // The same file as a readable Excel sheet (the CSV above stays the import file for the payroll system).
+  app.get("/payroll/periods/:month/file.xlsx", { schema: { params: monthParams } }, async (req, reply) => {
+    requireCapability(req, "payroll.export");
+    const f = await req.withTenant((tx) => payrollFile(tx, req.params.month));
+    return sendExport(reply, await exportFile(payrollExport(f.csv, req.params.month), "xlsx"));
   });
 
   app.get("/payroll/salary-codes", async (req) => {

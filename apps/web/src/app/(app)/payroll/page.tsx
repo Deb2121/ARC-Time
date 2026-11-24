@@ -9,9 +9,11 @@ import { Badge, Button, Card } from "@arc-tid/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { ExportButtons } from "@/components/export-buttons";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { API_URL, ApiError, api } from "@/lib/api";
+import { API_URL, api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtHours, fmtKr } from "@/lib/format";
 
 interface PayPeriod {
@@ -120,7 +122,7 @@ function ExportView() {
         void qc.invalidateQueries({ queryKey: ["pay-periods"] });
         void qc.invalidateQueries({ queryKey: ["pay-preview"] });
       })
-      .catch((e) => setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error")));
+      .catch((e) => setError(errorText(e, t)));
 
   const qty = (l: Line) =>
     l.unit === "amount"
@@ -157,7 +159,7 @@ function ExportView() {
 
       {p && (
         <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-medium first-letter:uppercase">
                 {fmtDay(p.period.month, locale, { month: "long", year: "numeric" })}{" "}
@@ -169,14 +171,14 @@ function ExportView() {
                 <p className="text-xs text-ink-500">{t("pay.lastRun", { lines: p.run.lineCount })}</p>
               )}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-start justify-end gap-2">
               {p.run && (
-                <a
-                  className="inline-flex h-10 items-center rounded-[var(--radius-control)] border border-line bg-surface px-4 text-sm font-semibold text-ink-900 hover:bg-surface-alt"
-                  href={`${API_URL}/api/v1/payroll/periods/${p.period.month}/file.csv`}
-                >
-                  ↓ {t("pay.download")}
-                </a>
+                <ExportButtons
+                  align="end"
+                  href={(f) => `${API_URL}/api/v1/payroll/periods/${p.period.month}/file.${f}`}
+                  csvLabel="pay.download"
+                  hint="exp.payrollHint"
+                />
               )}
               {p.period.status !== "locked" && (
                 <Button
@@ -290,7 +292,7 @@ function SalaryCodes() {
         setError(null);
         return qc.invalidateQueries({ queryKey: ["salary-codes"] });
       })
-      .catch((e) => setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error")));
+      .catch((e) => setError(errorText(e, t)));
   const d = setup.data;
   if (!d) return <p className="text-ink-500">{t("common.loading")}</p>;
   return (

@@ -139,9 +139,14 @@ export async function seedMoney(
   const [nordvang] = await tx.select().from(s.projects).where(eq(s.projects.number, "26004"));
   const [anne] = await tx.select().from(s.users).where(eq(s.users.initials, "AL"));
   if (nordvang && anne) {
-    await tx
-      .insert(s.projectEmployeeRates)
-      .values({ tenantId, projectId: nordvang.id, userId: anne.id, rate: kr(1200), validFrom: "2026-08-01" });
+    await tx.insert(s.projectEmployeeRates).values({
+      tenantId,
+      projectId: nordvang.id,
+      userId: anne.id,
+      rate: kr(1200),
+      validFrom: "2026-08-01",
+      label: null,
+    });
   }
 
   // Rate snapshots for every approved entry, using the full resolution order

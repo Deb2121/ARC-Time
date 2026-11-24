@@ -19,7 +19,6 @@ export type EntryError =
   | "future_date"
   | "project_inactive"
   | "task_closed"
-  | "comment_required"
   | "period_locked"
   | "not_editable";
 
@@ -32,8 +31,6 @@ export interface EntryCheck {
   isAbsence: boolean;
   projectActive: boolean;
   taskOpen: boolean;
-  commentRequired: boolean;
-  comment: string | null | undefined;
   /** accounting period closed or timesheet period submitted/approved */
   periodLocked: boolean;
   currentStatus?: EntryStatus | undefined;
@@ -60,7 +57,6 @@ export function validateEntry(c: EntryCheck): EntryError[] {
     if (!c.projectActive) errors.push("project_inactive");
     if (!c.taskOpen) errors.push("task_closed");
   }
-  if (c.commentRequired && c.hours > 0 && !c.comment?.trim()) errors.push("comment_required");
   return errors;
 }
 

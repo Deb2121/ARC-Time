@@ -12,11 +12,16 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api, type Person } from "@/lib/api";
+import { api, type Person } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { useMe } from "./session";
 
 const field = "h-10 w-full rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm";
-type ContractType = "time_material" | "fixed_price" | "retainer";
+/**
+ * The fee forms Finance uses (2026-11-17): Medgået tid, Medgået tid med loft (hours invoiced up to a cap, the rest is
+ * free) and Fastpris. "capped" is time_material with maxHours. Existing Rammeaftale cases still work.
+ */
+type ContractType = "time_material" | "capped" | "fixed_price";
 
 /** Short form: the essentials only. Tasks, budget and payment plan are added on the project page afterwards. */
 export function NewProject({ onCancel }: { onCancel: () => void }) {
@@ -24,6 +29,9 @@ export function NewProject({ onCancel }: { onCancel: () => void }) {
   const me = useMe();
   const router = useRouter();
   const [type, setType] = useState<ContractType>("time_material");
+  const [customerId, setCustomerId] = useState("");
+  /** "Viderefaktureres til kunden" must be chosen actively; an internal case (no customer) is always "Nej" */
+  const [billable, setBillable] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const customers = useQuery({
     queryKey: ["customers"],
@@ -37,25 +45,28 @@ export function NewProject({ onCancel }: { onCancel: () => void }) {
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const customerId = (f.get("customerId") as string) || null;
+    if (customerId && billable === null) {
+      setError(t("np.billableRequired"));
+      return;
+    }
     try {
       const p = await api<{ id: string }>("/projects", {
         method: "POST",
         body: JSON.stringify({
           name: f.get("name"),
-          customerId,
+          customerId: customerId || null,
           managerId: f.get("managerId"),
-          contractType: type,
-          price: type !== "time_material" ? num(f.get("price")) : undefined,
+          contractType: type === "capped" ? "time_material" : type,
+          maxHours: type === "capped" ? num(f.get("maxHours")) : undefined,
+          price: type === "fixed_price" ? num(f.get("price")) : undefined,
           hourlyRate: num(f.get("hourlyRate")),
           startDate: f.get("startDate") || undefined,
-          billable: customerId !== null,
-          commentRequired: f.get("commentRequired") === "on",
+          billable: Boolean(customerId) && billable === true,
         }),
       });
       router.push(`/projects/${p.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? t(`err.${err.code}` as MessageKey) : t("common.error"));
+      setError(errorText(err, t));
     }
   }
 
@@ -69,7 +80,15 @@ export function NewProject({ onCancel }: { onCancel: () => void }) {
         </label>
         <label className="flex flex-col gap-1">
           <span className="font-semibold text-ink-900">{t("np.customer")}</span>
-          <select name="customerId" className={field} defaultValue="">
+          <select
+            name="customerId"
+            className={field}
+            value={customerId}
+            onChange={(e) => {
+              setCustomerId(e.target.value);
+              if (!e.target.value) setBillable(null);
+            }}
+          >
             <option value="">{t("np.internal")}</option>
             {(customers.data ?? []).map((c) => (
               <option key={c.id} value={c.id}>
@@ -96,7 +115,7 @@ export function NewProject({ onCancel }: { onCancel: () => void }) {
         <fieldset className="flex flex-col gap-1 sm:col-span-2">
           <legend className="mb-1 font-semibold text-ink-900">{t("np.contract")}</legend>
           <div className="flex flex-wrap gap-2">
-            {(["time_material", "fixed_price", "retainer"] as ContractType[]).map((c) => (
+            {(["time_material", "capped", "fixed_price"] as ContractType[]).map((c) => (
               <label
                 key={c}
                 className={`flex cursor-pointer items-center gap-2 rounded-[var(--radius-control)] border px-3 py-2 ${type === c ? "border-brand-600 bg-brand-50 text-ink-900" : "border-line"}`}
@@ -109,16 +128,47 @@ export function NewProject({ onCancel }: { onCancel: () => void }) {
                   onChange={() => setType(c)}
                   className="sr-only"
                 />
-                {t(`pr.type.${c}` as MessageKey)}
+                {c === "capped" ? t("np.capped") : t(`pr.type.${c}` as MessageKey)}
               </label>
             ))}
           </div>
         </fieldset>
-        {type !== "time_material" && (
+        <fieldset className="flex flex-col gap-1 sm:col-span-2">
+          <legend className="mb-1 font-semibold text-ink-900">{t("np.billable")}</legend>
+          {customerId ? (
+            <div className="flex flex-wrap gap-2">
+              {([true, false] as const).map((v) => (
+                <label
+                  key={String(v)}
+                  className={`flex cursor-pointer items-center gap-2 rounded-[var(--radius-control)] border px-3 py-2 ${billable === v ? "border-brand-600 bg-brand-50 text-ink-900" : "border-line"}`}
+                >
+                  <input
+                    type="radio"
+                    name="billable"
+                    value={String(v)}
+                    checked={billable === v}
+                    onChange={() => setBillable(v)}
+                    className="sr-only"
+                  />
+                  {t(v ? "np.billableYes" : "np.billableNo")}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <span className="text-ink-500">{t("np.billableInternal")}</span>
+          )}
+          <span className="text-xs text-ink-500">{t("np.billableHint")}</span>
+        </fieldset>
+        {type === "capped" && (
           <label className="flex flex-col gap-1">
-            <span className="font-semibold text-ink-900">
-              {t(type === "fixed_price" ? "np.price" : "np.fee")}
-            </span>
+            <span className="font-semibold text-ink-900">{t("np.maxHours")}</span>
+            <input name="maxHours" required inputMode="decimal" className={field} />
+            <span className="text-xs text-ink-500">{t("np.cappedHint")}</span>
+          </label>
+        )}
+        {type === "fixed_price" && (
+          <label className="flex flex-col gap-1">
+            <span className="font-semibold text-ink-900">{t("np.price")}</span>
             <input name="price" required inputMode="decimal" className={field} />
           </label>
         )}
@@ -129,10 +179,6 @@ export function NewProject({ onCancel }: { onCancel: () => void }) {
         <label className="flex flex-col gap-1">
           <span className="font-semibold text-ink-900">{t("np.start")}</span>
           <input name="startDate" type="date" defaultValue={todayCopenhagen()} className={field} />
-        </label>
-        <label className="flex items-center gap-2 self-end pb-2">
-          <input type="checkbox" name="commentRequired" />
-          {t("np.commentRequired")}
         </label>
         <p className="text-xs text-ink-500 sm:col-span-2">{t("np.hint")}</p>
         {error && (

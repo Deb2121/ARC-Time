@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, Suspense, useState } from "react";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtHours } from "@/lib/format";
 
 interface Settings {
@@ -33,8 +34,8 @@ interface Settings {
   approvalMode: ApprovalMode;
 }
 type Tab = "norm" | "holidays" | "absence" | "approval";
-type ApprovalMode = "none" | "line_manager" | "pm_then_line_manager";
-const MODES: ApprovalMode[] = ["line_manager", "pm_then_line_manager", "none"];
+type ApprovalMode = "none" | "line_manager" | "pm_then_line_manager" | "finance";
+const MODES: ApprovalMode[] = ["finance", "line_manager", "pm_then_line_manager", "none"];
 
 const field = "h-9 rounded-[var(--radius-control)] border border-line bg-surface px-2 text-sm";
 const DAYS_DA = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -70,7 +71,7 @@ function SettingsView() {
         setError(null);
         return refresh();
       })
-      .catch((e) => setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error")));
+      .catch((e) => setError(errorText(e, t)));
   const days = locale === "da" ? DAYS_DA : DAYS_EN;
   const d = data.data;
   const calendar = d?.calendars[0];

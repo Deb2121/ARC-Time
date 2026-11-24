@@ -176,6 +176,69 @@
       "when": 1794220923660,
       "tag": "0024_rls_api_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794304556713,
+      "tag": "0025_case_finance",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794304566980,
+      "tag": "0026_rls_case_finance",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794304661159,
+      "tag": "0027_aconto_line_phase",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794749792689,
+      "tag": "0028_drop_comment_required",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794909210115,
+      "tag": "0029_vehicle_medgaaet_tid",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794916846052,
+      "tag": "0030_customer_km_price",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794917472708,
+      "tag": "0031_leave_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795084526214,
+      "tag": "0032_member_price",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795087442355,
+      "tag": "0033_fee_plans_subconsultants",
+      "breakpoints": true
     }
   ]
 }

@@ -10,10 +10,10 @@
  */
 import { isOnStep, parseHours } from "@arc-tid/domain";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/i18n";
-import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtFlex, fmtHours } from "@/lib/format";
 import type { Row, WeekData } from "./types";
 
@@ -22,7 +22,7 @@ export interface Selected {
   date: string;
 }
 
-/** What the employee can do with an absence row (the page owns saving). */
+/** What the employee can do with a row: remove it (task or absence) or move absence hours (the page saves). */
 export type RowAction = { type: "remove"; row: Row } | { type: "change"; row: Row; toCodeId: string };
 
 interface Props {
@@ -30,9 +30,10 @@ interface Props {
   rows: Row[];
   selected: Selected | null;
   onSelect: (s: Selected) => void;
-  onCommentNeeded: (s: Selected, hours: number) => void;
-  /** remove an absence row / move its hours to another absence type; omitted = no row actions */
+  /** remove a row / move absence hours to another absence type; omitted = no row actions */
   onRowAction?: (a: RowAction) => Promise<void>;
+  /** optional footer row under the totals, one cell per day (e.g. "Udlæg/kørsel") */
+  dayRow?: { label: string; cells: Record<string, ReactNode> } | null;
 }
 
 /** Human-readable label for a timesheet row (used for accessible cell names and panels). */
@@ -47,7 +48,7 @@ export const rowLabel = (r: Row, locale: "da" | "en") =>
  * Keyboard-first weekly timesheet grid. Tab/Shift+Tab moves, ↑↓ change row, ←→ change day at the caret edge,
  * Enter saves and moves down, Esc reverts. Saves on blur with the same validation rules as the API.
  */
-export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRowAction }: Props) {
+export function WeekGrid({ week, rows, selected, onSelect, onRowAction, dayRow }: Props) {
   const { t, locale } = useI18n();
   const qc = useQueryClient();
   const gridRef = useRef<HTMLTableElement>(null);
@@ -69,6 +70,63 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
       setConfirmRemove(null);
       setChanging(null);
     }
+  }
+
+  /**
+   * "Fjern" on a row: an empty row goes at once; a row with hours asks first. Task rows get it too, so a project
+   * picked by mistake (also in a future week, where no hours can be typed) can be taken off again.
+   */
+  function removeControl(r: Row, label: string, rowTotal: number) {
+    if (confirmRemove === r.key)
+      return (
+        <>
+          <span className="font-semibold text-ink-900">
+            {t(r.kind === "task" ? "ts.removeTaskConfirm" : "ts.removeConfirm", {
+              hours: fmtHours(rowTotal, locale),
+            })}
+          </span>
+          <button
+            type="button"
+            disabled={busyRow === r.key}
+            className="rounded-md bg-danger px-2.5 py-1 font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+            onClick={() => void act({ type: "remove", row: r })}
+          >
+            {t("ts.removeYes")}
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-line bg-surface px-2.5 py-1 font-semibold text-ink-700 hover:bg-surface-alt"
+            onClick={() => setConfirmRemove(null)}
+          >
+            {t("common.cancel")}
+          </button>
+        </>
+      );
+    return (
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 rounded-md border border-danger/40 bg-danger/5 px-2 py-0.5 font-semibold text-danger transition-colors hover:border-danger hover:bg-danger hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+        onClick={() => {
+          if (rowTotal > 0) setConfirmRemove(r.key);
+          else void act({ type: "remove", row: r });
+        }}
+        aria-label={t(r.kind === "task" ? "ts.removeTaskRowFor" : "ts.removeRowFor", { row: label })}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+        </svg>
+        {t("ts.removeRow")}
+      </button>
+    );
   }
 
   const save = useMutation({
@@ -95,10 +153,11 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
     }
   }
 
-  async function commit(r: Row, date: string) {
+  /** Saves one cell. Returns false when the value must be fixed first (the error is shown in the cell). */
+  async function commit(r: Row, date: string): Promise<boolean> {
     const key = cellKey(r.key, date);
     const raw = drafts[key];
-    if (raw === undefined) return;
+    if (raw === undefined) return true;
     const current = serverHours(r, date);
     let centi = 0;
     if (raw.trim() !== "") {
@@ -106,23 +165,17 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
         centi = parseHours(raw);
       } catch {
         setErrors((e) => ({ ...e, [key]: t("err.invalid") }));
-        return;
+        return false;
       }
       if (!isOnStep(centi)) {
         setErrors((e) => ({ ...e, [key]: t("err.hours_step") }));
-        return;
+        return false;
       }
     }
     if (centi === Math.round(current * 100)) {
       setDrafts(({ [key]: _, ...rest }) => rest);
       setErrors(({ [key]: _, ...rest }) => rest);
-      return;
-    }
-    // Comment-required projects: ask for the comment before saving if the cell has none yet.
-    if (r.kind === "task" && r.ref.commentRequired && centi > 0 && !r.cells[date]?.comment) {
-      onCommentNeeded({ rowKey: r.key, date }, centi / 100);
-      setDrafts(({ [key]: _, ...rest }) => rest);
-      return;
+      return true;
     }
     try {
       await save.mutateAsync({
@@ -133,10 +186,10 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
       setDrafts(({ [key]: _, ...rest }) => rest);
       setErrors(({ [key]: _, ...rest }) => rest);
       setAnnounce(`${t("ts.saved")}: ${fmtHours(centi / 100, locale)}`);
+      return true;
     } catch (err) {
-      const code = err instanceof ApiError ? err.code : "invalid";
-      const msgKey = `err.${code}` as MessageKey;
-      setErrors((e) => ({ ...e, [key]: t(msgKey) === msgKey ? t("common.error") : t(msgKey) }));
+      setErrors((e) => ({ ...e, [key]: errorText(err, t, "invalid") }));
+      return false;
     }
   }
 
@@ -159,8 +212,10 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
       focusCell(ri, ci + 1);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      void commit(r, date);
-      focusCell(Math.min(ri + 1, rows.length - 1), ci);
+      // Move on only when the cell is saved; otherwise stay so the error can be fixed.
+      void commit(r, date).then((ok) => {
+        if (ok) focusCell(Math.min(ri + 1, rows.length - 1), ci);
+      });
     } else if (e.key === "Escape") {
       const key = cellKey(r.key, date);
       setDrafts(({ [key]: _, ...rest }) => rest);
@@ -233,8 +288,12 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
                       </span>
                       <span className="block truncate text-xs text-ink-500">
                         {r.ref.wbs} {r.ref.taskName}
-                        {r.ref.commentRequired ? " · ✎" : ""}
                       </span>
+                      {!readOnly && onRowAction && (
+                        <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                          {removeControl(r, label, rowTotal)}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <>
@@ -242,28 +301,9 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
                         {label} <span className="text-xs font-normal text-ink-500">({r.ref.code})</span>
                       </span>
                       {!readOnly && onRowAction && r.ref.absenceCodeId && (
-                        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
                           {confirmRemove === r.key ? (
-                            <>
-                              <span className="text-ink-700">
-                                {t("ts.removeConfirm", { hours: total(rowTotal) })}
-                              </span>
-                              <button
-                                type="button"
-                                disabled={busyRow === r.key}
-                                className="font-semibold text-danger hover:underline"
-                                onClick={() => void act({ type: "remove", row: r })}
-                              >
-                                {t("ts.removeYes")}
-                              </button>
-                              <button
-                                type="button"
-                                className="text-ink-500 hover:underline"
-                                onClick={() => setConfirmRemove(null)}
-                              >
-                                {t("common.cancel")}
-                              </button>
-                            </>
+                            removeControl(r, label, rowTotal)
                           ) : changing === r.key ? (
                             <>
                               <label className="sr-only" htmlFor={`change-${r.key}`}>
@@ -303,24 +343,14 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
                               {rowTotal > 0 && (
                                 <button
                                   type="button"
-                                  className="text-brand-700 hover:underline"
+                                  className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-0.5 font-semibold text-ink-700 transition-colors hover:border-brand-600 hover:text-brand-700"
                                   onClick={() => setChanging(r.key)}
                                   aria-label={t("ts.changeTypeFor", { row: label })}
                                 >
                                   ⇄ {t("ts.changeType")}
                                 </button>
                               )}
-                              <button
-                                type="button"
-                                className="text-ink-500 hover:text-danger hover:underline"
-                                onClick={() => {
-                                  if (rowTotal > 0) setConfirmRemove(r.key);
-                                  else void act({ type: "remove", row: r });
-                                }}
-                                aria-label={t("ts.removeRowFor", { row: label })}
-                              >
-                                ✕ {t("ts.removeRow")}
-                              </button>
+                              {removeControl(r, label, rowTotal)}
                             </>
                           )}
                         </span>
@@ -430,6 +460,19 @@ export function WeekGrid({ week, rows, selected, onSelect, onCommentNeeded, onRo
               {fmtFlex(week.summary.flex, locale)}
             </td>
           </tr>
+          {dayRow && (
+            <tr className="border-t border-line">
+              <th scope="row" className="px-4 py-2 text-left font-normal text-ink-700">
+                {dayRow.label}
+              </th>
+              {week.days.map((d) => (
+                <td key={d.date} className="px-1 py-2 text-center align-top">
+                  {dayRow.cells[d.date]}
+                </td>
+              ))}
+              <td />
+            </tr>
+          )}
         </tfoot>
       </table>
     </div>

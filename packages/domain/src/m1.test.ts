@@ -19,8 +19,6 @@ const base: EntryCheck = {
   isAbsence: false,
   projectActive: true,
   taskOpen: true,
-  commentRequired: false,
-  comment: null,
   periodLocked: false,
 };
 
@@ -43,10 +41,6 @@ describe("entry validation", () => {
       "project_inactive",
       "task_closed",
     ]);
-  });
-  it("requires a comment when the project demands it", () => {
-    expect(validateEntry({ ...base, commentRequired: true, comment: "  " })).toContain("comment_required");
-    expect(validateEntry({ ...base, commentRequired: true, comment: "Tegninger" })).toEqual([]);
   });
   it("§9: editing in a closed period is refused", () => {
     expect(validateEntry({ ...base, periodLocked: true })).toContain("period_locked");
@@ -132,6 +126,16 @@ describe("budget vs actual", () => {
     expect(mk(8900)).toBe("ok");
     expect(mk(9000)).toBe("warning");
     expect(mk(10100)).toBe("over");
+  });
+  it("uses the thresholds it is given, like Finance's 75 % warning (D-032)", () => {
+    const mk = (usedHours: number) =>
+      budgetActual(
+        { budgetHours: 4000, budgetAmount: 0, usedHours, usedValue: 0, usedCost: 0 },
+        { warningBp: 7500, alertBp: 10000 },
+      ).health;
+    expect(mk(2950)).toBe("ok");
+    expect(mk(3000)).toBe("warning"); // 30 of 40 h = 75 %
+    expect(mk(4050)).toBe("over");
   });
 });
 

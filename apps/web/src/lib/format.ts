@@ -26,6 +26,15 @@ export function fmtKr(minor: number | null | undefined, l: Locale, decimals = 0)
   return `${new Intl.NumberFormat(tag(l), { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(minor / 100)} kr`;
 }
 
+/** øre → "117.600" without currency, for dense tables whose header says "beløb i kr." */
+export function fmtAmount(minor: number | null | undefined, l: Locale, decimals = 0): string {
+  if (minor === null || minor === undefined) return "–";
+  return new Intl.NumberFormat(tag(l), {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(minor / 100);
+}
+
 /** basis points → "49,0 %" */
 export function fmtPct(bp: number | null | undefined, l: Locale): string {
   if (bp === null || bp === undefined) return "–";

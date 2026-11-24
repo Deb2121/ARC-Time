@@ -4,8 +4,8 @@
  *
  *   GET /me/balances                                   own flex and vacation balance
  *   GET /me/dashboard                                  to-dos and key figures for the caller's roles
- *   GET /reports/budget-actual[?format=csv]            budget vs actual per visible project
- *   GET /reports/time-entries?from&to[&userId][&projectId][&format=csv]   time entries
+ *   GET /reports/budget-actual[?format=csv|xlsx]       budget vs actual per visible project
+ *   GET /reports/time-entries?from&to[&userId][&projectId][&format=csv|xlsx]   time entries
  */
 
 import { todayCopenhagen } from "@arc-tid/domain";
@@ -13,16 +13,18 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { AuthContext } from "../auth/plugin.ts";
 import { dashboard } from "../services/dashboard.ts";
+import { exportFile } from "../services/export.ts";
 import {
-  budgetActualCsv,
+  budgetActualExport,
   budgetActualRows,
   myBalances,
-  timeEntryCsv,
+  timeEntryExport,
   timeEntryRows,
 } from "../services/reports.ts";
+import { sendExport } from "./send-export.ts";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const format = z.enum(["json", "csv"]).default("json");
+const format = z.enum(["json", "csv", "xlsx"]).default("json");
 
 /** Registers the report endpoints under /api/v1. */
 export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -35,10 +37,7 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get("/reports/budget-actual", { schema: { querystring: z.object({ format }) } }, async (req, reply) => {
     const rows = await req.withTenant((tx) => budgetActualRows(tx, req.auth as AuthContext));
     if (req.query.format === "json") return rows;
-    return reply
-      .header("content-type", "text/csv; charset=utf-8")
-      .header("content-disposition", 'attachment; filename="budget-vs-forbrug.csv"')
-      .send(budgetActualCsv(rows));
+    return sendExport(reply, await exportFile(budgetActualExport(rows), req.query.format));
   });
 
   app.get(
@@ -58,10 +57,7 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
       const { format: fmt, ...filter } = req.query;
       const rows = await req.withTenant((tx) => timeEntryRows(tx, req.auth as AuthContext, filter));
       if (fmt === "json") return rows;
-      return reply
-        .header("content-type", "text/csv; charset=utf-8")
-        .header("content-disposition", `attachment; filename="timer-${filter.from}-${filter.to}.csv"`)
-        .send(timeEntryCsv(rows));
+      return sendExport(reply, await exportFile(timeEntryExport(rows, filter), fmt));
     },
   );
 };

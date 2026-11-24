@@ -9,6 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
+import { useApprovalMode } from "./test-approval-mode.ts";
 
 const config = loadConfig({ NODE_ENV: "test", DEV_LOGIN_ENABLED: "true", AUTH_RATE_LIMIT: "1000" });
 const { db, close } = createDb(config.DATABASE_URL, { max: 3 });
@@ -50,10 +51,14 @@ async function projectId(number: string) {
   return list.find((p: { number: string }) => p.number === number);
 }
 
+// these tests walk the line manager approval flow; the demo seed uses "finance" (D-040)
+let restoreMode: () => Promise<void> = async () => {};
 beforeAll(async () => {
   app = await buildApp(config, db);
+  restoreMode = await useApprovalMode(app, db, "line_manager");
 });
 afterAll(async () => {
+  await restoreMode();
   for (const id of createdDrafts) {
     const inv = await get("JF", `/api/v1/invoices/${id}`);
     if (inv.statusCode === 200 && inv.json().status !== "booked")

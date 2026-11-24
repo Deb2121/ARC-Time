@@ -3,6 +3,7 @@
  */
 import { schema, type Tx } from "@arc-tid/db";
 import {
+  type BudgetThresholds,
   budgetActual,
   completionBasisPoints,
   fromDecimal,
@@ -41,8 +42,8 @@ export interface TaskActual {
 }
 
 /**
- * Actuals per task. Value uses the approval snapshot when present, otherwise an estimate from the contract rate
- * or the employee's default rate; rejected entries are excluded.
+ * Actuals per task. Value uses the approval snapshot when present, otherwise an estimate: the member's own price on
+ * the case (D-038), then the contract rate, then the employee's default rate; rejected entries are excluded.
  */
 export async function taskActuals(tx: Tx, projectIds: string[]): Promise<Map<string, TaskActual>> {
   if (!projectIds.length) return new Map();
@@ -55,7 +56,11 @@ export async function taskActuals(tx: Tx, projectIds: string[]): Promise<Map<str
     select time_entries.task_id,
       sum(time_entries.hours) as used_hours,
       round(sum(case when time_entries.billable
-        then time_entries.hours * coalesce(time_entries.sales_rate, c.hourly_rate, u.sales_rate) else 0 end)) as used_value,
+        then time_entries.hours * coalesce(time_entries.sales_rate,
+          (select r.rate from project_employee_rates r
+          where r.project_id = time_entries.project_id and r.user_id = time_entries.user_id and r.valid_from <= time_entries.date
+          order by r.valid_from desc limit 1),
+          c.hourly_rate, u.sales_rate) else 0 end)) as used_value,
       round(sum(time_entries.hours * coalesce(time_entries.cost_rate, u.cost_rate))) as used_cost
     from time_entries
     join users u on u.id = time_entries.user_id
@@ -77,7 +82,21 @@ export async function taskActuals(tx: Tx, projectIds: string[]): Promise<Map<str
   );
 }
 
-/** Project list rows with budget vs actual (hours, value, cost, margin, health) for the given ids or all projects. */
+/**
+ * Budget warning thresholds: the same fee thresholds Finance sets for Sagsøkonomi (default 75 % / 100 %), so the
+ * project list and Sagsøkonomi always give the same signal for the same project (D-032).
+ */
+export async function budgetThresholds(tx: Tx): Promise<BudgetThresholds> {
+  const [t] = await tx
+    .select({ warningBp: schema.tenants.feeWarningBp, alertBp: schema.tenants.feeAlertBp })
+    .from(schema.tenants);
+  return t ?? { warningBp: 7_500, alertBp: 10_000 };
+}
+
+/**
+ * Project list rows with budget vs actual (hours, value, cost, margin, health) for the given ids or all projects,
+ * plus how many phases (top-level tasks, rolled up) are over their own budget and the warning threshold used.
+ */
 export async function projectSummaries(tx: Tx, projectIds: string[] | "all") {
   const where =
     projectIds === "all"
@@ -112,26 +131,49 @@ export async function projectSummaries(tx: Tx, projectIds: string[] | "all") {
   const tasks = await tx.select().from(schema.tasks).where(inArray(schema.tasks.projectId, ids));
   const contracts = await tx.select().from(schema.contracts).where(inArray(schema.contracts.projectId, ids));
   const actuals = await taskActuals(tx, ids);
-  return projects.map((p) => {
-    const pt = tasks.filter((t) => t.projectId === p.id);
-    const top = pt.filter((t) => t.level === 1);
-    const used = pt.reduce(
+  const limits = await budgetThresholds(tx);
+  const usedOf = (list: typeof tasks) =>
+    list.reduce(
       (acc, t) => {
         const a = actuals.get(t.id);
         return a ? { h: acc.h + a.usedHours, v: acc.v + a.usedValue, c: acc.c + a.usedCost } : acc;
       },
       { h: 0, v: 0, c: 0 },
     );
+  return projects.map((p) => {
+    const pt = tasks.filter((t) => t.projectId === p.id);
+    const top = pt.filter((t) => t.level === 1);
+    const used = usedOf(pt);
+    // A phase = a top-level task with everything under it (WBS "2" covers "2", "2.1", "2.1.3" …).
+    const phasesOverBudget = top.filter((ph) => {
+      const u = usedOf(pt.filter((t) => t.wbs === ph.wbs || t.wbs.startsWith(`${ph.wbs}.`)));
+      const b = budgetActual(
+        {
+          budgetHours: fromDecimal(ph.budgetHours),
+          budgetAmount: ph.budgetAmount,
+          usedHours: u.h,
+          usedValue: u.v,
+          usedCost: u.c,
+        },
+        limits,
+      );
+      return b.health === "over";
+    }).length;
     return {
       ...p,
       contractTypes: [...new Set(contracts.filter((c) => c.projectId === p.id).map((c) => c.type))],
-      ...budgetActual({
-        budgetHours: top.reduce((a, t) => a + fromDecimal(t.budgetHours), 0),
-        budgetAmount: top.reduce((a, t) => a + t.budgetAmount, 0),
-        usedHours: used.h,
-        usedValue: used.v,
-        usedCost: used.c,
-      }),
+      ...budgetActual(
+        {
+          budgetHours: top.reduce((a, t) => a + fromDecimal(t.budgetHours), 0),
+          budgetAmount: top.reduce((a, t) => a + t.budgetAmount, 0),
+          usedHours: used.h,
+          usedValue: used.v,
+          usedCost: used.c,
+        },
+        limits,
+      ),
+      phasesOverBudget,
+      warningBp: limits.warningBp,
     };
   });
 }
@@ -152,6 +194,7 @@ export async function projectDetail(tx: Tx, projectId: string) {
     .innerJoin(schema.users, eq(schema.users.id, schema.projectMembers.userId))
     .where(eq(schema.projectMembers.projectId, projectId));
   const actuals = await taskActuals(tx, [projectId]);
+  const limits = await budgetThresholds(tx);
 
   const childrenOf = (id: string | null) => tasks.filter((t) => t.parentId === id);
   const rolled = new Map<string, { h: number; v: number; c: number }>();
@@ -181,13 +224,16 @@ export async function projectDetail(tx: Tx, projectId: string) {
       billable: t.billable,
       status: t.status,
       isLeaf: childrenOf(t.id).length === 0,
-      ...budgetActual({
-        budgetHours: fromDecimal(t.budgetHours),
-        budgetAmount: t.budgetAmount,
-        usedHours: r.h,
-        usedValue: r.v,
-        usedCost: r.c,
-      }),
+      ...budgetActual(
+        {
+          budgetHours: fromDecimal(t.budgetHours),
+          budgetAmount: t.budgetAmount,
+          usedHours: r.h,
+          usedValue: r.v,
+          usedCost: r.c,
+        },
+        limits,
+      ),
     };
   });
 

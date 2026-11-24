@@ -136,3 +136,7 @@ and are not exported again. [Brief + Observed: export once]
 5. Should reimbursement go via payroll (proposed) or a separate bank payment file?
 6. Exact VAT deductibility rules per expense type and current mileage rates to be confirmed by Finance/accountant.
 7. Are per diems (diæter) used at ARCnordic at all (affects whether V3 allowances are needed)?
+
+**Implemented 2026-11-17 (D-034):** mileage has `vehicle` (own / company). Own car: allowance via payroll with the
+yearly threshold. Company car: no allowance and not in the payroll file; the trip keeps the value km × high rate for
+re-invoicing and case cost. Min uge shows an "Udlæg/kørsel" row with a per-day "+" into the expense form.

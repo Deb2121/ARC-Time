@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { billableAmount, expenseCost, kr, mileageAmount, vatSplit } from "./index.ts";
+import {
+  billableAmount,
+  expenseCost,
+  kr,
+  mileageAmount,
+  mileageBillAmount,
+  tripValue,
+  vatSplit,
+} from "./index.ts";
 
 const rate2026 = { year: 2026, highRate: 394, lowRate: 228, thresholdKm: 20_000 }; // illustrative rates
 
@@ -44,5 +52,26 @@ describe("mileage allowance", () => {
   });
   it("all at the low rate once the threshold is passed", () => {
     expect(mileageAmount(10_000, 25_000_000, rate2026)).toBe(kr(22.8));
+  });
+});
+
+describe("customer km price (re-invoicing)", () => {
+  it("120 km × 4,50 kr = 540,00 kr", () => {
+    expect(mileageBillAmount(120_000, 450)).toBe(kr(540));
+  });
+  it("42,5 km × 4,50 kr = 191,25 kr", () => {
+    expect(mileageBillAmount(42_500, 450)).toBe(kr(191.25));
+  });
+});
+
+describe("own car or company car", () => {
+  it("own car: the trip value is the allowance paid through payroll", () => {
+    expect(tripValue(42_500, 0, rate2026, "own")).toEqual({ value: kr(167.45), allowance: kr(167.45) });
+  });
+  it("company car: no allowance, but the trip keeps its value for re-invoicing", () => {
+    expect(tripValue(42_500, 0, rate2026, "company")).toEqual({ value: kr(167.45), allowance: 0 });
+  });
+  it("company car ignores the 20.000 km threshold (that applies to the employee's own car)", () => {
+    expect(tripValue(10_000, 25_000_000, rate2026, "company").value).toBe(kr(39.4));
   });
 });

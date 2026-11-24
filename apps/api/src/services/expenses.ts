@@ -11,7 +11,8 @@ import {
   isLocked,
   type LocalDate,
   lastDayOfMonth,
-  mileageAmount,
+  mileageBillAmount,
+  tripValue,
   vatSplit,
 } from "@arc-tid/domain";
 import { and, asc, desc, eq, gte, inArray, lt, lte, ne, sql } from "drizzle-orm";
@@ -52,6 +53,8 @@ const expenseColumns = {
   billable: schema.expenses.billable,
   markupBp: schema.expenses.markupBp,
   km: schema.expenses.km,
+  vehicle: schema.expenses.vehicle,
+  billAmount: schema.expenses.billAmount,
   fromPlace: schema.expenses.fromPlace,
   toPlace: schema.expenses.toPlace,
   receiptFileId: schema.expenses.receiptFileId,
@@ -92,6 +95,8 @@ export interface ExpenseInput {
   /** kr incl. VAT (expenses only) */
   amount?: number | undefined;
   km?: number | undefined;
+  /** mileage: own car (default; allowance via payroll) or company car (no allowance) */
+  vehicle?: "own" | "company" | undefined;
   fromPlace?: string | undefined;
   toPlace?: string | undefined;
   billable?: boolean | undefined;
@@ -104,7 +109,7 @@ async function assertOpenDate(tx: Tx, date: LocalDate) {
   if (isLocked(date, await closedMonths(tx))) throw new AppError(409, "period_closed");
 }
 
-/** Mileage already claimed by the user earlier in the same year (metres), for the 20.000 km threshold. */
+/** Own-car mileage already claimed by the user earlier in the same year (metres), for the 20.000 km threshold. */
 async function metresBefore(tx: Tx, userId: string, date: LocalDate, excludeId?: string) {
   const [r] = await tx
     .select({ km: sql<string>`coalesce(sum(${schema.expenses.km}), 0)` })
@@ -113,6 +118,7 @@ async function metresBefore(tx: Tx, userId: string, date: LocalDate, excludeId?:
       and(
         eq(schema.expenses.userId, userId),
         eq(schema.expenses.kind, "mileage"),
+        sql`${schema.expenses.vehicle} is distinct from 'company'`,
         gte(schema.expenses.date, `${date.slice(0, 4)}-01-01`),
         lt(schema.expenses.date, date),
         ne(schema.expenses.status, "rejected"),
@@ -155,17 +161,20 @@ export async function saveExpense(tx: Tx, auth: AuthContext, input: ExpenseInput
   }
 
   let amounts: { grossAmount: number; vatAmount: number; netAmount: number; costAmount: number };
+  let billAmount: number | null = null;
   if (input.kind === "mileage") {
     if (!input.km || input.km <= 0) throw new AppError(422, "km_required");
     const year = Number(input.date.slice(0, 4));
     const [rate] = await tx.select().from(schema.mileageRates).where(eq(schema.mileageRates.year, year));
     if (!rate) throw new AppError(422, "no_mileage_rate_for_year");
-    const allowance = mileageAmount(
+    const { value } = tripValue(
       Math.round(input.km * 1000),
       await metresBefore(tx, auth.userId, input.date, id),
       rate,
+      input.vehicle ?? "own",
     );
-    amounts = { grossAmount: allowance, vatAmount: 0, netAmount: allowance, costAmount: allowance };
+    amounts = { grossAmount: value, vatAmount: 0, netAmount: value, costAmount: value };
+    billAmount = mileageBillAmount(Math.round(input.km * 1000), rate.customerRate);
   } else {
     if (!input.amount || input.amount <= 0) throw new AppError(422, "amount_required");
     const [type] = input.expenseTypeId
@@ -193,6 +202,8 @@ export async function saveExpense(tx: Tx, auth: AuthContext, input: ExpenseInput
     billable: Boolean(input.billable && input.projectId),
     markupBp: Math.round((input.markupPct ?? 0) * 100),
     km: input.kind === "mileage" ? (input.km ?? null) : null,
+    vehicle: input.kind === "mileage" ? (input.vehicle ?? "own") : null,
+    billAmount,
     fromPlace: input.fromPlace ?? null,
     toPlace: input.toPlace ?? null,
     receiptFileId: input.receiptFileId ?? null,

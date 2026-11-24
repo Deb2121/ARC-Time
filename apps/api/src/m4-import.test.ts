@@ -71,19 +71,21 @@ describe("data import", () => {
     expect(commit.statusCode).toBe(422);
   });
 
-  it("employees can only be imported by Admin; Finance may import customers", async () => {
+  it("employees can be imported by Admin and Finance (D-029), not by project managers; Finance may import customers", async () => {
     const jf = await login("jf");
+    const al = await login("al");
     const csv = "email;navn;initialer;ansat fra\r\nx@y.dk;X;X;01-01-2026\r\n";
-    expect(
+    const preview = async (headers: typeof jf.headers) =>
       (
         await app.inject({
           method: "POST",
           url: "/api/v1/import/employees/preview",
-          headers: jf.headers,
+          headers,
           payload: { csv },
         })
-      ).statusCode,
-    ).toBe(403);
+      ).statusCode;
+    expect(await preview(al.headers)).toBe(403);
+    expect(await preview(jf.headers)).toBe(200);
     expect(
       (
         await app.inject({

@@ -20,14 +20,15 @@ describe("access policy", () => {
     expect(finance.can("settings.manage")).toBe(false);
   });
 
-  it("a project manager creates projects only with the extra right", () => {
+  it("only Admin creates projects; Finance and project managers cannot, not even with the old right (D-040)", () => {
     expect(new AccessPolicy(["employee", "project_manager"]).can("project.create")).toBe(false);
     expect(new AccessPolicy(["employee", "project_manager"], ["create_projects"]).can("project.create")).toBe(
-      true,
+      false,
     );
+    expect(new AccessPolicy(["employee", "admin"]).can("project.create")).toBe(true);
     // the right alone does nothing without the project manager role
     expect(new AccessPolicy(["employee"], ["create_projects"]).can("project.create")).toBe(false);
-    expect(new AccessPolicy(["employee", "finance"]).can("project.create")).toBe(true);
+    expect(new AccessPolicy(["employee", "finance"]).can("project.create")).toBe(false);
   });
 
   it("sickness reason: employee, line manager and Finance only", () => {
@@ -38,10 +39,10 @@ describe("access policy", () => {
     expect(new AccessPolicy(["employee", "finance"]).seesAbsenceReason("other")).toBe(true);
   });
 
-  it("audit log: Finance financial entities only, Management and Admin everything", () => {
+  it("audit log: Finance, Management and Admin everything (D-029); others nothing", () => {
     const finance = new AccessPolicy(["employee", "finance"]);
     expect(finance.canReadAudit("invoice")).toBe(true);
-    expect(finance.canReadAudit("user_roles")).toBe(false);
+    expect(finance.canReadAudit("user_roles")).toBe(true);
     expect(new AccessPolicy(["employee", "management"]).canReadAudit("user_roles")).toBe(true);
     expect(new AccessPolicy(["employee", "line_manager"]).canReadAudit("invoice")).toBe(false);
   });

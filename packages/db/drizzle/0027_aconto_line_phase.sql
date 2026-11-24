@@ -1,0 +1,2 @@
+ALTER TABLE "invoice_lines" ADD COLUMN "aconto_task_id" uuid;--> statement-breakpoint
+ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_aconto_task_id_tasks_id_fk" FOREIGN KEY ("aconto_task_id") REFERENCES "public"."tasks"("id") ON DELETE no action ON UPDATE no action;

@@ -28,7 +28,7 @@ pnpm db:up; pnpm db:migrate; pnpm db:seed
 pnpm dev                 # web http://localhost:3000 · API http://localhost:4000 · API docs /api/docs
 ```
 
-Demo users (fictional): `kh@demo.arcnordic.test` (admin), `jf@…` (finance), `al@…` (line manager), `lv@…` (employee) — password `demo1234`.
+Demo users (fictional): `kh@demo.arcnordic.test` (admin + finance + management), `jf@…` (finance), `al@…` (line manager), `lv@…` (employee) — password `demo1234`.
 Walkthroughs: [`docs/demo/m0-foundation.md`](docs/demo/m0-foundation.md), [`docs/demo/m1-core-loop.md`](docs/demo/m1-core-loop.md), [`docs/demo/m2-money.md`](docs/demo/m2-money.md), [`docs/demo/m3-operations.md`](docs/demo/m3-operations.md).
 
 Quality gate (run before every commit to main): `pnpm check` (lint + typecheck + tests). E2E: `pnpm e2e` with the dev stack running.

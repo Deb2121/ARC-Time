@@ -3,7 +3,16 @@
  * months (so they show up in approval and in the invoicing basis). Amounts are computed with the same domain
  * functions the app uses. Mileage rates are illustrative example values that Finance must verify (decision D-019).
  */
-import { addDays, expenseCost, kr, type LocalDate, mileageAmount, monthOf, vatSplit } from "@arc-tid/domain";
+import {
+  addDays,
+  expenseCost,
+  kr,
+  type LocalDate,
+  mileageAmount,
+  mileageBillAmount,
+  monthOf,
+  vatSplit,
+} from "@arc-tid/domain";
 import { inArray } from "drizzle-orm";
 import type { Tx } from "./client.ts";
 import * as s from "./schema.ts";
@@ -19,9 +28,9 @@ const TYPES = [
 
 /** Illustrative mileage rates (øre per km) — to be verified by Finance against the official rates for each year. */
 const RATES = [
-  { year: 2025, highRate: 379, lowRate: 223, thresholdKm: 20_000 },
-  { year: 2026, highRate: 394, lowRate: 228, thresholdKm: 20_000 },
-  { year: 2027, highRate: 394, lowRate: 228, thresholdKm: 20_000 },
+  { year: 2025, highRate: 379, lowRate: 223, thresholdKm: 20_000, customerRate: 450 },
+  { year: 2026, highRate: 394, lowRate: 228, thresholdKm: 20_000, customerRate: 450 },
+  { year: 2027, highRate: 394, lowRate: 228, thresholdKm: 20_000, customerRate: 450 },
 ];
 
 /** Seeds expense types, mileage rates and example expenses for the demo tenant (fictional data only). */
@@ -174,12 +183,14 @@ export async function seedExpenses(tx: Tx, tenantId: string, today: LocalDate) {
     if (!u) continue;
     const t = p.type ? type(p.type) : undefined;
     let amounts: { grossAmount: number; vatAmount: number; netAmount: number; costAmount: number };
+    let billAmount: number | null = null;
     if (p.kind === "mileage") {
       const rate = RATES.find((r) => r.year === Number(p.date.slice(0, 4))) ?? RATES[1];
       const metres = Math.round((p.km ?? 0) * 1000);
       const allowance = mileageAmount(metres, kmSoFar.get(u.id) ?? 0, rate as (typeof RATES)[number]);
       kmSoFar.set(u.id, (kmSoFar.get(u.id) ?? 0) + metres);
       amounts = { grossAmount: allowance, vatAmount: 0, netAmount: allowance, costAmount: allowance };
+      billAmount = mileageBillAmount(metres, (rate as (typeof RATES)[number]).customerRate);
     } else {
       const split = vatSplit(kr(p.amount ?? 0), t?.vatBp ?? 2500, t?.vatDeductibleBp ?? 10_000);
       amounts = {
@@ -202,6 +213,8 @@ export async function seedExpenses(tx: Tx, tenantId: string, today: LocalDate) {
       billable: Boolean(p.billable && p.project),
       markupBp: Math.round((p.markupPct ?? 0) * 100),
       km: p.km ?? null,
+      vehicle: p.kind === "mileage" ? ("own" as const) : null,
+      billAmount,
       fromPlace: p.from ?? null,
       toPlace: p.to ?? null,
       status: p.status,

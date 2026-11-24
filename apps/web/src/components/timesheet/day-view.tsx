@@ -8,8 +8,8 @@ import { isOnStep, parseHours } from "@arc-tid/domain";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useI18n } from "@/i18n";
-import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtFlex, fmtHours } from "@/lib/format";
 import type { Row, WeekData } from "./types";
 import { rowLabel } from "./week-grid";
@@ -62,8 +62,7 @@ export function DayView({
       setErrors(({ [r.key]: _, ...rest }) => rest);
       await qc.invalidateQueries({ queryKey: ["week"] });
     } catch (err) {
-      const code = err instanceof ApiError ? err.code : "invalid";
-      setErrors((e) => ({ ...e, [r.key]: t(`err.${code}` as MessageKey) }));
+      setErrors((e) => ({ ...e, [r.key]: errorText(err, t, "invalid") }));
     }
   }
 
@@ -160,7 +159,6 @@ function DayRow({
             </p>
             <p className="truncate text-xs text-ink-500">
               {row.ref.wbs} {row.ref.taskName}
-              {row.ref.commentRequired ? ` · ${t("ts.commentRequired")}` : ""}
             </p>
           </>
         ) : (

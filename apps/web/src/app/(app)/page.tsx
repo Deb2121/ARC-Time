@@ -1,9 +1,10 @@
 "use client";
 
 import { danishPublicHolidays, isoWeek, startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
-import { Badge, Card } from "@arc-tid/ui";
+import { Badge, Button, Card } from "@arc-tid/ui";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useState } from "react";
 import { type DashboardData, KpiPanel, TodoList } from "@/components/dashboard";
 import { useMe } from "@/components/session";
 import type { WeekData } from "@/components/timesheet/types";
@@ -12,14 +13,22 @@ import type { MessageKey } from "@/i18n/da";
 import { api } from "@/lib/api";
 import { fmtDay, fmtFlex, fmtHours } from "@/lib/format";
 
+interface LeaveDays {
+  earned: number;
+  used: number;
+  pending: number;
+  balance: number;
+}
 interface Balances {
   flex: number;
-  vacation: { holidayYear: number; accrued: number; used: number; planned: number; balance: number };
+  vacation: LeaveDays | null;
+  extraHoliday: LeaveDays | null;
 }
 
 export default function HomePage() {
   const me = useMe();
   const { t, locale } = useI18n();
+  const [hello, setHello] = useState(false);
   const today = todayCopenhagen();
   const monday = startOfIsoWeek(today);
   const { week, year } = isoWeek(today);
@@ -46,6 +55,18 @@ export default function HomePage() {
           {t("home.greeting", { name: me.fullName.split(" ")[0] ?? "" })}
         </h1>
         <p className="mt-2 text-ink-700">{t("home.intro")}</p>
+        {me.roles.includes("admin") && (
+          <div className="mt-3 flex items-center gap-3">
+            <Button variant="secondary" onClick={() => setHello((v) => !v)}>
+              {t("home.helloButton")}
+            </Button>
+            {hello && (
+              <span role="status" className="text-ink-900">
+                {t("home.helloMessage", { name: me.fullName.split(" ")[0] ?? "" })}
+              </span>
+            )}
+          </div>
+        )}
       </header>
 
       {dash.data && <TodoList todos={dash.data.todos} />}
@@ -108,19 +129,28 @@ export default function HomePage() {
           </Card>
           <Card title={t("home.vacation")}>
             <p className="font-[family-name:var(--font-display)] text-3xl tabular-nums text-ink-900">
-              {balances.data ? `${n(balances.data.vacation.balance)} ${t("home.days")}` : "…"}
+              {balances.data?.vacation ? `${n(balances.data.vacation.balance)} ${t("home.days")}` : "…"}
             </p>
-            {balances.data && (
+            {balances.data?.vacation && (
               <p className="text-xs text-ink-500">
                 {t("home.vacationHint", {
-                  year: balances.data.vacation.holidayYear,
-                  next: String(balances.data.vacation.holidayYear + 1).slice(2),
-                  accrued: n(balances.data.vacation.accrued),
+                  accrued: n(balances.data.vacation.earned),
                   used: n(balances.data.vacation.used),
-                  planned: n(balances.data.vacation.planned),
+                  planned: n(balances.data.vacation.pending),
                 })}
               </p>
             )}
+            {balances.data?.extraHoliday && (
+              <p className="mt-1 text-xs text-ink-700">
+                {t("home.extraHoliday", { days: n(balances.data.extraHoliday.balance) })}
+              </p>
+            )}
+            <Link
+              href="/leave"
+              className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline"
+            >
+              {t("lv.open")} →
+            </Link>
           </Card>
         </div>
       </div>

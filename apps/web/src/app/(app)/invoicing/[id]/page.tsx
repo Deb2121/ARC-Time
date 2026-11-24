@@ -8,7 +8,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { API_URL, ApiError, api } from "@/lib/api";
+import { API_URL, api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtHours, fmtKr } from "@/lib/format";
 
 interface Line {
@@ -92,7 +93,7 @@ export default function InvoicePage() {
         setError(null);
         return refresh();
       })
-      .catch((e) => setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error")));
+      .catch((e) => setError(errorText(e, t)));
 
   const book = useMutation({
     mutationFn: () => api<{ number: number }>(`/invoices/${id}/book`, { method: "POST" }),
@@ -100,7 +101,7 @@ export default function InvoicePage() {
       setConfirmBook(false);
       void refresh();
     },
-    onError: (e) => setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error")),
+    onError: (e) => setError(errorText(e, t)),
   });
 
   if (inv.isLoading || !inv.data) return <p className="text-ink-500">{t("common.loading")}</p>;

@@ -19,7 +19,7 @@ pnpm dev     # http://localhost:3000
    - ↑/↓ moves between rows; **Enter** saves and moves down — the whole grid works without a mouse.
    - Search "behov" in **Tilføj opgave** → ↓ → Enter adds the row. ☆ marks a favourite (listed first next time).
    - **Tilføj fravær** → Ferie; future vacation is allowed, future work is refused.
-   - Project 26002 is marked ✎ = comment required: entering hours opens the comment panel first.
+   - Comments are optional (D-031): select a cell and use ✎ Kommentar to add one.
    - Select a cell → **Start timer**; later **Stop og registrér** adds the time (rounded to nearest quarter) to today.
    - **Indsend uge** → if under norm, a confirmation shows the shortfall (warn, not block — D-013). The week locks; **Træk tilbage** is possible until approved.
 2. **Anne Lund** `al@…` (line manager)
@@ -35,11 +35,11 @@ pnpm dev     # http://localhost:3000
 
 ## Verified automatically
 
-| Check                                                                           | Where                                                       |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| §9 flex +0,5; Wednesday holiday 29,5 h; fixed price 49 % / 117.600 kr           | `packages/domain` tests                                     |
-| §9 editing in a closed/locked period is refused                                 | `packages/domain/src/m1.test.ts`, `apps/api/src/m1.test.ts` |
-| §9 employee cannot read another employee's entries unless manager/finance       | `apps/api/src/m1.test.ts`                                   |
-| Validation: 24 h/day, 0,25 step, future work, non-member task, required comment | domain + API tests                                          |
-| Register → submit → approve (rate snapshot) → reopen                            | API test + `e2e/m1-core-loop.spec.ts`                       |
-| WBS max 5 levels, CSV format                                                    | API tests                                                   |
+| Check                                                                     | Where                                                       |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| §9 flex +0,5; Wednesday holiday 29,5 h; fixed price 49 % / 117.600 kr     | `packages/domain` tests                                     |
+| §9 editing in a closed/locked period is refused                           | `packages/domain/src/m1.test.ts`, `apps/api/src/m1.test.ts` |
+| §9 employee cannot read another employee's entries unless manager/finance | `apps/api/src/m1.test.ts`                                   |
+| Validation: 24 h/day, 0,25 step, future work, non-member task             | domain + API tests                                          |
+| Register → submit → approve (rate snapshot) → reopen                      | API test + `e2e/m1-core-loop.spec.ts`                       |
+| WBS max 5 levels, CSV format                                              | API tests                                                   |

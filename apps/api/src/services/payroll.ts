@@ -19,6 +19,7 @@ import {
   monthOf,
   type PayrollCsvRow,
   type PayrollLine,
+  parseCsv,
   payrollCsv,
   type SalaryUnit,
   todayCopenhagen,
@@ -27,6 +28,7 @@ import { and, asc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import type { AuthContext } from "../auth/plugin.ts";
 import { loadEmployee, normContext } from "./calendar.ts";
 import { AppError } from "./errors.ts";
+import type { ExportTable } from "./export.ts";
 import { tenantGoLive } from "./timesheet.ts";
 
 const ELIGIBLE = ["approved", "invoiced"] as const;
@@ -109,6 +111,7 @@ async function currentLines(tx: Tx, month: LocalDate, codes: SalaryCode[]): Prom
       userId: schema.expenses.userId,
       kind: schema.expenses.kind,
       km: schema.expenses.km,
+      vehicle: schema.expenses.vehicle,
       gross: schema.expenses.grossAmount,
     })
     .from(schema.expenses)
@@ -120,6 +123,8 @@ async function currentLines(tx: Tx, month: LocalDate, codes: SalaryCode[]): Prom
       ),
     );
   for (const c of claims) {
+    // company car: no tax-free allowance, so nothing goes to payroll (the trip can still be re-invoiced)
+    if (c.kind === "mileage" && c.vehicle === "company") continue;
     if (c.kind === "mileage" && mileage) add(c.userId, mileage.id, Math.round((c.km ?? 0) * 100), c.gross);
     if (c.kind === "expense" && expense) add(c.userId, expense.id, 100, c.gross);
   }
@@ -386,4 +391,69 @@ export async function payrollFile(tx: Tx, month: LocalDate) {
     .where(eq(schema.payrollRuns.payPeriodId, period.id));
   if (!run) throw new AppError(404, "not_found");
   return { filename: `loen_${month.slice(0, 7)}.csv`, csv: run.csv };
+}
+
+/** One line of the payroll file, read back from the generated CSV. */
+interface PayrollFileLine {
+  employeeNumber: string;
+  employeeName: string;
+  code: string;
+  providerCode: string;
+  description: string;
+  quantity: number | null;
+  unit: string;
+  rate: number | null;
+  amount: number | null;
+  periodStart: string;
+  periodEnd: string;
+  originalPeriod: string;
+  sourceCount: number;
+}
+
+/**
+ * The generated payroll file as a readable Excel sheet (D-033). It is built from the exact CSV that goes to the
+ * payroll system, so the two always match; the CSV keeps its own import format (ISO dates, fixed columns).
+ */
+export function payrollExport(csv: string, month: LocalDate): ExportTable<PayrollFileLine> {
+  const num = (v: string | undefined) => (v ? Number(v.replace(",", ".")) : null);
+  const rows = parseCsv(csv)
+    .slice(1)
+    .filter((c) => c.some((x) => x !== ""))
+    .map(
+      (c): PayrollFileLine => ({
+        employeeNumber: c[0] ?? "",
+        employeeName: c[1] ?? "",
+        code: c[2] ?? "",
+        providerCode: c[3] ?? "",
+        description: c[4] ?? "",
+        quantity: num(c[5]),
+        unit: c[6] ?? "",
+        rate: num(c[7]),
+        amount: num(c[8]),
+        periodStart: c[9] ?? "",
+        periodEnd: c[10] ?? "",
+        originalPeriod: c[11] ?? "",
+        sourceCount: Number(c[12] ?? 0),
+      }),
+    );
+  return {
+    sheet: "Løn",
+    file: `ARCtime_loen_${month.slice(0, 7)}`,
+    rows,
+    columns: [
+      { header: "Lønnummer", kind: "text", value: (r) => r.employeeNumber },
+      { header: "Medarbejder", kind: "text", value: (r) => r.employeeName },
+      { header: "Lønart", kind: "text", value: (r) => r.code },
+      { header: "Kode i lønsystem", kind: "text", value: (r) => r.providerCode },
+      { header: "Beskrivelse", kind: "text", value: (r) => r.description },
+      { header: "Antal", kind: "hours", value: (r) => r.quantity },
+      { header: "Enhed", kind: "text", value: (r) => r.unit },
+      { header: "Sats", kind: "money", value: (r) => r.rate },
+      { header: "Beløb", kind: "money", value: (r) => r.amount, total: true },
+      { header: "Periode fra", kind: "date", value: (r) => r.periodStart },
+      { header: "Periode til", kind: "date", value: (r) => r.periodEnd },
+      { header: "Rettelse til periode", kind: "text", value: (r) => r.originalPeriod },
+      { header: "Antal registreringer", kind: "integer", value: (r) => r.sourceCount },
+    ],
+  };
 }

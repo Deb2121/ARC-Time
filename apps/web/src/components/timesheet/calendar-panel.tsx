@@ -10,8 +10,8 @@ import { Badge, Button } from "@arc-tid/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useI18n } from "@/i18n";
-import type { MessageKey } from "@/i18n/da";
-import { API_URL, ApiError, api } from "@/lib/api";
+import { API_URL, api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtHours } from "@/lib/format";
 import type { TaskRef } from "./types";
 
@@ -46,8 +46,7 @@ export function CalendarPanel({ weekStart, onClose }: { weekStart: string; onClo
     void qc.invalidateQueries({ queryKey: ["calendar", weekStart] });
     void qc.invalidateQueries({ queryKey: ["week", weekStart] });
   };
-  const fail = (e: unknown) =>
-    setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+  const fail = (e: unknown) => setError(errorText(e, t));
 
   const importPicked = useMutation({
     mutationFn: () =>

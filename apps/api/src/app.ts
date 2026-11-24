@@ -4,6 +4,7 @@
  * invoice/period errors and Postgres check violations into `{ error: code }` responses. Used by server.ts and tests.
  */
 import { type Db, InvoiceError, PeriodError } from "@arc-tid/db";
+import { type AccountingAdapter, economicFromEnv } from "@arc-tid/integrations";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -27,11 +28,13 @@ import { adminRoutes } from "./routes/admin.ts";
 import { apiTokenRoutes } from "./routes/api-tokens.ts";
 import { approvalRoutes } from "./routes/approval.ts";
 import { calendarRoutes } from "./routes/calendar.ts";
+import { caseFinanceRoutes } from "./routes/case-finance.ts";
 import { dataImportRoutes } from "./routes/data-import.ts";
 import { expenseRoutes } from "./routes/expenses.ts";
 import { financeRoutes } from "./routes/finance.ts";
 import { governanceRoutes } from "./routes/governance.ts";
 import { invoicingRoutes } from "./routes/invoicing.ts";
+import { leaveRoutes } from "./routes/leave.ts";
 import { payrollRoutes } from "./routes/payroll.ts";
 import { planningRoutes } from "./routes/planning.ts";
 import { projectRoutes } from "./routes/projects.ts";
@@ -44,11 +47,14 @@ import { type CalendarProvider, graphCalendarProvider } from "./services/outlook
 /** Replaceable collaborators (tests pass fakes); defaults are the real, config-driven implementations. */
 export interface AppDeps {
   calendar?: CalendarProvider;
+  /** accounting system for payment status in the debtor list; default: e-conomic if configured, else none */
+  accounting?: AccountingAdapter | null;
 }
 
 /** Builds the configured Fastify app (no listening) — injected config and database make it testable with `app.inject`. */
 export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
   const calendar = deps.calendar ?? graphCalendarProvider(config.calendarEnabled, config.SESSION_SECRET);
+  const accounting = deps.accounting !== undefined ? deps.accounting : economicFromEnv(process.env);
   const app = Fastify({
     logger:
       config.NODE_ENV === "test"
@@ -129,6 +135,8 @@ export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
       await v1.register(governanceRoutes);
       await v1.register(apiTokenRoutes);
       await v1.register(calendarRoutes, { provider: calendar });
+      await v1.register(caseFinanceRoutes, { accounting });
+      await v1.register(leaveRoutes);
     },
     { prefix: "/api/v1" },
   );

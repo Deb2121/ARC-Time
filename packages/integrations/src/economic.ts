@@ -5,7 +5,13 @@
  * Flow for a booked invoice: ensure the customer exists → create a draft invoice → book it with the same number,
  * so the number in ARCnordic Tid and in the accounting system match.
  */
-import { type AccountingAdapter, type CustomerDoc, IntegrationError, type InvoiceDoc } from "./adapter.ts";
+import {
+  type AccountingAdapter,
+  type CustomerDoc,
+  IntegrationError,
+  type InvoiceBalance,
+  type InvoiceDoc,
+} from "./adapter.ts";
 
 export interface EconomicConfig {
   appSecretToken: string;
@@ -120,6 +126,15 @@ export class EconomicAdapter implements AccountingAdapter {
       bookWithNumber: inv.number,
     });
     return { externalId: String(booked.bookedInvoiceNumber) };
+  }
+
+  /** Reads a booked invoice's gross amount and remainder (kroner with decimals in e-conomic) as øre. */
+  async invoiceBalance(externalId: string): Promise<InvoiceBalance> {
+    const inv = await this.call<{ grossAmount: number; remainder: number }>(
+      "GET",
+      `/invoices/booked/${encodeURIComponent(externalId)}`,
+    );
+    return { gross: Math.round(inv.grossAmount * 100), remainder: Math.round(inv.remainder * 100) };
   }
 }
 

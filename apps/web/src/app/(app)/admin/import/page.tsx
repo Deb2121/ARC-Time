@@ -11,7 +11,8 @@ import { useState } from "react";
 import { useMe } from "@/components/session";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api, can } from "@/lib/api";
+import { api, can } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 
 interface Preview {
   missingColumns: string[];
@@ -52,8 +53,7 @@ export default function ImportPage() {
     setResult(null);
     setError(null);
   };
-  const fail = (e: unknown) =>
-    setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+  const fail = (e: unknown) => setError(errorText(e, t));
 
   async function choose(file: File | undefined) {
     if (!file) return;

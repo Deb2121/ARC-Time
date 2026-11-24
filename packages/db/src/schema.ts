@@ -54,6 +54,11 @@ export const tenants = pgTable("tenants", {
   goLiveDate: date("go_live_date").notNull().default(sql`current_date`),
   /** approval mode (D-013, D-022): none | line_manager | pm_then_line_manager */
   approvalMode: text("approval_mode").notNull().default("line_manager"),
+  /** case finance (D-029): fee warning / alert thresholds in basis points of the fee */
+  feeWarningBp: integer("fee_warning_bp").notNull().default(7500),
+  feeAlertBp: integer("fee_alert_bp").notNull().default(10000),
+  /** case finance: offer a conto invoices by % complete per phase */
+  acontoEnabled: boolean("aconto_enabled").notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -122,6 +127,14 @@ export const users = pgTable(
     vacationOpening: numeric("vacation_opening", { precision: 5, scale: 2, mode: "number" })
       .notNull()
       .default(0),
+    /** feriefridage earned per month in days (individual, e.g. 0,5); 0 = none (Finance, 2026-11-17) */
+    extraHolidayPerMonth: numeric("extra_holiday_per_month", { precision: 4, scale: 2, mode: "number" })
+      .notNull()
+      .default(0),
+    /** opening feriefridage balance in days at go-live */
+    extraHolidayOpening: numeric("extra_holiday_opening", { precision: 5, scale: 2, mode: "number" })
+      .notNull()
+      .default(0),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -176,6 +189,35 @@ export const auditLog = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("audit_log_entity_idx").on(t.tenantId, t.entity, t.entityId, t.at)],
+);
+
+/* ───────────────────────────── Leave accounts (ferie / feriefridage) ───────────────────────────── */
+
+export const leaveAccountEnum = pgEnum("leave_account", ["ferie", "feriefridag"]);
+
+/**
+ * A manual posting on an employee's leave account (Løntidskonto): a correction, carry-over, payout or lapse at the end
+ * of a holiday year. Monthly accrual and approved leave are derived from rules and registrations, not stored here.
+ * Days are signed (positive = credit). Audited.
+ */
+export const leaveAdjustments = pgTable(
+  "leave_adjustments",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    account: leaveAccountEnum("account").notNull(),
+    date: date("date").notNull(),
+    days: numeric("days", { precision: 6, scale: 2, mode: "number" }).notNull(),
+    text: text("text").notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("leave_adjustments_user_idx").on(t.tenantId, t.userId, t.account)],
 );
 
 /* ───────────────────────────── M1: norm time, holidays, absence ───────────────────────────── */
@@ -323,7 +365,6 @@ export const projects = pgTable(
     endDate: date("end_date"),
     currency: char("currency", { length: 3 }).notNull().default("DKK"),
     billable: boolean("billable").notNull().default(true),
-    commentRequired: boolean("comment_required").notNull().default(false),
     priceListId: uuid("price_list_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -347,6 +388,8 @@ export const contracts = pgTable("contracts", {
   hourlyRate: bigint("hourly_rate", { mode: "number" }),
   /** retainer: pool of hours per period */
   retainerHours: hours("retainer_hours"),
+  /** billing plan saved as active (its instalments add up to 100 % of the price, D-029) */
+  planActive: boolean("plan_active").notNull().default(false),
   createdAt: createdAt(),
 });
 
@@ -371,6 +414,10 @@ export const tasks = pgTable(
     startDate: date("start_date"),
     endDate: date("end_date"),
     sort: integer("sort").notNull().default(0),
+    /** ekstraarbejde on a fixed-fee case: the phase is linked to the case's time & material contract (D-029) */
+    extraWork: boolean("extra_work").notNull().default(false),
+    /** a conto: % complete entered by the project manager, basis points */
+    completionBp: integer("completion_bp"),
   },
   (t) => [
     index("tasks_project_idx").on(t.projectId),
@@ -548,18 +595,29 @@ export const priceListRates = pgTable(
   (t) => [index("price_list_rates_list_idx").on(t.priceListId)],
 );
 
-export const projectEmployeeRates = pgTable("project_employee_rates", {
-  id: id(),
-  tenantId: tenantId(),
-  projectId: uuid("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id),
-  rate: bigint("rate", { mode: "number" }).notNull(),
-  validFrom: date("valid_from").notNull(),
-});
+/**
+ * A project member's own hourly price on one case (step 1 of the rate resolution, D-038): chosen from the standard or
+ * the customer's price list, or typed in by hand. One price per person per case; it applies to every hour that is not
+ * yet approved (approved hours keep their snapshot).
+ */
+export const projectEmployeeRates = pgTable(
+  "project_employee_rates",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    rate: bigint("rate", { mode: "number" }).notNull(),
+    validFrom: date("valid_from").notNull(),
+    /** where the price came from, e.g. "Partner · Standardprisliste 2026"; null = typed in by hand */
+    label: text("label"),
+  },
+  (t) => [uniqueIndex("project_employee_rates_member_uq").on(t.projectId, t.userId)],
+);
 
 /* ───────────────────────────── M2: invoicing ───────────────────────────── */
 
@@ -577,10 +635,67 @@ export const paymentPlanItems = pgTable(
     description: text("description").notNull(),
     dueDate: date("due_date").notNull(),
     amount: bigint("amount", { mode: "number" }).notNull(),
+    /** "ready" = marked ready by the PM; the shown status (afventer/planlagt/klar) is computed (D-029) */
     status: planItemStatusEnum("status").notNull().default("planned"),
     invoiceLineId: uuid("invoice_line_id"),
+    /** order in the plan (rate 1, 2, 3 …) */
+    sequence: integer("sequence").notNull().default(0),
+    /** optional phase the instalment belongs to; closing the phase makes the instalment ready */
+    taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
+    /** share of the fee in basis points; when set, `amount` is derived from it */
+    percentageBp: integer("percentage_bp"),
   },
   (t) => [index("payment_plan_items_contract_idx").on(t.contractId)],
+);
+
+/**
+ * Rate plan generator input for one fixed-price contract (D-039): phases with their own fee and instalment pattern,
+ * fee parts to distribute and sub-consultants (shape: FeePlanInput in @arc-tid/domain fee-plan.ts, amounts in øre).
+ * The generated instalments are only written to payment_plan_items when the user chooses "use as draft".
+ */
+export const feePlans = pgTable("fee_plans", {
+  id: id(),
+  tenantId: tenantId(),
+  contractId: uuid("contract_id")
+    .notNull()
+    .unique()
+    .references(() => contracts.id, { onDelete: "cascade" }),
+  input: jsonb("input").notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * A sub-consultant's invoice registered on a case (D-039): a cost on the case (and phase), compared with the
+ * sub-consultant's fee in the rate plan, and — when `rebill` — put on the customer's invoice at amount + markup.
+ */
+export const subconsultantInvoices = pgTable(
+  "subconsultant_invoices",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
+    supplier: text("supplier").notNull(),
+    invoiceNumber: text("invoice_number"),
+    invoiceDate: date("invoice_date").notNull(),
+    /** excl. VAT, øre */
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    note: text("note"),
+    /** re-invoiced to the customer ("viderefaktureres") */
+    rebill: boolean("rebill").notNull().default(false),
+    /** markup on re-invoicing, basis points (1000 = 10 %) */
+    markupBp: integer("markup_bp").notNull().default(0),
+    /** set while the line is on a customer invoice (draft or booked) */
+    invoiceLineId: uuid("invoice_line_id"),
+    /** true once that customer invoice is booked */
+    invoiced: boolean("invoiced").notNull().default(false),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("subconsultant_invoices_project_idx").on(t.projectId)],
 );
 
 /** Gap-free invoice numbering per legal entity (brief §4.10). The counter row is locked during booking. */
@@ -679,6 +794,8 @@ export const invoiceLines = pgTable(
     vatBp: integer("vat_bp").notNull().default(2500),
     projectId: uuid("project_id").references(() => projects.id),
     paymentPlanItemId: uuid("payment_plan_item_id").references(() => paymentPlanItems.id),
+    /** a conto line: the phase it invoices against (D-029) */
+    acontoTaskId: uuid("aconto_task_id").references(() => tasks.id),
     /** on a credit note: the original invoice line this line credits */
     creditsLineId: uuid("credits_line_id").references((): AnyPgColumn => invoiceLines.id),
   },
@@ -702,6 +819,51 @@ export const invoiceLineSources = pgTable(
     invoiced: bigint("invoiced", { mode: "number" }).notNull(),
   },
   (t) => [index("invoice_line_sources_entry_idx").on(t.timeEntryId)],
+);
+
+/* ───────────────────────────── Case finance: receivables (D-029) ───────────────────────────── */
+
+/** Payments received on a booked invoice: registered by hand, or read from the accounting system. */
+export const invoicePayments = pgTable(
+  "invoice_payments",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    paidOn: date("paid_on").notNull(),
+    /** øre incl. VAT */
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    /** manual | economic */
+    source: text("source").notNull().default("manual"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("invoice_payments_invoice_idx").on(t.invoiceId),
+    check("invoice_payments_amount_positive", sql`${t.amount} > 0`),
+  ],
+);
+
+/** Reminders (rykkere) sent for an invoice, level 1–3. Generating the letters is phase 2. */
+export const invoiceReminders = pgTable(
+  "invoice_reminders",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    level: integer("level").notNull(),
+    sentOn: date("sent_on").notNull(),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("invoice_reminders_invoice_level_uq").on(t.invoiceId, t.level),
+    check("invoice_reminders_level_range", sql`${t.level} between 1 and 3`),
+  ],
 );
 
 /* ───────────────────────────── M2: accounting periods & revenue ───────────────────────────── */
@@ -799,6 +961,8 @@ export const mileageRates = pgTable(
     highRate: bigint("high_rate", { mode: "number" }).notNull(),
     lowRate: bigint("low_rate", { mode: "number" }).notNull(),
     thresholdKm: integer("threshold_km").notNull().default(20_000),
+    /** what the customer is charged per km when mileage is re-invoiced (øre/km), both own and company car */
+    customerRate: bigint("customer_rate", { mode: "number" }).notNull().default(450),
   },
   (t) => [uniqueIndex("mileage_rates_tenant_year_uq").on(t.tenantId, t.year)],
 );
@@ -818,6 +982,8 @@ export const files = pgTable("files", {
 });
 
 export const expenseKindEnum = pgEnum("expense_kind", ["expense", "mileage"]);
+/** Which car a mileage claim was driven in: own car (allowance paid through payroll) or company car (no allowance). */
+export const vehicleEnum = pgEnum("vehicle", ["own", "company"]);
 
 /**
  * An out-of-pocket expense or a mileage claim. Amounts in øre in `currency`; for mileage, `km` and the computed
@@ -845,6 +1011,11 @@ export const expenses = pgTable(
     billable: boolean("billable").notNull().default(false),
     markupBp: integer("markup_bp").notNull().default(0),
     km: numeric("km", { precision: 8, scale: 1, mode: "number" }),
+    /** mileage only: own car (allowance via payroll) or company car (no allowance, still re-invoiceable) */
+    vehicle: vehicleEnum("vehicle"),
+    /** what the customer is charged when re-invoiced, before markup (øre); mileage: km × the customer km price.
+     * null = the net amount (ordinary expenses) */
+    billAmount: bigint("bill_amount", { mode: "number" }),
     fromPlace: text("from_place"),
     toPlace: text("to_place"),
     receiptFileId: uuid("receipt_file_id").references(() => files.id),

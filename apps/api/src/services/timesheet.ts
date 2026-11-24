@@ -74,7 +74,6 @@ export async function taskRows(tx: Tx, taskIds: string[]) {
       projectNumber: schema.projects.number,
       projectName: schema.projects.name,
       projectStatus: schema.projects.status,
-      commentRequired: schema.projects.commentRequired,
       customerName: schema.customers.name,
     })
     .from(schema.tasks)
@@ -229,7 +228,7 @@ export interface CellInput {
 
 /**
  * Saves one timesheet cell for the signed-in employee: checks membership and leaf task, runs the shared domain
- * validation (24 h/day, 0,25 step, future work, closed project/task, required comment, locked period), then
+ * validation (24 h/day, 0,25 step, future work, closed project/task, locked period), then
  * creates, updates or clears the entry. Entries held by an invoice cannot be edited; entries with invoice
  * history are cleared to 0 h instead of deleted (bookkeeping trail). Throws AppError with the failed rule codes.
  */
@@ -259,7 +258,6 @@ export async function saveCell(tx: Tx, auth: AuthContext, b: CellInput) {
   let projectId: string | null = null;
   let projectActive = true;
   let taskOpen = true;
-  let commentRequired = false;
   let defaultBillable = false;
   if (b.taskId) {
     const [t] = await taskRows(tx, [b.taskId]);
@@ -280,7 +278,6 @@ export async function saveCell(tx: Tx, auth: AuthContext, b: CellInput) {
     projectId = t.projectId;
     projectActive = t.projectStatus === "active";
     taskOpen = t.taskStatus === "open";
-    commentRequired = t.commentRequired;
     defaultBillable = t.taskBillable;
   }
 
@@ -295,16 +292,12 @@ export async function saveCell(tx: Tx, auth: AuthContext, b: CellInput) {
     isAbsence: Boolean(b.absenceCodeId),
     projectActive,
     taskOpen,
-    commentRequired,
-    comment,
     periodLocked: LOCKED_PERIOD.has(period?.status ?? "open") || isLocked(b.date, await closedMonths(tx)),
     currentStatus: current?.status,
   });
-  // Clearing a cell (0 h) never needs a comment.
-  const blocking = hours === 0 ? errors.filter((e) => e !== "comment_required") : errors;
-  if (blocking.length) {
-    const first = blocking[0] as EntryError;
-    throw new AppError(ERROR_STATUS[first] ?? 422, first, blocking);
+  if (errors.length) {
+    const first = errors[0] as EntryError;
+    throw new AppError(ERROR_STATUS[first] ?? 422, first, errors);
   }
 
   if (hours === 0) {
@@ -488,11 +481,11 @@ export async function assignableTasks(tx: Tx, auth: AuthContext, search?: string
       taskName: schema.tasks.name,
       wbs: schema.tasks.wbs,
       billable: schema.tasks.billable,
+      projectBillable: schema.projects.billable,
       projectId: schema.projects.id,
       projectNumber: schema.projects.number,
       projectName: schema.projects.name,
       customerName: schema.customers.name,
-      commentRequired: schema.projects.commentRequired,
       favourite: sql<boolean>`${schema.favourites.taskId} is not null`,
     })
     .from(schema.tasks)

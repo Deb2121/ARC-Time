@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>ARCtime i praksis</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+:root { --brand:#CA0538; --ink:#1f1f1f; --ink2:#4a4a4a; --ink3:#777; --line:#e3e3e3; --alt:#f6f6f6; --ok:#1a7f37; --warn:#9a6700; --bad:#b42318; }
+* { box-sizing: border-box; }
+body { font-family: "Open Sans","Segoe UI",Arial,sans-serif; color: var(--ink); font-size: 9.8pt; line-height: 1.5; margin: 0; }
+h1 { font-size: 26pt; font-weight: 400; margin: 0 0 4mm; }
+h2 { font-size: 15pt; font-weight: 500; margin: 0 0 3mm; padding-top: 2mm; border-top: 3px solid var(--brand); break-after: avoid; }
+h3 { font-size: 11pt; font-weight: 600; margin: 5mm 0 1.5mm; break-after: avoid; }
+p { margin: 0 0 2.5mm; } ul, ol { margin: 0 0 3mm; padding-left: 6mm; } li { margin-bottom: 1.1mm; }
+.chapter { break-before: page; }
+table { width: 100%; border-collapse: collapse; margin: 1mm 0 4mm; font-size: 8.9pt; }
+th { text-align: left; background: var(--alt); color: var(--ink2); font-weight: 600; padding: 1.5mm 2mm; border-bottom: 1px solid var(--line); }
+td { padding: 1.3mm 2mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr { break-inside: avoid; }
+td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+.logo { font-size: 22pt; font-weight: 300; } .logo b { color: var(--brand); font-weight: 600; }
+.cover h1 { margin-top: 40mm; font-size: 32pt; } .muted { color: var(--ink3); }
+.note { border: 1px solid var(--line); background: var(--alt); padding: 2.6mm 3.5mm; border-radius: 2mm; margin: 2mm 0 4mm; break-inside: avoid; }
+.warn { border-left: 4px solid var(--warn); } .good { border-left: 4px solid var(--ok); } .tip { border-left: 4px solid var(--brand); }
+.who { display: inline-block; background: #fce8ee; color: #850324; border-radius: 9px; padding: 0 2.5mm; font-size: 8.3pt; font-weight: 600; margin-left: 2mm; vertical-align: middle; }
+.ex { break-inside: avoid-page; margin-bottom: 6mm; }
+.expect { border: 1px solid #cfe8d6; background: #f1faf3; border-left: 4px solid var(--ok); padding: 2.4mm 3.5mm; border-radius: 2mm; margin: 2mm 0 4mm; break-inside: avoid; }
+.expect b.h { display: block; color: var(--ok); margin-bottom: 1mm; }
+.err { border: 1px solid #f3d3cf; background: #fdf3f2; border-left: 4px solid var(--bad); padding: 2.4mm 3.5mm; border-radius: 2mm; margin: 2mm 0 4mm; break-inside: avoid; }
+.err b.h { display: block; color: var(--bad); margin-bottom: 1mm; }
+.msg { font-style: italic; color: var(--ink2); }
+kbd { font-family: inherit; background: #fff; border: 1px solid #ccc; border-bottom-width: 2px; border-radius: 1.2mm; padding: 0 1.4mm; font-size: 8.6pt; white-space: nowrap; }
+.flow { display: flex; align-items: stretch; gap: 1.5mm; margin: 3mm 0 5mm; break-inside: avoid; }
+.flow .box { flex: 1; border: 1px solid var(--line); border-top: 4px solid var(--brand); border-radius: 2mm; padding: 2.2mm; font-size: 8.2pt; }
+.flow .box b { display: block; font-size: 9pt; margin-bottom: .8mm; }
+.flow .arrow { align-self: center; color: var(--ink3); font-size: 13pt; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 3mm 0 5mm; }
+.kpi { border: 1px solid var(--line); border-radius: 2mm; padding: 3mm; font-size: 9pt; } .kpis .kpi b { display: block; font-size: 11pt; margin-bottom: 1mm; }
+.calc { font-variant-numeric: tabular-nums; color: var(--ink2); font-size: 8.6pt; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="logo"><b>ARC</b>time</div>
+  <div>
+    <h1>ARCtime i praksis</h1>
+    <p style="font-size:13pt">Én guide til hele systemet. Du prøver funktionerne selv, fra en ny sag til en betalt faktura og lønfilen, og får forklaret, hvad der sker og hvorfor. Med præcise tal, du kan indtaste, og de resultater, du skal se på skærmen.</p>
+    <div class="kpis">
+      <div class="kpi"><b>3 sager</b>Medgået tid, fastpris med rater, og en tilbudssag, der ikke viderefaktureres</div>
+      <div class="kpi"><b>4 roller</b>Medarbejder, nærmeste leder, projektleder og Økonomi – og hvordan de påvirker hinanden</div>
+      <div class="kpi"><b>Hele kæden</b>Timer, kørsel, godkendelse, faktura, betaling, rykker, løn og månedsluk</div>
+    </div>
+  </div>
+  <div class="muted">ARCnordic · ARCtime · november 2026<br>
+  Alle personer, kunder og tal er opdigtede (demo-virksomheden “ARCnordic Demo ApS”). Hele forløbet er kørt igennem på en frisk kopi af demo-databasen, så tallene er kontrolleret.</div>
+</section>
+
+<!-- ───────────── Før du starter ───────────── -->
+<section class="chapter">
+<h2>Før du starter</h2>
+
+<h3>Forløbet</h3>
+<div class="flow">
+  <div class="box"><b>A · Opsæt</b>Øvelse 1–3: tre sager med budget, deltagere og rateplan</div><div class="arrow">→</div>
+  <div class="box"><b>B · Registrér</b>Øvelse 4–5: timer og kørsel i Min uge</div><div class="arrow">→</div>
+  <div class="box"><b>C · Følg op</b>Øvelse 6–8: sagsøkonomi og godkendelse</div><div class="arrow">→</div>
+  <div class="box"><b>D · Fakturér</b>Øvelse 9–11: faktura, rate, betaling og rykker</div><div class="arrow">→</div>
+  <div class="box"><b>E · Luk</b>Øvelse 12–13: løn, rapporter, revisionsspor og månedsluk</div>
+</div>
+
+<h3>Logins</h3>
+<p>Adgangskoden er <b>demo1234</b> for alle. Log ud øverst til højre, før du skifter person – eller brug et privat browservindue til den anden person.</p>
+<table>
+  <tr><th>Person</th><th>E-mail</th><th>Roller</th><th>Øvelser</th></tr>
+  <tr><td><b>Karen Holm</b></td><td>kh@demo.arcnordic.test</td><td>Økonomi, Ledelse, Administrator, Nærmeste leder</td><td>1–3, 6, 8–13</td></tr>
+  <tr><td><b>Emil Krogh</b></td><td>ek@demo.arcnordic.test</td><td>Medarbejder</td><td>4</td></tr>
+  <tr><td><b>Ida Skov</b></td><td>is@demo.arcnordic.test</td><td>Medarbejder, Projektleder</td><td>5</td></tr>
+  <tr><td><b>Anne Lund</b></td><td>al@demo.arcnordic.test</td><td>Nærmeste leder for Emil, Projektleder</td><td>7</td></tr>
+  <tr><td><b>Mikkel Bach</b></td><td>mb@demo.arcnordic.test</td><td>Nærmeste leder for Ida, Projektleder</td><td>7</td></tr>
+</table>
+<p class="calc">Vil I prøve med en ren økonomibruger, kan <b>Jonas Friis</b> (jf@demo.arcnordic.test, rollen Økonomi) bruges i stedet for Karen i alle Økonomi-øvelserne. Karen har desuden administration.</p>
+
+<h3>Datoer og tal</h3>
+<div class="note warn">
+<p><b>Man kan ikke registrere timer på dage, der ikke er kommet endnu.</b> Derfor bruger guiden <b>uge 46 (mandag 9. – fredag 13. november 2026)</b>. Sagerne får startdato 2. november.</p>
+<p>Emil og Ida har allerede demo-timer i uge 46 (ca. 37 t på andre sager). Demo-timerne laves ud fra den dag, databasen blev nulstillet, så de kan variere lidt. Guiden skriver derfor, hvor meget tallene <b>stiger</b> i Min uge og Godkendelse – ikke hvad de ender på. Alle tal på de tre nye sager, fakturaerne og lønnen er faste.</p>
+<p style="margin:0">Guiden går ud fra frisk demo-data: de nye sager får numrene <b>26010, 26011 og 26012</b>, og fakturaerne <b>1014 og 1015</b>. Fakturadatoen er dags dato, og forfald er fakturadatoen + 30 dage.</p>
+</div>
+</section>
+
+<!-- ───────────── Grundbegreber ───────────── -->
+<section class="chapter">
+<h2>Sådan hænger ARCtime sammen</h2>
+
+<h3>Fem ord, der går igen</h3>
+<table>
+  <tr><th style="width:24%">Ord</th><th>Betydning</th></tr>
+  <tr><td><b>Timepris</b></td><td>Det, kunden betaler pr. time. Her 1.000 kr på alle sager, så værdien af en time altid er 1.000 kr. Prisen <b>låses</b> på timen, når ugen godkendes – en senere prisændring ændrer ikke godkendte timer.</td></tr>
+  <tr><td><b>Kostpris</b></td><td>Hvad timen koster virksomheden internt. Emil 400 kr/t, Ida 540 kr/t.</td></tr>
+  <tr><td><b>Forbrugt</b></td><td>Værdien af de fakturerbare timer, der er registreret – også før godkendelse. Viser forbruget tidligt.</td></tr>
+  <tr><td><b>Ikke faktureret</b></td><td>Kun <i>godkendte</i> timer, der endnu ikke står på en bogført faktura. Det er det, der kan faktureres nu.</td></tr>
+  <tr><td><b>DB-grad</b></td><td>(værdi − kostpris) ÷ værdi. Hvor stor en del af værdien der er tilbage, når timerne er betalt.</td></tr>
+</table>
+<p class="calc">Sagsøkonomi, Projekter og Fakturering viser beløb <b>ekskl. moms</b>. Debitorlisten viser beløb <b>inkl. 25 % moms</b>.</p>
+
+<h3>Hvem gør hvad – og hvor det viser sig hos Økonomi</h3>
+<table>
+  <tr><th style="width:18%">Rolle</th><th style="width:38%">Gør</th><th>Det ser Økonomi</th></tr>
+  <tr><td><b>Medarbejder</b></td><td>Registrerer timer i <b>Min uge</b> og indsender ugen. Registrerer udlæg og kørsel – direkte fra Min uge.</td><td>Timerne tæller straks i <b>Forbrugt</b>. Udlæg venter under <b>Godkendelse → Udlæg og kørsel</b>.</td></tr>
+  <tr><td><b>Nærmeste leder</b></td><td>Godkender udlæg og kørsel for sine medarbejdere. Godkender <b>ikke</b> timer.</td><td>Godkendte udlæg kommer med i lønnen og – hvis de viderefaktureres – i faktureringsgrundlaget.</td></tr>
+  <tr><td><b>Projektleder</b></td><td>Opgaver og budget, rateplan, afslutter faser, laver fakturakladder for egne sager.</td><td>Budget og status i Projekter og Sagsøkonomi. Rater bliver <b>Klar</b>. Kladder ligger klar til bogføring.</td></tr>
+  <tr><td><b>Administrator</b></td><td><b>Opretter sager</b> (kun administrator). Medarbejdere, roller, nærmeste leder, normtid, lønnummer.</td><td>Hvem der godkender hvad. Manglende lønnummer giver ⚠ i <b>Løn</b>.</td></tr>
+  <tr><td><b>Økonomi</b></td><td><b>Godkender eller afviser alle indsendte uger.</b> Bogfører, krediterer, registrerer betalinger og rykkere, danner lønfil, lukker måneder. Kan godkende alle udlæg.</td><td>Først når Økonomi har godkendt ugen, kan timerne faktureres: de flytter til <b>Ikke faktureret</b> og <b>Faktureringsgrundlag</b>.</td></tr>
+</table>
+<div class="note"><b>Tommelfingerregel:</b> står et beløb under <i>Forbrugt</i>, men ikke under <i>Ikke faktureret</i>, venter timerne på Økonomis godkendelse.</div>
+</section>
+
+<!-- ───────────── A ───────────── -->
+<section class="chapter">
+<h2>Øvelse 1 · Sag på medgået tid <span class="who">Karen</span></h2>
+<p>Andelsboligforeningen Fjordbyen vil have et skitse- og myndighedsprojekt for en tagetage. De betaler for de timer, der bruges.</p>
+
+<div class="ex">
+<h3>A. Opret sagen</h3>
+<p><b>Projekter → + Nyt projekt</b>:</p>
+<table>
+  <tr><th style="width:38%">Felt</th><th>Indtast</th></tr>
+  <tr><td>Projektnavn</td><td><b>Havnehuset – ombygning af tagetage</b></td></tr>
+  <tr><td>Kunde</td><td>Andelsboligforeningen Fjordbyen</td></tr>
+  <tr><td>Projektleder</td><td>Anne Lund</td></tr>
+  <tr><td>Kontrakttype</td><td><b>Medgået tid</b></td></tr>
+  <tr><td>Viderefaktureres til kunden</td><td><b>Ja – timer og udlæg faktureres kunden</b></td></tr>
+  <tr><td>Timepris (kr)</td><td><b>1000</b></td></tr>
+  <tr><td>Startdato</td><td><b>02-11-2026</b></td></tr>
+</table>
+<div class="note tip"><b>Forklaring</b>
+<ul style="margin:0">
+  <li><b>Kontrakttype</b> har tre valg. <b>Medgået tid</b>: kunden betaler timer × timepris. <b>Medgået tid med loft</b>: som medgået tid, men der faktureres højst op til et aftalt antal timer – timer over loftet er gratis. <b>Fastpris</b>: et aftalt honorar, der faktureres i rater (øvelse 2).</li>
+  <li><b>Viderefaktureres til kunden</b> skal vælges aktivt. Systemet gætter ikke, for et forkert valg betyder enten tabt omsætning eller en faktura, kunden ikke skal have. Vælger du ikke, siger systemet: <span class="msg">“Vælg om sagen skal viderefaktureres til kunden.”</span></li>
+</ul></div>
+</div>
+
+<div class="ex">
+<h3>B. Opgaver med budget og deltagere</h3>
+<p>Klik <b>Opret projekt</b>. På projektsiden: <b>+ Tilføj opgave</b> to gange:</p>
+<table>
+  <tr><th>Opgave</th><th class="n">Budget timer</th><th class="n">Budget kr</th></tr>
+  <tr><td>Skitseprojekt</td><td class="n">40</td><td class="n">40000</td></tr>
+  <tr><td>Myndighedsprojekt</td><td class="n">30</td><td class="n">30000</td></tr>
+</table>
+<p>Under <b>Projektdeltagere</b>: tilføj <b>Emil Krogh</b> og <b>Ida Skov</b>. Kun deltagere kan finde sagen i Min uge.</p>
+<div class="expect"><b class="h">Det skal du se</b>Sag <b>26010</b> · Kontrakt Medgået tid, 1.000 kr/t · Budget <b>70 t / 70.000 kr</b> · Deltagere: Anne Lund (projektleder), Emil Krogh, Ida Skov.</div>
+</div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 2 · Fastpris med rateplan <span class="who">Karen</span></h2>
+<p>Søholm Friskole får et cykelskur til en fast pris på 10.000 kr, faktureret i to rater.</p>
+<table>
+  <tr><th style="width:38%">Felt</th><th>Indtast</th></tr>
+  <tr><td>Projektnavn</td><td><b>Søholm Friskole – nyt cykelskur</b></td></tr>
+  <tr><td>Kunde / Projektleder</td><td>Søholm Friskole / Anne Lund</td></tr>
+  <tr><td>Kontrakttype / Viderefaktureres</td><td><b>Fastpris</b> / <b>Ja</b></td></tr>
+  <tr><td>Fast pris (kr) / Timepris (kr)</td><td><b>10000</b> / <b>1000</b></td></tr>
+  <tr><td>Startdato</td><td><b>02-11-2026</b></td></tr>
+</table>
+<p>Opgaver: <b>Projektforslag</b> (5 t / 5000 kr) og <b>Udførelsesprojekt</b> (5 t / 5000 kr). Deltager: <b>Ida Skov</b>.</p>
+
+<div class="ex">
+<h3>Rateplanen – og hvorfor den først bliver afvist</h3>
+<p>Klik <b>Sagsøkonomi →</b> på projektsiden. Under faktureringsplanen: <b>Redigér plan → Tilføj rate</b>:</p>
+<table>
+  <tr><th>Beskrivelse</th><th class="n">Andel</th><th>Planlagt dato</th><th>Fase</th></tr>
+  <tr><td>Rate 1 · Projektforslag</td><td class="n">50 %</td><td>13-11-2026</td><td>Projektforslag</td></tr>
+</table>
+<p>Klik <b>Gem som aktiv</b>.</p>
+<div class="err"><b class="h">Forventet afvisning</b><span class="msg">“Raterne giver tilsammen ikke 100 % af honoraret. Ret andelene, så de giver præcis 100 %.”</span><br>
+En aktiv plan skal dække hele honoraret, så intet bliver glemt.</div>
+<p>Tilføj <b>Rate 2 · Udførelsesprojekt</b>, 50 %, 15-12-2026, fase Udførelsesprojekt, og gem som aktiv.</p>
+<div class="expect"><b class="h">Det skal du se</b>
+<ul style="margin:0">
+  <li>Sumlinjen er grøn ved 100 %.</li>
+  <li>Rate 1 (5.000 kr) er <b>Klar</b>: den er først i rækken, og datoen er passeret.</li>
+  <li>Rate 2 (5.000 kr) er <b>Afventer</b>, indtil rate 1 er faktureret.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 3 · En sag, der ikke viderefaktureres <span class="who">Karen</span></h2>
+<p>Fjordbyen har bedt om et tilbud på nye altaner. Tilbudsarbejdet betaler kunden ikke for, men vi vil gerne kunne se, hvad det koster os.</p>
+<table>
+  <tr><th style="width:38%">Felt</th><th>Indtast</th></tr>
+  <tr><td>Projektnavn</td><td><b>Fjordbyen – tilbud på altaner</b></td></tr>
+  <tr><td>Kunde / Projektleder</td><td>Andelsboligforeningen Fjordbyen / Anne Lund</td></tr>
+  <tr><td>Kontrakttype / Timepris</td><td><b>Medgået tid</b> / <b>1000</b></td></tr>
+  <tr><td>Viderefaktureres til kunden</td><td><b>Nej – fx tilbud, garanti eller intern opgave</b></td></tr>
+  <tr><td>Startdato</td><td><b>02-11-2026</b></td></tr>
+</table>
+<p>Opgave: <b>Tilbudsmateriale</b> (10 t / 10000 kr). Deltager: <b>Emil Krogh</b>.</p>
+<div class="expect"><b class="h">Det skal du se</b>Sag <b>26012</b>. Øverst på sagssiden, ved siden af kunde og projektleder, står mærket <b>Faktureres ikke til kunden</b>. I Opgavestruktur står der <b>· ikke fakturerbar</b> efter Tilbudsmateriale. Begge dele følger automatisk af sagens Nej. Hold musen over mærket for at se forklaringen.</div>
+<div class="note tip"><b>Forklaring</b>
+<ul style="margin:0">
+  <li>Timer på en sag med <b>Nej</b> registreres og tæller i <b>kostprisen</b>, men de har ingen fakturerbar værdi og kommer aldrig i faktureringsgrundlaget.</li>
+  <li>Vælger du <b>Intern</b> som kunde, er Ja slet ikke et valg: en sag uden kunde kan ikke faktureres.</li>
+</ul></div>
+</section>
+
+<!-- ───────────── B ───────────── -->
+<section class="chapter">
+<h2>Øvelse 4 · Emil: timer og kørsel i Min uge <span class="who">Emil</span></h2>
+
+<div class="ex">
+<h3>A. Træk ugen tilbage</h3>
+<p>Log ind som Emil. <b>Min uge</b> → pilen tilbage til <b>uge 46</b>. Står ugen som <b>Indsendt</b>, kan den ikke rettes: klik <b>Træk tilbage</b>. Det kan man, indtil Økonomi har godkendt. Notér <b>Registreret</b> og <b>Flex denne uge</b> øverst, så du kan se, hvor meget de stiger.</p>
+</div>
+
+<div class="ex">
+<h3>B. Skriv timerne</h3>
+<p>Søg <kbd>havnehuset</kbd> i <b>Søg projekt, opgave eller kunde…</b> og vælg <b>Skitseprojekt</b>. Søg derefter <kbd>altaner</kbd> og vælg <b>Tilbudsmateriale</b>.</p>
+<table>
+  <tr><th>Opgave</th><th class="n">Man</th><th class="n">Tir</th><th class="n">Ons</th><th class="n">Tor</th><th class="n">Fre</th><th class="n">I alt</th></tr>
+  <tr><td>Havnehuset · Skitseprojekt</td><td class="n">1,5</td><td class="n">1,5</td><td class="n">1,5</td><td class="n">1,5</td><td class="n">1,5</td><td class="n"><b>7,5</b></td></tr>
+  <tr><td>Fjordbyen – tilbud · Tilbudsmateriale</td><td></td><td></td><td></td><td></td><td class="n">2</td><td class="n"><b>2</b></td></tr>
+</table>
+<div class="expect"><b class="h">Det skal du se øverst</b>
+<b>Registreret</b> stiger med <b>9,5 t</b> · <b>Flex denne uge</b> stiger med <b>9,5 t</b> · Fakturerbare timer stiger kun med <b>7,5 t</b>, fordi tilbudstimerne ikke er fakturerbare.</div>
+<div class="err"><b class="h">Prøv en fremtidig dag</b>Gå til næste uge og skriv <kbd>2</kbd> på en dag, der ikke er kommet: <span class="msg">“Arbejdstid kan ikke registreres på en dag, der ikke er kommet endnu. Vælg dagens dato eller en tidligere dag.”</span> Gå tilbage til uge 46.</div>
+</div>
+
+<div class="ex">
+<h3>C. Kørsel direkte fra Min uge – egen bil og firmabil</h3>
+<p>Nederst i ugen er rækken <b>Udlæg/kørsel</b>. Klik <b>+</b> under <b>torsdag 12. nov.</b> → <b>Ny kørsel</b>. Formularen åbner med datoen udfyldt.</p>
+<table>
+  <tr><th style="width:30%">Felt</th><th>Kørsel 1 (torsdag 12/11)</th><th>Kørsel 2 (fredag 13/11)</th></tr>
+  <tr><td>Kilometer</td><td><b>120</b></td><td><b>40</b></td></tr>
+  <tr><td>Beskrivelse</td><td>Besigtigelse af tagetagen</td><td>Møde med kommunen</td></tr>
+  <tr><td>Bil</td><td><b>Egen bil</b></td><td><b>Firmabil</b></td></tr>
+  <tr><td>Fra / Til</td><td>Kontoret / Fjordbyen (t/r)</td><td>Kontoret / Rådhuset (t/r)</td></tr>
+  <tr><td>Projekt</td><td>Havnehuset</td><td>Havnehuset</td></tr>
+  <tr><td>Viderefaktureres til kunden</td><td colspan="2">✔ – sættes selv, fordi sagen viderefaktureres</td></tr>
+</table>
+<p>Klik <b>Gem kørsel</b>. Lav kørsel 2 på samme måde via <b>+</b> under fredag.</p>
+<div class="expect"><b class="h">Det skal du se</b>
+<table style="margin:0">
+  <tr><td>Kørsel 1, egen bil</td><td class="n"><b>472,80 kr</b> <span class="calc">(120 km × 3,94 kr – statens høje takst 2026)</span></td></tr>
+  <tr><td>Kørsel 2, firmabil</td><td class="n"><b>157,60 kr</b> <span class="calc">(40 km × 3,94 kr)</span>, markeret “Firmabil”</td></tr>
+  <tr><td>Kunden faktureres</td><td class="n">4,50 kr/km for begge: <b>540,00</b> og <b>180,00 kr</b> <span class="calc">(formularen viser det under fluebenet)</span></td></tr>
+</table></div>
+<div class="note tip"><b>Forklaring: egen bil eller firmabil</b>
+<ul style="margin:0">
+  <li><b>Egen bil:</b> Emil får skattefri kørselsgodtgørelse via lønnen. Den høje takst gælder op til 20.000 km om året, derefter den lave.</li>
+  <li><b>Firmabil:</b> Emil får <b>ingen</b> godtgørelse, og kørslen kommer ikke i lønfilen. Den beholder alligevel sin værdi, så den tæller i sagens omkostninger.</li>
+  <li><b>Kunden</b> faktureres altid efter kundeprisen <b>4,50 kr/km</b> – uanset bil, og uafhængigt af hvad medarbejderen får i godtgørelse.</li>
+</ul></div>
+<p>På siden <b>Udlæg og kørsel</b> klikker du <b>Indsend 2 til godkendelse</b>. Gå tilbage til <b>Min uge</b>, uge 46: rækken Udlæg/kørsel viser nu beløbene under torsdag og fredag (473 kr og 158 kr – rækken viser hele kroner). Klik <b>Indsend uge</b>.</p>
+<div class="note"><b>Hvem får det?</b> Ugen går direkte til <b>Økonomi</b> (Karen og Jonas) under <b>Godkendelse</b> – hverken nærmeste leder eller projektleder godkender timer. Kørslerne kan godkendes af Økonomi eller Emils nærmeste leder, Anne Lund. Udlæg godkendes for sig, ikke sammen med ugen.</div>
+</div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 5 · Ida registrerer timer <span class="who">Ida</span></h2>
+<p>Log ind som Ida, <b>Min uge</b>, uge 46. Står ugen som Indsendt, så klik <b>Træk tilbage</b>. Tilføj tre rækker via søgefeltet:</p>
+<table>
+  <tr><th>Opgave</th><th class="n">Man</th><th class="n">Tir</th><th class="n">Ons</th><th class="n">Tor</th><th class="n">Fre</th><th class="n">I alt</th></tr>
+  <tr><td>Søholm – nyt cykelskur · Projektforslag</td><td class="n">1,5</td><td class="n">1,5</td><td class="n">1,5</td><td class="n">1,5</td><td></td><td class="n">6</td></tr>
+  <tr><td>Søholm – nyt cykelskur · Udførelsesprojekt</td><td></td><td></td><td></td><td></td><td class="n">1,5</td><td class="n">1,5</td></tr>
+  <tr><td>Havnehuset · Myndighedsprojekt</td><td></td><td></td><td></td><td></td><td class="n">2</td><td class="n">2</td></tr>
+</table>
+<p>Kommentarer er frivillige. Vil du prøve: vælg fredagens Havnehuset-celle → <b>✎ Kommentar</b> → <i>Møde med kommunen</i>. Klik <b>Indsend uge</b>.</p>
+<div class="expect"><b class="h">Det skal du se</b>Registreret, fakturerbare timer og flex stiger alle med <b>9,5 t</b>. Ugen går til Idas leder, <b>Mikkel Bach</b>.</div>
+</section>
+
+<!-- ───────────── C ───────────── -->
+<section class="chapter">
+<h2>Øvelse 6 · Sagsøkonomi før godkendelse <span class="who">Karen</span></h2>
+<p>Log ind som Karen → <b>Sagsøkonomi</b>. Søg eller sortér på sagsnummer.</p>
+<table>
+  <tr><th>Sag</th><th class="n">Timer</th><th class="n">Forbrugt</th><th class="n">Kostpris</th><th class="n">Ikke fakt.</th><th>Honorar / rest</th><th>Status</th></tr>
+  <tr><td>26010 Havnehuset</td><td class="n">9,5</td><td class="n">9.500</td><td class="n">4.080</td><td class="n">0</td><td>–</td><td>Ajour</td></tr>
+  <tr><td>26011 Søholm</td><td class="n">7,5</td><td class="n">7.500</td><td class="n">4.050</td><td class="n">0</td><td>10.000 / 10.000 · 75 %</td><td><b>Overskridelsesrisiko</b></td></tr>
+  <tr><td>26012 Tilbud på altaner</td><td class="n">2</td><td class="n">0</td><td class="n">800</td><td class="n">0</td><td>–</td><td>Ajour</td></tr>
+</table>
+<p class="calc">Kostpris: Havnehuset = Emil 7,5 × 400 + Ida 2 × 540 = 4.080. Søholm = Ida 7,5 × 540 = 4.050. Tilbud = Emil 2 × 400 = 800.</p>
+<div class="note tip"><b>Hvad viser det?</b>
+<ul style="margin:0">
+  <li><b>Forbrugt</b> tæller timerne med det samme. <b>Ikke faktureret</b> er 0, fordi intet er godkendt endnu.</li>
+  <li><b>Søholm</b> har brugt 75 % af honoraret og rammer advarselsgrænsen. Åbn sagen: <i>“75 % af honorar forbrugt”</i>. Under Faseøkonomi har Projektforslag brugt 6 af 5 timer.</li>
+  <li><b>Tilbudssagen</b> har timer og kostpris, men forbrugt 0: timerne har ingen fakturerbar værdi. Sådan ser I, hvad tilbudsarbejdet koster.</li>
+  <li><b>Projekter</b> viser det samme med samme grænser: Søholm står som <b>Tæt på budget</b> med teksten <b>1 fase over budget</b>. Hold musen over den orange prik for forklaringen.</li>
+</ul></div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 7 · Økonomi godkender <span class="who">Karen</span></h2>
+<div class="ex">
+<h3>Karen godkender Emils uge og kørsel</h3>
+<p>Log ind som Karen → <b>Godkendelse</b> → fanen <b>Ugesedler</b> → pilene til uge 46. Alle indsendte uger står her – Økonomi godkender for hele virksomheden.</p>
+<div class="expect"><b class="h">Ved Emil Krogh</b>Status Indsendt. Under fordeling på projekter står blandt andet <b>Havnehuset 7,5 t</b> og <b>Fjordbyen – tilbud på altaner 2 t</b> ved siden af hans demo-timer. Økonomi ser også, hvis enkelte dage ligger over normtiden.</div>
+<p>Klik <b>Godkend</b>. Prøv gerne <b>Afvis</b> først: systemet kræver en begrundelse, som Emil får at se. Annullér og godkend.</p>
+<p>Fanen <b>Udlæg og kørsel</b>: de to kørsler – <b>472,80 kr</b> (egen bil) og <b>157,60 kr</b> (Firmabil). Godkend begge.</p>
+<div class="note"><b>Prøv som Anne:</b> log ind som Anne → <b>Godkendelse</b> → <b>Ugesedler</b>. Listen er tom: nærmeste leder og projektleder godkender ikke timer.</div>
+</div>
+<div class="ex">
+<h3>Karen godkender Ida</h3>
+<p>Stadig som Karen → <b>Godkendelse</b> → uge 46 → godkend Ida Skovs uge.</p>
+<div class="note tip"><b>Hvad sker der ved godkendelse?</b> Timepris og kostpris låses på hver time. Timerne kan nu faktureres, og godkendte udlæg kommer med i lønnen og – hvis de viderefaktureres – i faktureringsgrundlaget.</div>
+</div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 8 · Efter godkendelse <span class="who">Karen</span></h2>
+<h3>Sagsøkonomi</h3>
+<table>
+  <tr><th>Sag</th><th class="n">Forbrugt</th><th class="n">Kostpris</th><th class="n">Ikke faktureret</th><th>Status</th></tr>
+  <tr><td>26010 Havnehuset</td><td class="n">9.500</td><td class="n">4.080</td><td class="n"><b>9.500</b></td><td><b>Kan faktureres</b></td></tr>
+  <tr><td>26011 Søholm</td><td class="n">7.500</td><td class="n">4.050</td><td class="n">0</td><td>Overskridelsesrisiko · rate 1 klar (5.000)</td></tr>
+  <tr><td>26012 Tilbud</td><td class="n">0</td><td class="n">800</td><td class="n">0</td><td>Ajour</td></tr>
+</table>
+<p class="calc">Søholm er fastpris: timerne faktureres ikke enkeltvis, men via raterne. Tilbudssagen faktureres aldrig.</p>
+
+<h3>Projekter (budget mod forbrug)</h3>
+<table>
+  <tr><th>Projekt</th><th class="n">Forbrug</th><th class="n">Værdi</th><th class="n">DB-grad</th><th>Status</th></tr>
+  <tr><td>26010 Havnehuset</td><td class="n">9,5 / 70 t · 13,6 %</td><td class="n">9.500</td><td class="n">57,1 %</td><td>På sporet</td></tr>
+  <tr><td>26011 Søholm</td><td class="n">7,5 / 10 t · 75 %</td><td class="n">7.500</td><td class="n">46 %</td><td>Tæt på budget · 1 fase over budget</td></tr>
+  <tr><td>26012 Tilbud</td><td class="n">2 / 10 t · 20 %</td><td class="n">0</td><td class="n">–</td><td>På sporet</td></tr>
+</table>
+<p class="calc">DB-grad Havnehuset = (9.500 − 4.080) ÷ 9.500 = 57,1 %. Søholm = (7.500 − 4.050) ÷ 7.500 = 46 %. Tilbudssagen har ingen værdi, så DB-grad giver ikke mening.</p>
+</section>
+
+<!-- ───────────── D ───────────── -->
+<section class="chapter">
+<h2>Øvelse 9 · Fakturér Havnehuset – timer og kørsel <span class="who">Karen</span></h2>
+<div class="ex">
+<h3>A. Faktureringsgrundlaget</h3>
+<p><b>Fakturering → Faktureringsgrundlag</b>. <b>Til og med</b> = dags dato. Skriv <kbd>26010</kbd> i <b>Søg sag</b>.</p>
+<div class="expect"><b class="h">Det skal du se</b><b>26010 Havnehuset</b> · Andelsboligforeningen Fjordbyen · 9,5 t · værdi <b>9.500 kr</b> · udlæg <b>720 kr</b> · i alt <b>10.220 kr</b> <span class="calc">(kørslen til kundepris: 160 km × 4,50 = 720)</span>.<br>
+Søholm står der også med <b>5.000</b> under rater. Tilbudssagen står der <b>ikke</b>.</div>
+<p>Sæt flueben ved Havnehuset, gruppering <b>Pr. opgave</b>, og klik <b>Opret kladde for valgte (1)</b>. Brug ikke “Opret kladder for alle” – den laver kladder for alle sager.</p>
+</div>
+<div class="ex">
+<h3>B. Kladden</h3>
+<table>
+  <tr><th>Linje</th><th class="n">Antal</th><th class="n">Pris</th><th class="n">Beløb</th></tr>
+  <tr><td>1 Skitseprojekt</td><td class="n">7,5</td><td class="n">1.000,00</td><td class="n">7.500,00</td></tr>
+  <tr><td>2 Myndighedsprojekt</td><td class="n">2</td><td class="n">1.000,00</td><td class="n">2.000,00</td></tr>
+  <tr><td>Kørsel 120 km: Besigtigelse af tagetagen</td><td class="n">1</td><td class="n">540,00</td><td class="n">540,00</td></tr>
+  <tr><td>Kørsel 40 km: Møde med kommunen</td><td class="n">1</td><td class="n">180,00</td><td class="n">180,00</td></tr>
+  <tr><td>Subtotal</td><td></td><td></td><td class="n">10.220,00</td></tr>
+  <tr><td>Moms 25 %</td><td></td><td></td><td class="n">2.555,00</td></tr>
+  <tr><td><b>I alt</b></td><td></td><td></td><td class="n"><b>12.775,00</b></td></tr>
+</table>
+<p class="calc">Begge kørsler faktureres til kundeprisen 4,50 kr/km – også firmabil-kørslen, som Emil ikke får godtgørelse for. Forfald = fakturadato + 30 dage (kundens betalingsbetingelse). Åbn PDF'en for at se fakturaen med timespecifikation.</p>
+<div class="note tip"><b>Prøv også:</b> nedskriv linje 1 til 7.000 kr. Systemet kræver en begrundelse og husker det oprindelige beløb. Sæt den tilbage til 7.500 bagefter, så resten af tallene passer.</div>
+</div>
+<div class="ex">
+<h3>C. Bogfør</h3>
+<p><b>Klar til bogføring → Bogfør</b>, og bekræft.</p>
+<div class="expect"><b class="h">Det skal du se</b>Faktura <b>1014</b> under <b>Bogførte</b>. Den kan ikke længere rettes, kun krediteres. Sagsøkonomi, Havnehuset: Faktureret <b>10.220,00</b> · Ikke faktureret <b>0</b> · Status <b>Ajour</b>.</div>
+</div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 10 · Fakturér en rate <span class="who">Karen</span></h2>
+<p><b>Sagsøkonomi → Rater klar til fakturering</b>: <b>26011 Søholm Friskole – nyt cykelskur</b> · Rate 1 · Projektforslag · 13.11.2026 · 5.000 kr.</p>
+<p>Klik <b>Fakturér rate</b>. Kladden oprettes med det samme. <b>Fakturering → Kladder</b> → åbn den → <b>Klar til bogføring → Bogfør</b>.</p>
+<div class="expect"><b class="h">Det skal du se</b>
+<table style="margin:0">
+  <tr><td>Faktura 1015</td><td class="n">5.000 + moms 1.250 = <b>6.250 kr</b></td></tr>
+  <tr><td>Sagsøkonomi: Faktureret / Resthonorar</td><td class="n">5.000 / <b>5.000</b></td></tr>
+  <tr><td>Næste rate</td><td class="n">Rate 2 · 15.12. · 5.000 · <b>Planlagt</b></td></tr>
+</table></div>
+<div class="note tip">Rate 2 går fra <i>Afventer</i> til <i>Planlagt</i>, fordi rate 1 nu er faktureret. Den bliver <i>Klar</i> 15. december – eller tidligere, hvis projektlederen afslutter fasen Udførelsesprojekt.</div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 11 · Debitorlisten: betaling og rykker <span class="who">Karen</span></h2>
+<p><b>Debitorliste</b>. Beløbene er inkl. moms.</p>
+<table>
+  <tr><th>Faktura</th><th>Sag / kunde</th><th class="n">Beløb</th><th>Status</th></tr>
+  <tr><td>1014</td><td>26010 Havnehuset · Andelsboligforeningen Fjordbyen</td><td class="n">12.775,00</td><td>Åben</td></tr>
+  <tr><td>1015</td><td>26011 Søholm – cykelskur · Søholm Friskole</td><td class="n">6.250,00</td><td>Åben</td></tr>
+</table>
+<div class="ex">
+<h3>A. Delbetaling</h3>
+<p><b>+ Betaling</b> ud for 1014 → <b>Delbetaling</b> → <b>5000</b>, dags dato.</p>
+<div class="expect"><b class="h">Det skal du se</b>Status <b>Delvist betalt</b> · Betalt 5.000,00 · Udestående <b>7.775,00</b>.</div>
+<div class="err"><b class="h">Prøv at betale for meget</b>Delbetaling på 8000: <span class="msg">“Beløbet er større end det, der mangler at blive betalt. Ret beløbet, så det højst svarer til restbeløbet.”</span></div>
+</div>
+<div class="ex">
+<h3>B. Rykker</h3>
+<p><b>+ Rykker</b> på 1014 er <b>grå</b>, fordi fakturaen ikke er forfalden. Klik alligevel: en boks folder sig ud med <b>Ikke forfalden endnu</b>, betalingsfristen, datoen for første mulige rykker og hvor mange dage der er til. Luk med ✕.</p>
+<p>Man rykker for, at en faktura er <b>for sent</b> betalt – ikke for at den er delvist betalt. Rykkere gives i rækkefølge (1., 2., 3.).</p>
+<p><b>Se en rykker virke:</b> filteret <b>Kun forfaldne</b> → vælg en forfalden demo-faktura (fx 1006) → <b>+ Rykker</b> → <b>1. rykker</b>, dags dato. Rækken viser derefter “1. rykker”.</p>
+</div>
+<div class="ex">
+<h3>C. Resten af betalingen (valgfrit)</h3>
+<p><b>+ Betaling → Hele beløbet (7.775,00)</b>. Status bliver <b>Betalt</b>, og fakturaen forsvinder fra standardfilteret “Kun ubetalte”. Vælg <b>Alle</b> for at se den igen.</p>
+</div>
+</section>
+
+<!-- ───────────── E ───────────── -->
+<section class="chapter">
+<h2>Øvelse 12 · Løn for november <span class="who">Karen</span></h2>
+<p><b>Løn</b> → <b>November 2026</b>. Find <b>Emil Krogh</b>.</p>
+<div class="expect"><b class="h">Det skal du se</b>Linjen <b>KØRSEL · Skattefri kørselsgodtgørelse · 120 km · 472,80 kr</b>.<br>
+Firmabil-kørslen på 40 km er <b>ikke</b> med – Emil får ikke godtgørelse for den.</div>
+<p>Lønfilen viser godkendt fravær (fx FERIE, SYG), kørsel og udlæg pr. medarbejder og lønart – klar til lønsystemet. ARCtime beregner ikke selve lønnen. <b>Hent som Excel (.xlsx)</b> giver en læsbar kopi; CSV-filen er den, lønsystemet indlæser.</p>
+<div class="note warn"><b>I demoen:</b> dan gerne lønfilen, men <b>lås ikke</b> november. En låst lønperiode kan ikke ændres, og sene godkendelser lægges så i næste måned.</div>
+</section>
+
+<section class="chapter">
+<h2>Øvelse 13 · Overblik, rapporter og månedsluk <span class="who">Karen</span></h2>
+<h3>Forsiden</h3>
+<p><b>Det venter på dig</b> samler opgaverne med links: ugesedler og udlæg til godkendelse, rater klar, fakturaer klar til bogføring og måneder, der ikke er lukket. <b>Nøgletal</b> viser faktureringsgrad, fakturerbar andel, faktureret omsætning og effektiv timepris over 12 uger.</p>
+
+<h3>Rapporter og Excel</h3>
+<p><b>Rapporter → Budget og forbrug</b> viser de samme tal som Projekter. <b>Hent som Excel (.xlsx)</b>: kolonnerne har den rigtige bredde, overskriften bliver stående, og nederst er en totalrække. Samme knap findes på Sagsøkonomi, Debitorliste og Løn.</p>
+
+<h3>Revisionsspor</h3>
+<p><b>Revisionsspor</b> viser alt, hvad I har lavet, med navn og tidspunkt. Klik på en række for før og efter:</p>
+<ul>
+  <li><b>Projekt · Oprettet</b> (tre sager) og <b>Deltager tilføjet</b></li>
+  <li><b>Ugeseddel · Godkendt</b> (Karen) og <b>Udlæg · Godkendt</b></li>
+  <li><b>Faktura · Bogført</b> med nummer, og <b>Indbetaling · Oprettet</b> med 5.000 kr</li>
+</ul>
+
+<h3>Regnskabsperioder (månedsluk)</h3>
+<p><b>Regnskabsperioder</b> viser hver måned med advarsler: ugesedler der ikke er godkendt, fakturaer der ikke er bogført og igangværende arbejde. Det er det, der bør være på plads, før man lukker.</p>
+<div class="note warn"><b>I demoen:</b> se advarslerne, men luk ikke måneden. En lukket måned låser timer, udlæg og fakturaer for alle. Den kan genåbnes med en begrundelse, som skrives i revisionssporet.</div>
+</section>
+
+<!-- ───────────── Facit ───────────── -->
+<section class="chapter">
+<h2>Facit</h2>
+<table>
+  <tr><th>Hvor</th><th>Hvad</th><th class="n">26010 Havnehuset</th><th class="n">26011 Søholm</th><th class="n">26012 Tilbud</th></tr>
+  <tr><td rowspan="3">Sagen</td><td>Kontrakt / viderefakt.</td><td class="n">Medgået tid / Ja</td><td class="n">Fastpris / Ja</td><td class="n">Medgået tid / Nej</td></tr>
+  <tr><td>Budget</td><td class="n">70 t · 70.000</td><td class="n">10 t · 10.000</td><td class="n">10 t · 10.000</td></tr>
+  <tr><td>Deltagere</td><td class="n">Anne, Emil, Ida</td><td class="n">Anne, Ida</td><td class="n">Anne, Emil</td></tr>
+  <tr><td rowspan="4">Registreret</td><td>Timer</td><td class="n">9,5</td><td class="n">7,5</td><td class="n">2</td></tr>
+  <tr><td>Forbrugt</td><td class="n">9.500</td><td class="n">7.500 (75 %)</td><td class="n">0</td></tr>
+  <tr><td>Kostpris</td><td class="n">4.080</td><td class="n">4.050</td><td class="n">800</td></tr>
+  <tr><td>DB-grad / status</td><td class="n">57,1 % · På sporet</td><td class="n">46 % · Tæt på budget</td><td class="n">– · På sporet</td></tr>
+  <tr><td>Godkendt</td><td>Ikke faktureret</td><td class="n">9.500</td><td class="n">0 (rate 1 klar)</td><td class="n">0</td></tr>
+  <tr><td rowspan="3">Faktureret</td><td>Ekskl. moms</td><td class="n">10.220,00 (1014)</td><td class="n">5.000 (1015)</td><td class="n">–</td></tr>
+  <tr><td>Inkl. moms</td><td class="n">12.775,00</td><td class="n">6.250,00</td><td class="n">–</td></tr>
+  <tr><td>Resthonorar</td><td class="n">–</td><td class="n">5.000</td><td class="n">–</td></tr>
+  <tr><td>Debitorliste</td><td>Efter 5.000 betalt</td><td class="n">Udestående 7.775,00</td><td class="n">6.250,00</td><td class="n">–</td></tr>
+</table>
+
+<h3>Kørslen</h3>
+<table>
+  <tr><th>Kørsel</th><th class="n">Værdi (statens takst)</th><th class="n">Til lønnen</th><th class="n">På fakturaen (4,50 kr/km)</th></tr>
+  <tr><td>120 km, egen bil</td><td class="n">472,80</td><td class="n">472,80</td><td class="n">540,00</td></tr>
+  <tr><td>40 km, firmabil</td><td class="n">157,60</td><td class="n">0</td><td class="n">180,00</td></tr>
+</table>
+
+<h3>Fejlbeskeder undervejs</h3>
+<table>
+  <tr><th style="width:34%">Når du …</th><th>siger systemet</th></tr>
+  <tr><td>ikke vælger viderefakturering</td><td class="msg">Vælg om sagen skal viderefaktureres til kunden.</td></tr>
+  <tr><td>gemmer en rateplan under 100 %</td><td class="msg">Raterne giver tilsammen ikke 100 % af honoraret. Ret andelene, så de giver præcis 100 %.</td></tr>
+  <tr><td>skriver timer på en fremtidig dag</td><td class="msg">Arbejdstid kan ikke registreres på en dag, der ikke er kommet endnu. Vælg dagens dato eller en tidligere dag.</td></tr>
+  <tr><td>registrerer en for stor betaling</td><td class="msg">Beløbet er større end det, der mangler at blive betalt. Ret beløbet, så det højst svarer til restbeløbet.</td></tr>
+  <tr><td>klikker på den grå + Rykker</td><td class="msg">Ikke forfalden endnu · Kunden har betalingsfrist til og med … Første rykker kan sendes …</td></tr>
+</table>
+
+<div class="note"><b>Starte forfra?</b> Demo-databasen kan nulstilles til de oprindelige demo-data. Det sletter alt, hvad der er lavet i demoen, så det gøres af en udvikler. Bed om det, hvis I vil køre guiden igen.</div>
+<div class="note tip"><b>På vej</b> (fra Økonomis feedback): flere timepriser med dropdown og manuel pris pr. deltager, ferie- og feriefridagskonti med automatisk optjening, og rateplaner til store sager med underrådgivere.</div>
+</section>
+
+</body>
+</html>

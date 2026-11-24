@@ -15,8 +15,9 @@ const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).jo
 type Variant = "primary" | "secondary" | "ghost";
 const variants: Record<Variant, string> = {
   primary: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 disabled:bg-ink-500",
-  secondary: "bg-surface text-ink-900 border border-line hover:bg-surface-alt",
-  ghost: "text-ink-700 hover:bg-surface-alt",
+  secondary:
+    "bg-surface text-ink-900 border border-line hover:bg-surface-alt disabled:opacity-50 disabled:hover:bg-surface",
+  ghost: "text-ink-700 hover:bg-surface-alt disabled:opacity-50 disabled:hover:bg-transparent",
 };
 
 export const Button = forwardRef<

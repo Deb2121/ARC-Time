@@ -99,4 +99,15 @@ describe("e-conomic adapter (no network: fake fetch)", () => {
       retryable: false,
     });
   });
+
+  it("reads a booked invoice's payment status (gross and remainder) as øre", async () => {
+    const calls: string[] = [];
+    const fake = async (url: string, init: RequestInit) => {
+      calls.push(`${init.method} ${url}`);
+      return new Response(JSON.stringify({ grossAmount: 125_000.5, remainder: 25_000.25 }), { status: 200 });
+    };
+    const balance = await new EconomicAdapter(cfg, fake).invoiceBalance("1006");
+    expect(balance).toEqual({ gross: 12_500_050, remainder: 2_500_025 });
+    expect(calls).toEqual(["GET https://sandbox.invalid/invoices/booked/1006"]);
+  });
 });

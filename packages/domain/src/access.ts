@@ -36,6 +36,10 @@ export const CAPABILITIES = [
   "data.import",
   "kpi.company",
   "analytics.token",
+  "case_finance.view",
+  "case_finance.view_all",
+  "case_finance.settings",
+  "receivables.manage",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -47,10 +51,9 @@ interface Rule {
 
 /** The role matrix as data (one row per capability). */
 const MATRIX: Record<Capability, Rule> = {
-  "project.create": {
-    roles: ["finance", "admin"],
-    right: { right: "create_projects", rightFor: ["project_manager"] },
-  },
+  // D-040 (owner 2026-11-19): only Admin creates cases — not Finance, not project managers. The old per-person right
+  // "create_projects" (D-025) no longer grants it; stored rights are left untouched but ignored.
+  "project.create": { roles: ["admin"] },
   // PMs may prepare drafts for their own projects; that scope check lives in services/invoices.ts.
   "invoice.prepare": { roles: ["finance", "project_manager"] },
   "invoice.prepare_all": { roles: ["finance"] },
@@ -64,17 +67,26 @@ const MATRIX: Record<Capability, Rule> = {
   // People without a line manager (e.g. the CEO) are approved by Finance (spec: "correction only").
   "timesheet.approve_unmanaged": { roles: ["finance"] },
   "audit.read": { roles: ["finance", "management", "admin"] },
-  "audit.read_all": { roles: ["management", "admin"] },
+  // D-029: Finance reads the whole audit log and imports people, like Admin — but not GDPR or system settings.
+  "audit.read_all": { roles: ["management", "admin", "finance"] },
   "gdpr.manage": { roles: ["admin"] },
   "settings.manage": { roles: ["admin"] },
   // Finance reads settings and edits finance settings (rates, payroll numbers) — spec "◐ finance settings".
   "settings.read": { roles: ["admin", "finance"] },
   "pricelist.manage": { roles: ["finance", "admin"] },
-  "people.import": { roles: ["admin"] },
+  "people.import": { roles: ["admin", "finance"] },
   "data.import": { roles: ["admin", "finance"] },
   "kpi.company": { roles: ["finance", "management", "admin"] },
   // Personal read-only tokens for Power BI / Excel (D-028) — same people who may read company KPIs.
   "analytics.token": { roles: ["finance", "management", "admin"] },
+  // Sagsøkonomi and debitorliste (D-029). PMs see only cases they manage — scope check in services/case-finance.ts.
+  // Employees (and Admin without a finance role) do not see the module.
+  "case_finance.view": { roles: ["finance", "management", "project_manager"] },
+  "case_finance.view_all": { roles: ["finance", "management"] },
+  // Fee thresholds (75 % / 100 %) and the a conto switch are finance settings.
+  "case_finance.settings": { roles: ["finance"] },
+  // Registering payments and reminders is a Finance transaction.
+  "receivables.manage": { roles: ["finance"] },
 };
 
 /** Audit entities Finance may read ("financial" in the role matrix); Management and Admin read everything. */

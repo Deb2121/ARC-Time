@@ -10,7 +10,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n/da";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { errorText } from "@/lib/errors";
 import { fmtDay, fmtKr } from "@/lib/format";
 
 interface Item {
@@ -43,8 +44,7 @@ export function PaymentPlan({
   const planContracts = contracts.filter((c) => c.type !== "time_material");
   if (!planContracts.length) return null;
   const refresh = () => qc.invalidateQueries({ queryKey: ["plan", projectId] });
-  const fail = (e: unknown) =>
-    setError(e instanceof ApiError ? t(`err.${e.code}` as MessageKey) : t("common.error"));
+  const fail = (e: unknown) => setError(errorText(e, t));
 
   async function add(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

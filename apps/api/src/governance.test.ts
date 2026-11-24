@@ -54,37 +54,54 @@ afterAll(async () => {
 });
 
 describe("segregation of duties (D-025)", () => {
-  it("Admin cannot book, credit, close periods or export payroll; Finance can see those actions", async () => {
-    const kh = await login("kh"); // Admin + Management + line manager
+  // A pure Admin (no Finance role) is covered in packages/domain/src/access.test.ts; the demo Admin (Karen, D-030)
+  // also holds Finance, so the API guard is exercised with a line manager / project manager instead.
+  it("without the Finance role nobody can book, credit, close periods or export payroll", async () => {
+    const al = await login("al"); // line manager + project manager
     const jf = await login("jf"); // Finance
     const [period] = (await get(jf.headers, "/periods")).json();
     const list = (await get(jf.headers, "/invoices?status=booked")).json();
     const invoice = (Array.isArray(list) ? list : list.items)?.[0];
     expect(invoice?.id).toBeTruthy();
-    expect((await post(kh.headers, `/periods/${period.id}/close`, {})).statusCode).toBe(403);
-    expect((await post(kh.headers, `/periods/${period.id}/reopen`, { reason: "x" })).statusCode).toBe(403);
-    expect((await post(kh.headers, `/invoices/${invoice.id}/book`)).statusCode).toBe(403);
-    expect((await post(kh.headers, `/invoices/${invoice.id}/credit`, {})).statusCode).toBe(403);
-    expect((await post(kh.headers, "/payroll/periods/2026-10-01/export")).statusCode).toBe(403);
-    expect(kh.me.capabilities).not.toContain("invoice.book");
-    expect(kh.me.capabilities).toContain("settings.manage");
+    expect((await post(al.headers, `/periods/${period.id}/close`, {})).statusCode).toBe(403);
+    expect((await post(al.headers, `/periods/${period.id}/reopen`, { reason: "x" })).statusCode).toBe(403);
+    expect((await post(al.headers, `/invoices/${invoice.id}/book`)).statusCode).toBe(403);
+    expect((await post(al.headers, `/invoices/${invoice.id}/credit`, {})).statusCode).toBe(403);
+    expect((await post(al.headers, "/payroll/periods/2026-10-01/export")).statusCode).toBe(403);
+    expect(al.me.capabilities).not.toContain("invoice.book");
     expect(jf.me.capabilities).toEqual(
       expect.arrayContaining(["invoice.book", "invoice.credit", "period.close", "payroll.export"]),
     );
   });
 
-  it("projects: a project manager needs the create_projects right", async () => {
-    const mb = await login("mb"); // project manager without the right
-    const pd = await login("pd"); // project manager with the right (seed)
+  it("Karen (Admin + Finance, D-030) reaches both settings and the finance transactions", async () => {
+    const kh = await login("kh");
+    expect(kh.me.capabilities).toEqual(
+      expect.arrayContaining([
+        "settings.manage",
+        "invoice.book",
+        "period.close",
+        "payroll.export",
+        "receivables.manage",
+      ]),
+    );
+  });
+
+  it("projects: only Admin creates cases (D-040) — not a project manager, not even with the old right, not Finance", async () => {
+    const mb = await login("mb"); // project manager
+    const pd = await login("pd"); // project manager who had the old create_projects right (seed)
+    const jf = await login("jf"); // Finance only
+    const kh = await login("kh"); // Admin (and Finance)
     expect(mb.me.capabilities).not.toContain("project.create");
-    expect(pd.me.capabilities).toContain("project.create");
+    expect(pd.me.capabilities).not.toContain("project.create");
+    expect(jf.me.capabilities).not.toContain("project.create");
+    expect(kh.me.capabilities).toContain("project.create");
     const res = await post(mb.headers, "/projects", {
       name: "Må ikke oprettes",
       customerId: null,
       managerId: mb.me.id,
       contractType: "time_material",
       billable: true,
-      commentRequired: false,
     });
     expect(res.statusCode).toBe(403);
   });
@@ -132,14 +149,10 @@ describe("sickness privacy (OQ-21)", () => {
 });
 
 describe("audit log (spec R1–R2)", () => {
-  it("Finance reads financial entries only; Admin/Management read everything", async () => {
+  it("Finance, Admin and Management read everything (D-029); employees nothing", async () => {
     const jf = await login("jf");
     const kh = await login("kh");
-    expect((await get(jf.headers, "/audit?entity=user_roles")).statusCode).toBe(403);
-    const fin = (await get(jf.headers, "/audit?limit=200")).json();
-    expect(
-      fin.rows.every((r: { entity: string }) => r.entity !== "user_roles" && r.entity !== "tenant"),
-    ).toBe(true);
+    expect((await get(jf.headers, "/audit?entity=user_roles")).statusCode).toBe(200);
     expect((await get(kh.headers, "/audit/entities")).json()).toEqual(
       expect.arrayContaining(["accounting_period"]),
     );

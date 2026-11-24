@@ -59,6 +59,8 @@ TimeEntry.resolvedRateMinor, resolvedRateSource jsonb {step, priceListId?, rateI
 
 - **R1 Resolution order** [Brief §4.9] — for an entry (employee E, project P, task T with task type TT, date D):
   1. **Project-specific employee rate**: `ProjectEmployeeRate(P, E)` valid on D.
+     Set on the case page under Projektdeltagere (D-038): chosen from the case rate, the customer's or the standard
+     price list, or typed in by hand; one per person per case, audited, and used in the estimate before approval too.
   2. **Project price list**: on P's project price list, first match among
      (a) employee E + task type TT, (b) employee E, (c) task type TT + E's rate role, (d) task type TT, (e) E's rate role.
   3. **Customer price list**: on the price list of P's customer, first match among (c), (d), (e).

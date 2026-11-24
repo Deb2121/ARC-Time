@@ -2,7 +2,7 @@
  * Administration (brief §4.15): norm-time patterns, holiday calendars, absence codes, employee settings.
  * Admin edits everything; finance may edit rates. Every change is audited.
  */
-import { schema, writeAudit } from "@arc-tid/db";
+import { schema, type Tx, writeAudit } from "@arc-tid/db";
 import { danishPublicHolidays, defaultCompanyDays, kr } from "@arc-tid/domain";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
@@ -39,10 +39,14 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   );
 
-  /** Sets how weeks are approved: none | line_manager | pm_then_line_manager (Admin only, audited). */
+  /** Sets how weeks are approved: none | line_manager | pm_then_line_manager | finance (Admin only, audited). */
   app.patch(
     "/admin/approval-mode",
-    { schema: { body: z.object({ mode: z.enum(["none", "line_manager", "pm_then_line_manager"]) }) } },
+    {
+      schema: {
+        body: z.object({ mode: z.enum(["none", "line_manager", "pm_then_line_manager", "finance"]) }),
+      },
+    },
     async (req) => {
       requireCapability(req, "settings.manage");
       const auth = req.auth as AuthContext;
@@ -246,6 +250,25 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
 
   /* ───────── employee settings ───────── */
 
+  /**
+   * A line manager must be another active person, and the chain may not loop (A leads B leads A) — otherwise
+   * nobody could approve the weeks. Throws 422 manager_self / manager_inactive / manager_cycle.
+   */
+  async function assertValidManager(tx: Tx, userId: string, managerId: string) {
+    if (managerId === userId) throw new AppError(422, "manager_self");
+    const all = await tx
+      .select({ id: schema.users.id, managerId: schema.users.managerId, active: schema.users.active })
+      .from(schema.users);
+    const byId = new Map(all.map((u) => [u.id, u]));
+    if (!byId.get(managerId)?.active) throw new AppError(422, "manager_inactive");
+    const seen = new Set<string>();
+    for (let cur: string | null | undefined = managerId; cur; cur = byId.get(cur)?.managerId) {
+      if (cur === userId) throw new AppError(422, "manager_cycle");
+      if (seen.has(cur)) break;
+      seen.add(cur);
+    }
+  }
+
   app.get(
     "/admin/employees/:id",
     { schema: { params: z.object({ id: z.string().uuid() }) } },
@@ -313,6 +336,8 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           active: z.boolean().optional(),
           /** extra right for project managers to create projects (D-025) */
           canCreateProjects: z.boolean().optional(),
+          /** line manager = who approves the person's timesheets; null = none (approved by Finance) */
+          managerId: z.string().uuid().nullable().optional(),
         }),
       },
     },
@@ -329,9 +354,11 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
       return req.withTenant(async (tx) => {
         const [before] = await tx.select().from(schema.users).where(eq(schema.users.id, req.params.id));
         if (!before) throw new AppError(404, "not_found");
+        if (b.managerId) await assertValidManager(tx, before.id, b.managerId);
         const [after] = await tx
           .update(schema.users)
           .set({
+            ...(b.managerId !== undefined ? { managerId: b.managerId } : {}),
             ...(b.priceGroupId !== undefined ? { priceGroupId: b.priceGroupId } : {}),
             ...(b.salesRate !== undefined ? { salesRate: kr(b.salesRate) } : {}),
             ...(b.costRate !== undefined ? { costRate: kr(b.costRate) } : {}),
@@ -360,6 +387,19 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
               .insert(schema.userRights)
               .values({ tenantId: auth.tenantId, userId: before.id, right: "create_projects" });
         }
+        const managerName = async (mid: string | null | undefined) =>
+          mid
+            ? ((
+                await tx
+                  .select({ n: schema.users.fullName })
+                  .from(schema.users)
+                  .where(eq(schema.users.id, mid))
+              )[0]?.n ?? null)
+            : null;
+        const managerChange =
+          b.managerId !== undefined && b.managerId !== before.managerId
+            ? { before: await managerName(before.managerId), after: await managerName(b.managerId) }
+            : null;
         const pick = (u: typeof before | undefined) =>
           u && {
             priceGroupId: u.priceGroupId,
@@ -377,9 +417,10 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
           entityId: before.id,
           action: "update",
           userId: auth.userId,
-          before: pick(before),
+          before: { ...pick(before), ...(managerChange ? { manager: managerChange.before } : {}) },
           after: {
             ...pick(after),
+            ...(managerChange ? { manager: managerChange.after } : {}),
             ...(b.canCreateProjects !== undefined ? { canCreateProjects: b.canCreateProjects } : {}),
           },
         });
