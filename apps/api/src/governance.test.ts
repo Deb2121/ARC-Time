@@ -4,8 +4,8 @@
  * transaction, so the demo database is unchanged.
  */
 import { createDb, schema, type Tx, withTenant } from "@arc-tid/db";
-import { startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
-import { and, eq } from "drizzle-orm";
+import { todayCopenhagen } from "@arc-tid/domain";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "./app.ts";
@@ -113,15 +113,12 @@ describe("sickness privacy (OQ-21)", () => {
     const ob = await login("ob"); // used as an unrelated viewer
     const jf = await login("jf");
     await inRollback(lv.me.tenantId, async (tx) => {
-      // Laura's own sick day (the random seed may not have one): last Monday's first open day is made "Sygdom".
-      const week = startOfIsoWeek(todayCopenhagen());
+      // Laura's own sick day (the random seed may not have one), in an empty week far ahead so nothing collides.
+      const week = "2030-01-07";
       const [syg] = await tx
         .select({ id: schema.absenceCodes.id })
         .from(schema.absenceCodes)
         .where(eq(schema.absenceCodes.code, "SYG"));
-      await tx
-        .delete(schema.timeEntries)
-        .where(and(eq(schema.timeEntries.userId, lv.me.id), eq(schema.timeEntries.date, week)));
       await tx.insert(schema.timeEntries).values({
         tenantId: lv.me.tenantId,
         userId: lv.me.id,
