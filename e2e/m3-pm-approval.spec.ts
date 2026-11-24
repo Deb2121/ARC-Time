@@ -19,7 +19,7 @@ async function setMode(page: Page, label: RegExp) {
 }
 
 test.afterEach(async ({ page }) => {
-  await setMode(page, /Nærmeste leder godkender ugen/);
+  await setMode(page, /Økonomi godkender alle uger/); // the demo's mode (D-040)
 });
 
 test("project manager step can be switched on and shows the project manager's tab", async ({ page }) => {

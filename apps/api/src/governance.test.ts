@@ -5,7 +5,7 @@
  */
 import { createDb, schema, type Tx, withTenant } from "@arc-tid/db";
 import { startOfIsoWeek, todayCopenhagen } from "@arc-tid/domain";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "./app.ts";
@@ -112,39 +112,49 @@ describe("sickness privacy (OQ-21)", () => {
     const lv = await login("lv");
     const ob = await login("ob"); // used as an unrelated viewer
     const jf = await login("jf");
-    // Laura's most recent sick day in the seed (the seed is relative to the day it ran, so look it up).
-    const [sick] = await withTenant(db, lv.me.tenantId, (tx) =>
-      tx
-        .select({ date: schema.timeEntries.date })
-        .from(schema.timeEntries)
-        .innerJoin(schema.absenceCodes, eq(schema.absenceCodes.id, schema.timeEntries.absenceCodeId))
-        .where(and(eq(schema.timeEntries.userId, lv.me.id), eq(schema.absenceCodes.code, "SYG")))
-        .orderBy(desc(schema.timeEntries.date))
-        .limit(1),
-    );
-    expect(sick).toBeTruthy();
-    const week = startOfIsoWeek(sick?.date as string);
-    await withTenant(db, lv.me.tenantId, async (tx) => {
-      const mgmt: AuthContext = {
+    await inRollback(lv.me.tenantId, async (tx) => {
+      // Laura's own sick day (the random seed may not have one): last Monday's first open day is made "Sygdom".
+      const week = startOfIsoWeek(todayCopenhagen());
+      const [syg] = await tx
+        .select({ id: schema.absenceCodes.id })
+        .from(schema.absenceCodes)
+        .where(eq(schema.absenceCodes.code, "SYG"));
+      await tx
+        .delete(schema.timeEntries)
+        .where(and(eq(schema.timeEntries.userId, lv.me.id), eq(schema.timeEntries.date, week)));
+      await tx.insert(schema.timeEntries).values({
+        tenantId: lv.me.tenantId,
+        userId: lv.me.id,
+        date: week,
+        absenceCodeId: syg?.id ?? null,
+        hours: 7.5,
+        billable: false,
+        status: "draft",
+      });
+      const names = async (auth: AuthContext) =>
+        (await weekView(tx, auth, lv.me.id, week)).rows
+          .filter((r) => r.kind === "absence")
+          .map((r) => r.ref.nameDa);
+      const masked = await names({
         userId: ob.me.id,
         tenantId: lv.me.tenantId,
         roles: ["employee", "management"],
         csrfToken: "",
-      };
-      const masked = await weekView(tx, mgmt, lv.me.id, week);
-      const names = masked.rows.filter((r) => r.kind === "absence").map((r) => r.ref.nameDa);
-      expect(names).toContain("Fravær");
-      expect(names).not.toContain("Sygdom");
-      const fin: AuthContext = {
-        userId: jf.me.id,
-        tenantId: lv.me.tenantId,
-        roles: ["employee", "finance"],
-        csrfToken: "",
-      };
-      expect((await weekView(tx, fin, lv.me.id, week)).rows.map((r) => r.ref.nameDa)).toContain("Sygdom");
+      });
+      expect(masked).toContain("Fravær");
+      expect(masked).not.toContain("Sygdom");
+      expect(
+        await names({
+          userId: jf.me.id,
+          tenantId: lv.me.tenantId,
+          roles: ["employee", "finance"],
+          csrfToken: "",
+        }),
+      ).toContain("Sygdom");
+      expect(
+        await names({ userId: lv.me.id, tenantId: lv.me.tenantId, roles: lv.me.roles, csrfToken: "" }),
+      ).toContain("Sygdom");
     });
-    const own = (await get(lv.headers, `/timesheet/week/${week}`)).json();
-    expect(own.rows.map((r: { ref: { nameDa?: string } }) => r.ref.nameDa)).toContain("Sygdom");
   });
 });
 

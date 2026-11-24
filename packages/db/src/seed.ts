@@ -21,7 +21,7 @@ import {
 } from "@arc-tid/domain";
 import { hash } from "@node-rs/argon2";
 import { config } from "dotenv";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createDb, type Tx, withTenant } from "./client.ts";
 import * as s from "./schema.ts";
 import { seedAccess } from "./seed-access.ts";
@@ -945,6 +945,18 @@ await db.transaction(async (tx: Tx) => {
   await seedPlanning(tx, tenantId, today);
   await seedPayroll(tx, tenantId);
   await seedAccess(tx, tenantId);
+  // A fresh database gets the plan order and activation that migration 0026 gave existing data (it ran before
+  // there were any contracts): instalments ordered by date; plans that add up to the price are active.
+  await tx.execute(sql`
+    update payment_plan_items p set sequence = x.rn
+    from (select id, row_number() over (partition by contract_id order by due_date, id) as rn
+          from payment_plan_items) x
+    where x.id = p.id and p.sequence = 0`);
+  await tx.execute(sql`
+    update contracts c set plan_active = true
+    where (c.type = 'fixed_price' and c.price > 0
+           and c.price = (select coalesce(sum(amount), 0) from payment_plan_items p where p.contract_id = c.id))
+       or (c.type = 'retainer' and exists (select 1 from payment_plan_items p where p.contract_id = c.id))`);
   await seedCaseFinance(tx, tenantId, today);
 });
 
